@@ -45,7 +45,7 @@
   input:focus, textarea:focus { border-color: var(--rose); }
   label.lab { display: block; font-size: 13px; font-weight: 700; color: var(--rose-f); margin: 6px 0; text-transform: uppercase; letter-spacing: .4px; }
   .onglets { display: flex; background: #E7E7EC; border-radius: 16px; padding: 4px; margin-bottom: 14px; }
-  .onglets button { flex: 1; border: 0; background: transparent; padding: 11px 4px; border-radius: 12px;
+  .onglets button { flex: 1; border: 0; background: transparent; padding: 11px 2px; border-radius: 12px; font-size: 13px !important;
     font-size: 14px; font-weight: 700; color: var(--gris); }
   .onglets button.actif { background: var(--rose); color: #fff; }
   .onglets .nb { display: inline-block; min-width: 20px; padding: 1px 6px; border-radius: 10px;
@@ -87,6 +87,10 @@
   .ligne .bas button.tout { width: auto; padding: 0 14px; font-size: 14px; background: var(--rose-c); color: var(--rose-f); }
   .ligne .prep { font-size: 12px; color: var(--gris); margin-top: 4px; }
   .haut-ligne { display: flex; gap: 10px; align-items: flex-start; }
+  .signaler { display: block; width: 100%; margin-top: 10px; border: 0; background: var(--orange-c); color: #8A5205;
+    border-radius: 14px; padding: 11px; font-size: 14px; font-weight: 700; }
+  .signale { margin-top: 10px; background: var(--orange); color: #fff; border-radius: 14px; padding: 9px 12px;
+    font-size: 14px; font-weight: 700; text-align: center; }
   .haut-ligne .lib { flex: 1; }
   .empl { flex: none; background: var(--noir); color: #fff; border-radius: 12px; padding: 6px 10px; font-weight: 800;
     font-size: 17px; letter-spacing: .5px; cursor: pointer; }
@@ -263,7 +267,7 @@ function chargerListe() {
 function ecranListe() {
   S.ecran = 'liste'; S.cmd = null;
   entete('Bonjour ' + (S.nom || '').split(' ')[0] + ' 👋', false);
-  var groupes = { prep: [], livr: [], fait: [] };
+  var groupes = { prep: [], livr: [], fait: [], article: [] };
   S.liste.forEach(function (c) {
     if (c.statut === 'À préparer') groupes.prep.push(c);
     else if (c.statut === 'Prête à livrer') groupes.livr.push(c);
@@ -273,7 +277,9 @@ function ecranListe() {
     return '<button class="' + (S.onglet === cle ? 'actif' : '') + '" onclick="S.onglet=\'' + cle + '\';ecranListe()">' +
       texte + '<span class="nb">' + groupes[cle].length + '</span></button>';
   };
-  var h = '<div class="onglets">' + onglet('prep', '📦 À préparer') + onglet('livr', '🚐 À livrer') + onglet('fait', '✅ Livrées') + '</div>';
+  if (S.onglet === 'article') { ecranArticle(groupes, onglet); return; }
+  var h = '<div class="onglets">' + onglet('prep', '📦 Préparer') + onglet('livr', '🚐 Livrer') + onglet('fait', '✅ Livrées') +
+    '<button onclick="S.onglet=\'article\';ecranListe()">🔎 Article</button></div>';
   var l = groupes[S.onglet];
   if (!l.length) {
     h += '<div class="vide"><div class="gros">' + ({ prep: '📦', livr: '🚐', fait: '✅' })[S.onglet] + '</div>' +
@@ -363,6 +369,8 @@ function dessinerLignes(flashLigne) {
       (S.mode !== 'vue' ? '<button onclick="ajuster(' + l.ligne + ',-1)">−</button><button onclick="ajuster(' + l.ligne + ',1)">+</button>' +
         (q !== cible ? '<button class="tout" onclick="toutLigne(' + l.ligne + ')">Tout ✓</button>' : '') : '') +
       '</div>' +
+      (S.mode === 'prep' ? (l.signale ? '<div class="signale">⚠ Signalé : à recommander</div>' :
+        '<button class="signaler" onclick="signalerLigne(' + l.ligne + ')">⚠ Il n\'en reste presque plus : à recommander</button>') : '') +
       (S.mode !== 'vue' && !l.eans.length ? '<button class="apprendre" onclick="apprendreLigne(' + l.ligne + ')">' +
         '📷 Scanner le code-barres de cette boîte pour l\'enregistrer</button>' : '') +
       '</div>';
@@ -414,6 +422,7 @@ function apprendreLigne(n) {
 function annulerApprendre() { S.apprendre = null; $('bandeau-apprendre').style.display = 'none'; }
 function scanne(brut) {
   brut = String(brut || '').trim();
+  if (S.ecran === 'article') { chercherArticle(brut); return; }
   if (!brut || !S.cmd) return;
   if (S.apprendre) {
     var deja = S.cmd.lignes.filter(function (l) { return l.ligne !== S.apprendre && correspond(l, brut); })[0];
@@ -486,9 +495,80 @@ function validerEmplacement(n, retirer) {
   appel('mobEmplacement', S.code, l.code, v).then(function (r) {
     attente(false); fermerModale();
     S.cmd.lignes.forEach(function (x) { if (x.code === l.code) x.emplacement = r || ''; });
-    dessinerLignes();
+    if (S.apresEmpl) { var f = S.apresEmpl; S.apresEmpl = null; f(r || ''); } else dessinerLignes();
     toast(r ? '📍 ' + l.libelle.slice(0, 30) + ' : ' + r : 'Emplacement retiré', 'var(--anthracite)');
   }).catch(function (e) { attente(false); toast(e, 'var(--rouge)'); });
+}
+function signaler(codeArticle, libelle, apres) {
+  modale('<h2>⚠ À recommander</h2><p style="margin-top:0">' + esc(libelle) + '</p>' +
+    '<p style="color:var(--gris);margin-top:0">Le bureau sera prévenu qu\'il faut en recommander.</p>' +
+    '<label class="lab">Remarque (facultatif)</label><input type="text" id="reco-rem" placeholder="ex. plus que 2 boîtes">' +
+    '<button class="btn" style="background:var(--orange)" id="reco-ok">Signaler au bureau</button>' +
+    '<button class="btn second" onclick="fermerModale()">Annuler</button>');
+  $('reco-ok').onclick = function () {
+    var rem = $('reco-rem').value.trim();
+    attente(true, 'Envoi au bureau…');
+    appel('mobSignaler', S.code, codeArticle, libelle, rem).then(function (r) {
+      attente(false); fermerModale();
+      toast(r && r.deja ? 'Déjà signalé par ' + r.par + ' (' + r.le + ')' : '⚠ Signalé au bureau : à recommander', 'var(--orange)');
+      if (apres) apres();
+    }).catch(function (e) { attente(false); toast(e, 'var(--rouge)'); });
+  };
+}
+function signalerLigne(n) {
+  var l = ligneN(n);
+  signaler(l.code, l.libelle, function () {
+    S.cmd.lignes.forEach(function (x) { if (x.code === l.code) x.signale = true; });
+    dessinerLignes();
+  });
+}
+
+// ---------- onglet Article : scanner une boîte hors commande ----------
+function ecranArticle(groupes, onglet) {
+  S.ecran = 'article';
+  entete('Bonjour ' + (S.nom || '').split(' ')[0] + ' 👋', false);
+  var h = '<div class="onglets">' + onglet('prep', '📦 Préparer') + onglet('livr', '🚐 Livrer') + onglet('fait', '✅ Livrées') +
+    '<button class="actif">🔎 Article</button></div>' +
+    '<p style="margin:0 0 10px;color:var(--gris)">Scannez une boîte pour voir ou changer son emplacement, ou signaler qu\'il faut en recommander.</p>' +
+    '<div class="scan"><input type="search" id="saisie-scan" autocomplete="off" placeholder="Scanner ou taper un code" enterkeyhint="go">' +
+    '<button onclick="ouvrirCamera()" aria-label="Caméra">📷</button></div><div id="fiche-article"></div>';
+  $('ecran').innerHTML = h;
+  var champ = $('saisie-scan');
+  champ.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); chercherArticle(champ.value); champ.value = ''; } });
+  if (S.article) afficherArticle(S.article);
+  barreBas('');
+}
+function chercherArticle(brut) {
+  brut = String(brut || '').trim();
+  if (!brut) return;
+  arreterCamera();
+  attente(true, 'Recherche de l\'article…');
+  appel('mobChercherArticle', S.code, brut).then(function (a) {
+    attente(false);
+    if (!a) {
+      bip(false); S.article = null;
+      $('fiche-article').innerHTML = '<div class="ecart">Article inconnu pour « ' + esc(brut) + ' ». Il sera reconnu après ' +
+        'son premier passage dans une commande (scannez alors sa boîte pour enregistrer le code-barres).</div>';
+      return;
+    }
+    bip(true); S.article = a; afficherArticle(a);
+  }).catch(function (e) { attente(false); toast(e, 'var(--rouge)'); });
+}
+function afficherArticle(a) {
+  $('fiche-article').innerHTML = '<div class="ligne"><div class="haut-ligne">' +
+    '<span class="empl' + (a.emplacement ? '' : ' vide-empl') + '" onclick="emplacementArticle()">📍 ' +
+    (a.emplacement ? esc(a.emplacement) : 'Ajouter l\'emplacement') + '</span><div class="lib">' + esc(a.libelle || a.code) +
+    '</div></div><div class="ref">Réf. ' + esc(a.code) + '</div>' +
+    '<button class="btn noir" onclick="emplacementArticle()">📍 ' + (a.emplacement ? 'Changer l\'emplacement' : 'Indiquer l\'emplacement') + '</button>' +
+    (a.signale ? '<div class="signale">⚠ Déjà signalé : à recommander</div>' :
+      '<button class="signaler" onclick="signaler(S.article.code, S.article.libelle || S.article.code, function(){S.article.signale=true;afficherArticle(S.article);})">' +
+      '⚠ Il n\'en reste presque plus : à recommander</button>') + '</div>';
+}
+function emplacementArticle() {
+  var a = S.article;
+  S.cmd = { lignes: [{ ligne: 0, code: a.code, libelle: a.libelle || a.code, emplacement: a.emplacement }] };
+  S.apresEmpl = function (e) { a.emplacement = e; S.cmd = null; afficherArticle(a); };
+  saisirEmplacement(0);
 }
 function ligneN(n) { return S.cmd.lignes.filter(function (x) { return x.ligne === n; })[0]; }
 function associer(n, brut, deplacer) {
