@@ -235,6 +235,9 @@ function ecranConnexion(message) {
     '<div class="sous">Commandes consommables · Alternative Dentaire</div></div>' +
     '<div class="carte"><label class="lab">Votre code d\'accès</label>' +
     '<input type="password" id="code" autocomplete="current-password" placeholder="Le même que dans le logiciel">' +
+    '<label style="display:flex;align-items:center;gap:10px;margin-top:10px;font-size:15px;color:var(--gris)">' +
+    '<input type="checkbox" id="voir-code" style="width:22px;height:22px;accent-color:var(--rose)" ' +
+    'onchange="$(\'code\').type=this.checked?\'text\':\'password\'"> 👁 Afficher le code</label>' +
     (message ? '<div class="ecart" style="margin-top:10px">' + esc(message) + '</div>' : '') +
     '<button class="btn" onclick="connexion()">Se connecter</button></div>' +
     '<p style="text-align:center;color:var(--gris);font-size:13px">Astuce : ajoutez cette page à l\'écran d\'accueil du téléphone.</p>';
