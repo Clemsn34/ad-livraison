@@ -86,6 +86,13 @@
     font-size: 24px; font-weight: 800; color: var(--noir); }
   .ligne .bas button.tout { width: auto; padding: 0 14px; font-size: 14px; background: var(--rose-c); color: var(--rose-f); }
   .ligne .prep { font-size: 12px; color: var(--gris); margin-top: 4px; }
+  .ligne .gerer { color: var(--rose-f); font-weight: 700; text-decoration: underline; cursor: pointer; }
+  .code-ligne { display: flex; align-items: center; gap: 10px; border: 2px solid var(--bord); border-radius: 14px;
+    padding: 10px 12px; margin: 8px 0; }
+  .code-ligne .num { flex: 1; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 16px; font-weight: 700; }
+  .code-ligne .src { font-size: 12px; color: var(--gris); font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; font-weight: 500; }
+  .code-ligne button { border: 0; border-radius: 12px; background: var(--rouge-c); color: var(--rouge);
+    font-weight: 700; padding: 10px 12px; font-size: 14px; }
   .ligne .apprendre { display: block; width: 100%; margin-top: 10px; border: 2px dashed var(--rose); background: #fff;
     color: var(--rose-f); border-radius: 14px; padding: 11px; font-size: 14px; font-weight: 700; }
   #bandeau-apprendre { position: fixed; left: 0; right: 0; bottom: calc(80px + env(safe-area-inset-bottom)); z-index: 30;
@@ -336,7 +343,8 @@ function dessinerLignes(flashLigne) {
     if (q === cible) lignesOk++;
     h += '<div class="ligne ' + etat + (flashLigne === l.ligne ? ' flash' : '') + '" id="l' + l.ligne + '">' +
       '<div class="lib">' + esc(l.libelle) + '</div><div class="ref">Réf. ' + esc(l.code) +
-      (l.eans.length ? ' · ' + l.eans.length + ' code-barres connu' + (l.eans.length > 1 ? 's' : '') : ' · pas de code-barres : cocher à la main') + '</div>' +
+      (l.eans.length ? ' · ' + l.eans.length + ' code-barres connu' + (l.eans.length > 1 ? 's' : '') : ' · pas de code-barres : cocher à la main') +
+      (S.mode !== 'vue' && l.eans.length ? ' · <a class="gerer" onclick="gererCodes(' + l.ligne + ')">✏️ modifier</a>' : '') + '</div>' +
       (S.mode === 'livr' && l.qte_preparee != null && l.qte_preparee !== l.qte ?
         '<div class="prep">⚠ Commandé ' + l.qte + ', préparé ' + l.qte_preparee + '</div>' : '') +
       '<div class="bas"><div class="compte">' + q + ' <small>/ ' + cible + (q === cible ? ' ✓' : (q > cible ? ' trop' : '')) + '</small></div>' +
@@ -397,8 +405,19 @@ function scanne(brut) {
   if (!brut || !S.cmd) return;
   if (S.apprendre) {
     var deja = S.cmd.lignes.filter(function (l) { return l.ligne !== S.apprendre && correspond(l, brut); })[0];
-    if (deja) { bip(false); toast('Ce code-barres est déjà celui de : ' + deja.libelle.slice(0, 40), 'var(--orange)'); return; }
-    var n = S.apprendre; annulerApprendre(); arreterCamera();
+    var n = S.apprendre;
+    if (deja && (deja.appris || []).indexOf(brut) < 0) {   // code de la fiche d'un autre article : on ne touche pas
+      bip(false); toast('Ce code-barres est celui de la fiche : ' + deja.libelle.slice(0, 40), 'var(--orange)'); return;
+    }
+    annulerApprendre(); arreterCamera();
+    if (deja) {   // code scanné par erreur sur un autre article de la commande : on propose de le déplacer
+      S.deplacement = { de: deja.ligne, vers: n, code: brut };
+      modale('<h2>Code déjà utilisé</h2><p style="margin-top:0">Ce code-barres avait été enregistré pour :<br><b>' +
+        esc(deja.libelle) + '</b></p><p>Le rattacher plutôt à :<br><b>' + esc(ligneN(n).libelle) + '</b> ?</p>' +
+        '<button class="btn" onclick="confirmerDeplacement()">Oui, corriger</button>' +
+        '<button class="btn second" onclick="fermerModale()">Non</button>');
+      return;
+    }
     associer(n, brut);
     return;
   }
@@ -426,14 +445,59 @@ function inconnu(brut) {
   h += '<button class="btn rouge second" style="background:var(--rouge-c);color:var(--rouge)" onclick="fermerModale()">❌ Ce produit n\'est pas dans la commande</button>';
   modale(h);
 }
-function associer(n, brut) {
-  var l = S.cmd.lignes.filter(function (x) { return x.ligne === n; })[0];
-  l.eans.push(brut);
+function ligneN(n) { return S.cmd.lignes.filter(function (x) { return x.ligne === n; })[0]; }
+function associer(n, brut, deplacer) {
+  var l = ligneN(n);
   fermerModale();
-  appel('mobApprendre', S.code, l.code, brut).then(function () {
+  attente(true, 'Enregistrement du code-barres…');
+  appel('mobApprendre', S.code, l.code, brut, !!deplacer).then(function (r) {
+    attente(false);
+    if (r && r.ok === false && r.autre) {
+      modale('<h2>Code déjà utilisé</h2><p style="margin-top:0">Le code-barres <b>' + esc(brut) + '</b> est enregistré pour ' +
+        'l\'article <b>' + esc(r.autre) + '</b>.</p><p>Est-ce une erreur ? Il sera alors rattaché à :<br><b>' + esc(l.libelle) + '</b></p>' +
+        '<button class="btn" onclick="associer(' + n + ',\'' + esc(brut).replace(/'/g, '') + '\', true)">Oui, le déplacer vers cet article</button>' +
+        '<button class="btn second" onclick="fermerModale()">Non, laisser comme avant</button>');
+      return;
+    }
+    if (l.eans.indexOf(brut) < 0) l.eans.push(brut);
+    l.appris = l.appris || [];
+    if (l.appris.indexOf(brut) < 0) l.appris.push(brut);
     toast('📷 Code-barres enregistré pour ' + l.libelle.slice(0, 36) + ' : il sera reconnu partout', 'var(--rose)');
-  }).catch(function (e) { toast('Code non enregistré : ' + e, 'var(--rouge)'); });
-  scanne(brut);
+    scanne(brut);
+  }).catch(function (e) { attente(false); toast('Code non enregistré : ' + e, 'var(--rouge)'); });
+}
+function confirmerDeplacement() {
+  var d = S.deplacement, ancien = ligneN(d.de);
+  ancien.eans = ancien.eans.filter(function (x) { return x !== d.code; });
+  ancien.appris = (ancien.appris || []).filter(function (x) { return x !== d.code; });
+  dessinerLignes();
+  associer(d.vers, d.code, true);
+}
+function gererCodes(n) {
+  var l = ligneN(n), appris = l.appris || [];
+  var h = '<h2>Codes-barres de l\'article</h2><p style="margin-top:0;color:var(--gris)">' + esc(l.libelle) + '</p>';
+  l.eans.forEach(function (c) {
+    var modifiable = appris.indexOf(c) >= 0;
+    h += '<div class="code-ligne"><div class="num">' + esc(c) + '<div class="src">' +
+      (modifiable ? 'scanné au téléphone' : 'fiche article (Extrabat / fournisseur)') + '</div></div>' +
+      (modifiable ? '<button onclick="oublierCode(' + n + ',\'' + esc(c).replace(/'/g, '') + '\')">🗑️ Supprimer</button>' : '') + '</div>';
+  });
+  h += '<button class="btn" onclick="fermerModale();apprendreLigne(' + n + ')">📷 Scanner le bon code-barres</button>' +
+    '<p style="font-size:13px;color:var(--gris)">Un code de la fiche article ne se supprime pas ici : s\'il est faux, corrigez-le dans Extrabat.</p>' +
+    '<button class="btn second" onclick="fermerModale()">Fermer</button>';
+  modale(h);
+}
+function oublierCode(n, c) {
+  var l = ligneN(n);
+  attente(true, 'Suppression…');
+  appel('mobOublier', S.code, l.code, c).then(function () {
+    attente(false);
+    l.eans = l.eans.filter(function (x) { return x !== c; });
+    l.appris = (l.appris || []).filter(function (x) { return x !== c; });
+    dessinerLignes();
+    toast('🗑️ Code-barres supprimé. Corrigez la quantité avec − si besoin.', 'var(--anthracite)');
+    gererCodes(n);
+  }).catch(function (e) { attente(false); toast(e, 'var(--rouge)'); });
 }
 function modale(html) { $('modale-boite').innerHTML = html; $('modale').style.display = 'flex'; }
 function fermerModale() { $('modale').style.display = 'none'; var c = $('saisie-scan'); if (c) c.focus(); }
