@@ -297,18 +297,19 @@ function afficher() {
   }
 }
 function onglet(o) { S.onglet = o; afficher(); }
-var MODES = { sortie: ['Boîte entamée', '−'], inventaire: ['Inventaire', '=' ] };   // les entrées = livraisons AD uniquement
+var MODES = { sortie: ['Boîte entamée', '−'], panier: ['Commander', '🛒 +'], inventaire: ['Inventaire', '=' ] };   // les entrées = livraisons AD uniquement
 function htmlScan() {
   var h = '<div class="modes">';
-  ['sortie', 'inventaire'].forEach(function (m) {
+  ['sortie', 'panier', 'inventaire'].forEach(function (m) {
     h += '<button class="' + (S.mode === m ? 'actif' : '') + '" onclick="choisirMode(\'' + m + '\')">' + MODES[m][0] +
-      '<small>' + (m === 'sortie' ? 'on retire du stock' : 'on compte le rayon') + '</small></button>';
+      '<small>' + (m === 'sortie' ? 'on retire du stock' : m === 'panier' ? 'on ajoute au panier' : 'on compte le rayon') + '</small></button>';
   });
   h += '</div>';
   h += '<div class="qte-choix"><button onclick="changerQte(-1)">−</button><div class="val" id="qte-val">' +
     (S.mode === 'inventaire' ? 'qté ' : MODES[S.mode][1]) + S.qte + '</div><button onclick="changerQte(1)">+</button></div>';
   h += '<button class="grand-scan" onclick="ouvrirCamera()">📷 Scanner une boîte<small>' +
     (S.mode === 'sortie' ? 'à chaque boîte ouverte, scannez-la : le stock baisse tout seul' :
+     S.mode === 'panier' ? 'scannez l\'article à commander : il va dans votre panier 🛒' :
      'scannez puis indiquez la quantité comptée') + '</small></button>';
   h += '<div class="scan"><input type="search" id="saisie-scan" placeholder="Douchette : bipez ici (ou tapez un code)" ' +
     'autocomplete="off" inputmode="none"><button onclick="var c=$(\'saisie-scan\');scanne(c.value);c.value=\'\'">OK</button></div>';
@@ -374,6 +375,57 @@ function enregistrerReglages() {
     if (r.panier) S.panier = r.panier;
     toast('✔ Réglages enregistrés' + (r.alerte ? ' : réassort ajouté au panier 🛒' : ''), 'var(--vert)');
     afficher();
+  }).catch(function (e) { attente(false); toast(e, 'var(--rouge)'); });
+}
+
+// ---------------- scan « Commander » : le code-barres va dans le panier ----------------
+function scanPanier(brut, qte, description, suite) {
+  suite = suite || function () {};
+  appel('cabPanierScan', S.code, brut, qte, description || '').then(function (r) {
+    if (r.inconnu) { bip(false); suite(); inconnuPanier(brut, qte); return; }
+    bip(true);
+    S.panier = r.panier;
+    S.histo.unshift({ texte: '🛒 +' + qte + ' · ' + String(r.libelle).slice(0, 40), annulable: false, etat: 'panier' });
+    if (flux) $('aide-camera').textContent = '🛒 ' + String(r.libelle).slice(0, 40) + ' ajouté au panier';
+    if (S.onglet === 'scan') {
+      afficher();
+      $('resultat').innerHTML = '<div class="carte resultat"><div class="nom">' + esc(r.libelle) + '</div>' +
+        '<div class="stock">🛒 +' + qte + ' <small>ajouté au panier</small></div>' +
+        '<div style="font-size:14px;color:var(--gris)">Panier : ' + r.panier.lignes.length + ' article(s) · ' +
+        '<a href="#" onclick="onglet(\'panier\');return false">voir et valider</a></div></div>';
+    }
+    suite();
+  }).catch(function (e) { bip(false); toast(e, 'var(--rouge)'); suite(); });
+}
+function inconnuPanier(brut, qte) {
+  arreterCamera();
+  modale('<h2>Article non reconnu</h2><p style="margin-top:0">Code-barres <b>' + esc(brut) + '</b>.</p>' +
+    '<label class="lab">C\'est un article de votre liste ?</label>' +
+    '<input type="search" id="cherche-pan" placeholder="Chercher dans votre stock…"><div id="choix-pan" style="max-height:30vh;overflow:auto"></div>' +
+    '<label class="lab" style="margin-top:12px">Sinon, décrivez-le (Alternative Dentaire l\'identifiera)</label>' +
+    '<input type="text" id="desc-pan" placeholder="Ex : gants nitrile taille M, marque…">' +
+    '<button class="btn vert" style="margin-top:10px" onclick="ajouterDecrit(\'' + esc(brut) + '\',' + qte + ')">🛒 Ajouter au panier</button>' +
+    '<button class="btn second" style="margin-top:8px" onclick="fermerModale()">Annuler</button>');
+  var dessine = function (f) {
+    f = String(f || '').toLowerCase();
+    $('choix-pan').innerHTML = S.stock.filter(function (x) { return !f || (x.libelle + ' ' + x.code).toLowerCase().indexOf(f) >= 0; })
+      .slice(0, 20).map(function (x) {
+        return '<button class="btn second" style="text-align:left;margin:4px 0" onclick="associerPanier(\'' + esc(brut) + '\',\'' +
+          esc(x.code) + '\',' + qte + ')">' + esc(x.libelle) + '</button>';
+      }).join('');
+  };
+  $('cherche-pan').addEventListener('input', function (e) { dessine(e.target.value); });
+  dessine('');
+}
+function ajouterDecrit(brut, qte) {
+  var d = $('desc-pan').value.trim();
+  if (!d) { toast('Décrivez l\'article en quelques mots', 'var(--rouge)'); return; }
+  fermerModale(); scanPanier(brut, qte, d);
+}
+function associerPanier(brut, code, qte) {
+  attente(true, 'Ajout au panier…');
+  appel('cabAssocier', S.code, brut, code).then(function () {   // le code-barres est retenu pour la prochaine fois
+    attente(false); fermerModale(); scanPanier(brut, qte, '');
   }).catch(function (e) { attente(false); toast(e, 'var(--rouge)'); });
 }
 
@@ -486,6 +538,7 @@ function scanne(brut) {
     if (q === null || q === '' || isNaN(Number(q))) { suite(); return; }
     qte = Number(q);
   }
+  if (mode === 'panier') { scanPanier(brut, qte, '', suite); return; }
   appel('cabScan', S.code, brut, mode, qte, 'Cabinet').then(function (r) {
     if (r.inconnu) { bip(false); suite(); inconnu(brut); return; }
     if (r.refus) {
