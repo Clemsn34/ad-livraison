@@ -317,9 +317,34 @@ function ouvrir(id) {
       S.q[l.ligne] = sauve && sauve[l.ligne] != null ? sauve[l.ligne]
         : (S.mode === 'vue' ? (l.qte_livree || 0) : 0);
     });
-    ecranCommande();
+    if (S.mode === 'livr') { S.cartons = d.cartons || 1; ecranCartons(); } else ecranCommande();
   }).catch(function (e) { attente(false); toast(e, 'var(--rouge)'); });
 }
+// ---------- livraison : on compte les cartons, on ne rescanne pas les articles ----------
+function ecranCartons() {
+  S.ecran = 'cartons';
+  var d = S.cmd;
+  entete('N°' + d.id + ' · ' + d.praticien, true);
+  var nbArt = d.lignes.reduce(function (t, l) { return t + (l.qte_preparee != null ? l.qte_preparee : l.qte); }, 0);
+  $('ecran').innerHTML =
+    '<div class="etapes"><div class="fait"><span></span>Préparer</div><div class="encours"><span></span>Livrer</div>' +
+    '<div><span></span>Signature</div></div>' +
+    '<div class="carte" style="text-align:center"><div style="font-size:15px;color:var(--gris)">' + d.lignes.length + ' lignes · ' +
+    nbArt + ' articles préparés par ' + esc(d.preparee_par || '—') + '</div>' +
+    '<label class="lab" style="margin-top:16px">Nombre de cartons livrés</label>' +
+    '<div class="rangee" style="align-items:center;justify-content:center;gap:16px">' +
+    '<button class="btn second" style="width:72px;font-size:28px" onclick="cartons(-1)">−</button>' +
+    '<div id="nb-cartons" style="font-size:54px;font-weight:900;min-width:90px">' + S.cartons + '</div>' +
+    '<button class="btn second" style="width:72px;font-size:28px" onclick="cartons(1)">+</button></div>' +
+    (d.cartons ? '<div style="color:var(--gris);font-size:14px;margin-top:6px">' + d.cartons + ' carton' + (d.cartons > 1 ? 's' : '') +
+      ' préparé' + (d.cartons > 1 ? 's' : '') + ' au stockage</div>' : '') + '</div>' +
+    (d.remarques ? '<div class="ecart">📝 ' + esc(d.remarques) + '</div>' : '') +
+    '<details class="carte"><summary style="font-weight:700">Voir le détail des articles</summary>' +
+    d.lignes.map(function (l) { return '<div style="padding:6px 0;border-bottom:1px solid var(--bord);font-size:14px">' +
+      (l.qte_preparee != null ? l.qte_preparee : l.qte) + ' × ' + esc(l.libelle) + '</div>'; }).join('') + '</details>';
+  barreBas('<button class="btn vert" onclick="ecranSignature()">✍️ Faire signer l\'assistante</button>');
+}
+function cartons(d) { S.cartons = Math.max(0, (S.cartons || 0) + d); $('nb-cartons').textContent = S.cartons; }
 function cibleLigne(l) { return S.mode === 'livr' && l.qte_preparee != null ? l.qte_preparee : l.qte; }
 function ecranCommande() {
   S.ecran = 'commande';
@@ -706,6 +731,10 @@ function terminer() {
     if (e.length) h += '<p style="margin-top:0">Ces lignes ne correspondent pas à la commande :</p>' + listeEcarts(e) +
       '<label class="lab">Pourquoi ? (rupture, remplacement…)</label><textarea id="remarque" rows="2"></textarea>';
     else h += '<p style="margin-top:0;color:var(--gris)">La commande passe dans « À livrer ».</p>';
+    h += '<label class="lab" style="margin-top:12px">Nombre de cartons</label><div class="rangee" style="align-items:center;gap:12px">' +
+      '<button class="btn second" style="width:64px" onclick="var n=$(\'prep-cartons\');n.value=Math.max(1,(+n.value||1)-1)">−</button>' +
+      '<input type="number" id="prep-cartons" value="' + (S.cartonsPrep || 1) + '" min="1" style="text-align:center;font-size:24px;font-weight:800">' +
+      '<button class="btn second" style="width:64px" onclick="var n=$(\'prep-cartons\');n.value=(+n.value||0)+1">+</button></div>';
     h += '<button class="btn ' + (e.length ? 'noir' : 'vert') + '" onclick="validerPrep()">' + (e.length ? 'Valider quand même' : 'Valider la préparation') + '</button>' +
       '<button class="btn second" onclick="fermerModale()">Continuer à préparer</button>';
     modale(h);
@@ -719,8 +748,10 @@ function terminer() {
 }
 function validerPrep() {
   var rem = $('remarque') ? $('remarque').value.trim() : '';
+  var nbc = $('prep-cartons') ? Math.max(1, parseInt($('prep-cartons').value, 10) || 1) : 1;
+  S.cartonsPrep = nbc;
   attente(true, 'Enregistrement…');
-  appel('mobPreparation', S.code, S.cmd.id, S.q, rem).then(function () {
+  appel('mobPreparation', S.code, S.cmd.id, S.q, rem, nbc).then(function () {
     attente(false); fermerModale(); effacer('ad_q_' + S.cmd.id + '_prep');
     toast('✅ Commande N°' + S.cmd.id + ' prête à livrer', 'var(--vert)');
     S.onglet = 'livr'; chargerListe();
@@ -732,30 +763,47 @@ var sig = { trace: false, vide: true };
 function ecranSignature() {
   S.ecran = 'signature';
   entete('N°' + S.cmd.id + ' · signature', true);
-  var e = ecarts();
+  var e = [];
   $('ecran').innerHTML =
-    '<div class="etapes"><div class="fait"><span></span>Préparer</div><div class="fait"><span></span>Vérifier chez le client</div>' +
+    '<div class="etapes"><div class="fait"><span></span>Préparer</div><div class="fait"><span></span>Livrer</div>' +
     '<div class="encours"><span></span>Signature</div></div>' +
     '<div class="carte"><label class="lab">Réceptionné par</label><input type="text" id="signataire" placeholder="Nom du praticien ou de l\'assistante" value="' + esc(S.cmd.praticien) + '">' +
-    '<label class="lab" style="margin-top:14px">Signature</label><canvas id="signature"></canvas>' +
+    '<div style="font-size:18px;font-weight:800;margin:12px 0 4px">📦 ' + S.cartons + ' carton' + (S.cartons > 1 ? 's' : '') + ' livré' + (S.cartons > 1 ? 's' : '') + '</div>' +
+    '<label class="lab" style="margin-top:10px">Signature (avec le doigt)</label><canvas id="signature"></canvas>' +
     '<div class="rangee" style="margin-top:8px"><button class="btn second" onclick="effacerSignature()">Effacer</button></div></div>' +
     '<div class="carte"><label class="lab">Photo des colis livrés</label>' +
     '<button class="btn noir" onclick="$(\'photo-colis\').click()">📸 Prendre la photo</button><img id="apercu" class="apercu">' +
     (e.length ? '<label class="lab" style="margin-top:14px">Écarts constatés</label>' + listeEcarts(e) : '') +
     '<label class="lab" style="margin-top:14px">Remarque (facultatif)</label><textarea id="remarque-livr" rows="2"></textarea></div>';
-  initSignature();
+  requestAnimationFrame(function () { requestAnimationFrame(initSignature); });   // taille réelle connue après affichage
   if (S.photo) { $('apercu').src = S.photo; $('apercu').style.display = 'block'; }
   barreBas('<button class="btn vert" onclick="validerLivraison()">✅ Valider la livraison</button>');
 }
 function initSignature() {
-  var c = $('signature'), r = window.devicePixelRatio || 1;
-  c.width = c.clientWidth * r; c.height = c.clientHeight * r;
-  var x = c.getContext('2d'); x.scale(r, r); x.lineWidth = 2.6; x.lineCap = 'round'; x.lineJoin = 'round'; x.strokeStyle = '#1A1A1A';
-  sig.vide = true;
-  var pos = function (e) { var b = c.getBoundingClientRect(); return { x: e.clientX - b.left, y: e.clientY - b.top }; };
-  c.onpointerdown = function (e) { sig.trace = true; sig.vide = false; c.setPointerCapture(e.pointerId); var p = pos(e); x.beginPath(); x.moveTo(p.x, p.y); };
-  c.onpointermove = function (e) { if (!sig.trace) return; var p = pos(e); x.lineTo(p.x, p.y); x.stroke(); };
-  c.onpointerup = c.onpointercancel = function () { sig.trace = false; };
+  var c = $('signature');
+  if (!c) return;
+  var r = window.devicePixelRatio || 1, larg = c.clientWidth || c.parentNode.clientWidth || 320, haut = c.clientHeight || 210;
+  c.width = Math.round(larg * r); c.height = Math.round(haut * r);
+  var x = c.getContext('2d'); x.setTransform(r, 0, 0, r, 0, 0);
+  x.lineWidth = 2.8; x.lineCap = 'round'; x.lineJoin = 'round'; x.strokeStyle = '#1A1A1A';
+  sig.vide = true; sig.trace = false;
+  c.style.touchAction = 'none';
+  var pos = function (e) {
+    var b = c.getBoundingClientRect(), t = e.touches && e.touches[0] ? e.touches[0] : e;
+    return { x: t.clientX - b.left, y: t.clientY - b.top };
+  };
+  var debut = function (e) { e.preventDefault(); sig.trace = true; var p = pos(e); x.beginPath(); x.moveTo(p.x, p.y); x.lineTo(p.x + 0.1, p.y + 0.1); x.stroke(); sig.vide = false; };
+  var trait = function (e) { if (!sig.trace) return; e.preventDefault(); var p = pos(e); x.lineTo(p.x, p.y); x.stroke(); };
+  var fin = function () { sig.trace = false; };
+  if (window.PointerEvent) {
+    c.onpointerdown = function (e) { try { c.setPointerCapture(e.pointerId); } catch (z) {} debut(e); };
+    c.onpointermove = trait; c.onpointerup = c.onpointercancel = c.onpointerleave = fin;
+  } else {
+    c.addEventListener('touchstart', debut, { passive: false });
+    c.addEventListener('touchmove', trait, { passive: false });
+    c.addEventListener('touchend', fin); c.addEventListener('mousedown', debut);
+    c.addEventListener('mousemove', trait); window.addEventListener('mouseup', fin);
+  }
 }
 function effacerSignature() { var c = $('signature'); c.getContext('2d').clearRect(0, 0, c.width, c.height); sig.vide = true; }
 $('photo-colis').addEventListener('change', function (e) {
@@ -783,13 +831,14 @@ function validerLivraison() {
   if (sig.vide) { toast('La signature est obligatoire', 'var(--rouge)'); return; }
   if (!S.photo && !confirm('Pas de photo des colis. Valider quand même ?')) return;
   attente(true, 'Enregistrement de la livraison et du bon PDF…');
-  appel('mobLivraison', S.code, S.cmd.id, S.q, nom, signatureBlanche(), S.photo || '', $('remarque-livr').value.trim())
+  appel('mobLivraison', S.code, S.cmd.id, {}, nom, signatureBlanche(), S.photo || '', $('remarque-livr').value.trim(), S.cartons)
     .then(function (r) {
       attente(false); effacer('ad_q_' + S.cmd.id + '_livr'); S.photo = '';
+      if (r.stock_cabinet) toast('📊 Stock du cabinet mis à jour (' + r.stock_cabinet + ' articles)', 'var(--vert)');
       S.onglet = 'fait';
       $('ecran').innerHTML = '<div class="vide"><div class="gros">🎉</div><h2 style="color:var(--noir)">Livraison enregistrée</h2>' +
-        '<p>Le bon de livraison signé est enregistré' + (r.ecarts ? ' avec ' + r.ecarts + ' écart' + (r.ecarts > 1 ? 's' : '') : '') + '.</p>' +
-        '<a class="btn noir" style="text-decoration:none" href="' + esc(r.bon) + '" target="_blank">📄 Voir le bon de livraison</a></div>';
+        '<p>Le bon de livraison signé est enregistré.</p>' +
+        (r.bon ? '<a class="btn noir" style="text-decoration:none" href="' + esc(r.bon) + '" target="_blank">📄 Voir le bon de livraison</a>' : '') + '</div>';
       entete('Livraison terminée', false);
       barreBas('<button class="btn" onclick="chargerListe()">Retour aux commandes</button>');
     }).catch(function (err) { attente(false); toast(err, 'var(--rouge)'); });
@@ -799,7 +848,7 @@ function validerLivraison() {
 // Navigation
 // ======================================================================
 function retour() {
-  if (S.ecran === 'signature') { ecranCommande(); return; }
+  if (S.ecran === 'signature') { if (S.mode === 'livr') ecranCartons(); else ecranCommande(); return; }
   chargerListe();
 }
 (function demarrer() {
