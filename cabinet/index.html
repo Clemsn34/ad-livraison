@@ -13,6 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="AD Stock">
 <meta name="application-name" content="AD Stock">
 <style>
+  .muted { color: var(--gris); font-size: 14px; }
   :root {
     --rose: #B92C79; --rose-f: #8E1F5C; --rose-c: #F6E3EE; --noir: #1A1A1A; --anthracite: #2E2E30;
     --gris: #6B6B73; --gris-c: #F4F4F7; --bord: #E2E2E8; --vert: #1E9E5A; --vert-c: #E4F5EB;
@@ -450,13 +451,13 @@ function htmlPanier() {
           '<button onclick="qtePanier(\'' + esc(l.num) + '\',' + (l.qte - 1) + ')">' + (l.qte <= 1 ? '✕' : '−') + '</button>' +
           '<div class="q">' + l.qte + '</div><button onclick="qtePanier(\'' + esc(l.num) + '\',' + (l.qte + 1) + ')">+</button></div>';
       }).join('') +
-      '<button class="btn second" style="margin-top:10px" onclick="choisirArticlePanier()">➕ Ajouter un article</button></div>';
+      '<button class="btn second" style="margin-top:10px" onclick="choisirArticlePanier()">➕ Ajouter un article (tout notre catalogue)</button></div>';
     h += '<div class="carte"><label class="lab">Livraison souhaitée (facultatif)</label><input type="date" id="panier-date">' +
       '<label class="lab" style="margin-top:10px">Commentaire (facultatif)</label><textarea id="panier-com" rows="2"></textarea></div>';
     h += '<button class="btn vert" onclick="validerPanier()">✅ Valider mon panier (' + p.lignes.length + ' article' + (p.lignes.length > 1 ? 's' : '') + ')</button>';
   } else {
     h += '<div class="vide"><div class="gros">🛒</div>Votre panier est vide.<br><small>Il se remplit tout seul quand un article atteint son seuil.</small></div>' +
-      '<button class="btn second" onclick="choisirArticlePanier()">➕ Ajouter un article</button>';
+      '<button class="btn second" onclick="choisirArticlePanier()">➕ Ajouter un article (tout notre catalogue)</button>';
   }
   if (p.en_cours.length) {
     h += '<div class="carte" style="margin-top:14px;border-left:8px solid var(--orange)"><b>🚚 Commandes en cours</b><div class="historique">' +
@@ -478,19 +479,46 @@ function ajouterPanier(code, q) {
   }).catch(function (e) { attente(false); toast(e, 'var(--rouge)'); });
 }
 function choisirArticlePanier() {
-  modale('<h2>Ajouter au panier</h2><input type="search" id="cherche-panier" placeholder="Chercher dans votre stock…">' +
-    '<div id="choix-panier" style="max-height:50vh;overflow:auto;margin-top:8px"></div>' +
-    '<button class="btn second" onclick="fermerModale()">Fermer</button>');
-  var dessine = function (f) {
-    f = String(f || '').toLowerCase();
-    $('choix-panier').innerHTML = S.stock.filter(function (x) { return !f || (x.libelle + ' ' + x.code).toLowerCase().indexOf(f) >= 0; })
-      .slice(0, 40).map(function (x) {
-        return '<button class="btn second" style="text-align:left;margin:4px 0" onclick="ajouterPanier(\'' + esc(x.code) + '\')">' +
-          esc(x.libelle) + ' <small>(stock ' + x.qte + ')</small></button>';
-      }).join('') || '<p>Aucun article.</p>';
+  modale('<h2>Ajouter au panier</h2><input type="search" id="cherche-panier" placeholder="Nom du produit (ex : gants nitrile M)…">' +
+    '<div id="choix-panier" style="max-height:58vh;overflow:auto;margin-top:8px"></div>' +
+    '<button class="btn second" style="margin-top:8px" onclick="fermerModale()">Fermer</button>');
+  var minuteur = null, derniere = '';
+  var ligne = function (x, fn) {
+    return '<button class="btn second" style="text-align:left;margin:4px 0;font-size:15px" onclick="' + fn + '">' + esc(x.libelle) +
+      (x.qte !== undefined ? ' <small>(stock ' + x.qte + ')</small>' : '') + '</button>';
   };
-  $('cherche-panier').addEventListener('input', function (e) { dessine(e.target.value); });
+  var dessine = function (f, catalogue, recherche) {
+    f = String(f || '').toLowerCase();
+    var mes = S.stock.filter(function (x) { return !f || (x.libelle + ' ' + x.code).toLowerCase().indexOf(f) >= 0; }).slice(0, 15);
+    var h = '<label class="lab">Mes articles</label>' + (mes.map(function (x) {
+      return ligne(x, 'ajouterPanier(\'' + esc(x.code) + '\')'); }).join('') || '<p class="muted" style="margin:4px 0 8px">Aucun.</p>');
+    h += '<label class="lab" style="margin-top:12px">Tout le catalogue Alternative Dentaire</label>';
+    if (f.replace(/\s/g, '').length < 3) h += '<p class="muted" style="margin:4px 0">Tapez au moins 3 lettres pour chercher parmi tous nos produits.</p>';
+    else if (recherche) h += '<p class="muted" style="margin:4px 0">Recherche…</p>';
+    else if (catalogue) h += catalogue.length ? catalogue.map(function (x) {
+      return ligne(x, 'ajouterCatalogue(\'' + esc(x.code) + '\')'); }).join('') :
+      '<p class="muted" style="margin:4px 0">Aucun produit trouvé. Essayez un autre mot, ou appelez-nous.</p>';
+    $('choix-panier').innerHTML = h;
+  };
+  $('cherche-panier').addEventListener('input', function (e) {
+    var q = e.target.value; dessine(q, null, q.replace(/\s/g, '').length >= 3);
+    clearTimeout(minuteur);
+    if (q.replace(/\s/g, '').length < 3) return;
+    minuteur = setTimeout(function () {
+      derniere = q;
+      appel('cabCatalogue', S.code, q).then(function (r) { if (derniere === q && $('cherche-panier')) dessine(q, r, false); })
+        .catch(function (err) { if ($('cherche-panier')) dessine(q, [], false); toast(err, 'var(--rouge)'); });
+    }, 450);
+  });
   dessine('');
+  $('cherche-panier').focus();
+}
+function ajouterCatalogue(code) {
+  attente(true, 'Ajout au panier…');
+  appel('cabPanierAjouterCatalogue', S.code, code, 1).then(function (p) {
+    attente(false); S.panier = p; fermerModale(); toast('🛒 Ajouté au panier : ajustez la quantité si besoin', 'var(--vert)');
+    S.onglet = 'panier'; afficher();
+  }).catch(function (e) { attente(false); toast(e, 'var(--rouge)'); });
 }
 function validerPanier() {
   var p = S.panier;
