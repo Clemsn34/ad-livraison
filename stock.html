@@ -327,11 +327,56 @@ function changerQte(d) {
 }
 function htmlStock() {
   var h = '<div class="carte" style="font-size:14px;color:var(--gris)">ℹ️ Le stock augmente tout seul à chaque livraison ' +
-    'Alternative Dentaire signée. Il baisse quand vous scannez une boîte entamée.</div>';
+    'Alternative Dentaire signée. Il baisse quand vous scannez une boîte entamée.<br>⚙️ Touchez un article pour régler ' +
+    'son seuil d\'alerte et son stock idéal.</div>';
   h += '<input type="search" id="filtre" placeholder="Chercher un article…" style="margin-bottom:12px">';
   h += '<div id="liste-stock"></div>';
   return h;
 }
+// ---------------- réglages par article (seuil d'alerte, stock idéal) ----------------
+var R = {};
+function reglages(code) {
+  var x = S.stock.filter(function (l) { return l.code === code; })[0];
+  if (!x) return;
+  R = { code: code, seuil: x.seuil !== null ? x.seuil : 1, cible: x.cible !== null && x.cible !== undefined ? x.cible : Math.max(2, (x.seuil || 1) * 2 + 1) };
+  var ligne = function (cle, titre, aide) {
+    return '<label class="lab" style="margin-top:12px">' + titre + '</label>' +
+      '<div style="font-size:13px;color:var(--gris);margin:-2px 0 6px">' + aide + '</div>' +
+      '<div class="qte-choix"><button onclick="regler(\'' + cle + '\',-1)">−</button><div class="val" id="reg-' + cle + '">' + R[cle] +
+      '</div><button onclick="regler(\'' + cle + '\',1)">+</button></div>';
+  };
+  modale('<h2>' + esc(x.libelle) + '</h2><div style="color:var(--gris)">En stock : <b>' + x.qte + '</b></div>' +
+    ligne('seuil', 'Seuil d\'alerte', 'Quand il en reste ce nombre (ou moins), le réassort part dans votre panier.') +
+    ligne('cible', 'Stock idéal', 'Le réassort complète jusqu\'à ce nombre.') +
+    '<div id="reg-exemple" style="font-size:14px;margin:10px 0"></div>' +
+    '<button class="btn vert" onclick="enregistrerReglages()">Enregistrer</button>' +
+    '<button class="btn second" style="margin-top:8px" onclick="fermerModale()">Annuler</button>');
+  exempleReglages();
+}
+function regler(cle, d) {
+  R[cle] = Math.max(cle === 'cible' ? 1 : 0, R[cle] + d);
+  if (cle === 'seuil' && R.cible <= R.seuil) R.cible = R.seuil + 1;
+  if (cle === 'cible' && R.cible <= R.seuil) R.seuil = Math.max(0, R.cible - 1);
+  $('reg-seuil').textContent = R.seuil; $('reg-cible').textContent = R.cible;
+  exempleReglages();
+}
+function exempleReglages() {
+  $('reg-exemple').innerHTML = '👉 Quand il en reste <b>' + R.seuil + '</b>, <b>' + (R.cible - R.seuil) +
+    '</b> sont ajoutés au panier (pour revenir à ' + R.cible + ').';
+}
+function enregistrerReglages() {
+  attente(true, 'Enregistrement…');
+  appel('cabReglages', S.code, R.code, R.seuil, R.cible, 'Cabinet').then(function (r) {
+    attente(false); fermerModale();
+    majLocal(r);
+    var l = S.stock.filter(function (x) { return x.code === r.code; })[0];
+    if (l) { l.seuil = r.seuil; l.cible = r.cible; }
+    if (r.panier) S.panier = r.panier;
+    toast('✔ Réglages enregistrés' + (r.alerte ? ' : réassort ajouté au panier 🛒' : ''), 'var(--vert)');
+    afficher();
+  }).catch(function (e) { attente(false); toast(e, 'var(--rouge)'); });
+}
+
 // ---------------- panier ----------------
 function htmlPanier() {
   var p = S.panier || { lignes: [], en_cours: [] };
@@ -416,8 +461,9 @@ function dessinerStock(filtre) {
     return;
   }
   $('liste-stock').innerHTML = l.map(function (x) {
-    return '<div class="art' + (x.alerte ? ' bas-stock' : '') + '"><div class="info"><div class="lib">' + esc(x.libelle) + '</div>' +
-      '<div class="meta">' + esc(x.code) + (x.seuil !== null ? ' · alerte à ' + x.seuil : '') +
+    return '<div class="art' + (x.alerte ? ' bas-stock' : '') + '"><div class="info" style="cursor:pointer" onclick="reglages(\'' + esc(x.code) + '\')"><div class="lib">' + esc(x.libelle) + '</div>' +
+      '<div class="meta">' + esc(x.code) + (x.seuil !== null ? ' · alerte à ' + x.seuil : ' · pas d\'alerte') +
+      (x.cible !== null && x.cible !== undefined ? ' · idéal ' + x.cible : '') + ' · ⚙️ régler' +
       (x.alerte ? ' · ⚠ dans le panier' : '') + '</div></div>' +
       '<button onclick="manuel(\'' + esc(x.code) + '\',\'sortie\')">−</button><div class="q">' + x.qte + '</div>' +
       '<button title="Ajouter au panier" onclick="ajouterPanier(\'' + esc(x.code) + '\')">🛒</button></div>';
