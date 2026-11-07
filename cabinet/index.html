@@ -446,8 +446,8 @@ function htmlPanier() {
     h += '<div class="carte"><b>Mon panier</b><div style="font-size:13px;color:var(--gris);margin:2px 0 8px">Proposé d\'après votre stock. ' +
       'Modifiez les quantités si besoin, puis validez.</div>' +
       p.lignes.map(function (l) {
-        return '<div class="art"><div class="info"><div class="lib">' + esc(l.libelle) + '</div><div class="meta">' + esc(l.code) +
-          ' · en stock : ' + l.stock + (l.origine === 'Ajout cabinet' ? ' · ajouté par vous' : '') + '</div></div>' +
+        return '<div class="art"><div class="info"><div class="lib">' + esc(l.libelle) + '</div><div class="meta">' + (l.stock === null || l.stock === undefined ? 'nouvel article' : 'en stock : ' + l.stock) +
+          (String(l.origine).indexOf('Ajout cabinet') === 0 ? ' · ajouté par vous' : '') + '</div></div>' +
           '<button onclick="qtePanier(\'' + esc(l.num) + '\',' + (l.qte - 1) + ')">' + (l.qte <= 1 ? '✕' : '−') + '</button>' +
           '<div class="q">' + l.qte + '</div><button onclick="qtePanier(\'' + esc(l.num) + '\',' + (l.qte + 1) + ')">+</button></div>';
       }).join('') +
