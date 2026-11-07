@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<base target="_top">
+<link rel="manifest" href="stock-manifest.json">
+<link rel="apple-touch-icon" href="icone-192.png">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Stock cabinet">
+<meta charset="utf-8">
+<meta name="theme-color" content="#1A1A1A">
+<title>Stock du cabinet – Alternative Dentaire</title>
+<style>
+  :root {
+    --rose: #B92C79; --rose-f: #8E1F5C; --rose-c: #F6E3EE; --noir: #1A1A1A; --anthracite: #2E2E30;
+    --gris: #6B6B73; --gris-c: #F4F4F7; --bord: #E2E2E8; --vert: #1E9E5A; --vert-c: #E4F5EB;
+    --orange: #E08E1B; --orange-c: #FDF1DF; --rouge: #D64545; --rouge-c: #FBE6E6; --blanc: #FFFFFF;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--gris-c); color: var(--noir);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 16px; }
+  body { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+  header { position: sticky; top: 0; z-index: 10; background: var(--noir); color: #fff;
+    padding: calc(12px + env(safe-area-inset-top)) 16px 12px; border-left: 8px solid var(--rose);
+    display: flex; align-items: center; gap: 12px; }
+  header .titre { flex: 1; min-width: 0; }
+  header h1 { margin: 0; font-size: 17px; color: var(--rose); letter-spacing: .3px; }
+  header .sous { font-size: 12px; color: #C9C9D1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  header button { background: #3A3A3D; color: #fff; border: 0; border-radius: 12px; padding: 9px 12px; font-size: 14px; }
+  main { padding: 16px; max-width: 640px; margin: 0 auto; }
+  .carte { background: var(--blanc); border: 1px solid var(--bord); border-radius: 18px; padding: 16px;
+    margin-bottom: 12px; box-shadow: 0 2px 0 rgba(0,0,0,.03); }
+  .btn { display: block; width: 100%; border: 0; border-radius: 16px; padding: 16px; font-size: 17px;
+    font-weight: 700; color: #fff; background: var(--rose); margin: 8px 0; cursor: pointer; }
+  .btn:active { transform: translateY(1px); filter: brightness(.92); }
+  .btn.second { background: #E7E7EC; color: var(--noir); }
+  .btn.noir { background: var(--anthracite); }
+  .btn.vert { background: var(--vert); }
+  .btn[disabled] { opacity: .45; }
+  .rangee { display: flex; gap: 10px; }
+  .rangee .btn { margin: 0; }
+  input[type=text], input[type=password], input[type=search], textarea {
+    width: 100%; border: 2px solid var(--bord); border-radius: 14px; padding: 14px; font-size: 17px;
+    background: #fff; outline: none; font-family: inherit; }
+  input:focus, textarea:focus { border-color: var(--rose); }
+  label.lab { display: block; font-size: 13px; font-weight: 700; color: var(--rose-f); margin: 6px 0; text-transform: uppercase; letter-spacing: .4px; }
+  .onglets { display: flex; background: #E7E7EC; border-radius: 16px; padding: 4px; margin-bottom: 14px; }
+  .onglets button { flex: 1; border: 0; background: transparent; padding: 11px 2px; border-radius: 12px; font-size: 13px !important;
+    font-size: 14px; font-weight: 700; color: var(--gris); }
+  .onglets button.actif { background: var(--rose); color: #fff; }
+  .onglets .nb { display: inline-block; min-width: 20px; padding: 1px 6px; border-radius: 10px;
+    background: rgba(0,0,0,.12); font-size: 12px; margin-left: 4px; }
+  .cmd { display: flex; align-items: center; gap: 12px; }
+  .cmd .num { width: 52px; height: 52px; border-radius: 16px; background: var(--rose-c); color: var(--rose-f);
+    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; flex: none; }
+  .cmd .info { flex: 1; min-width: 0; }
+  .cmd .prat { font-weight: 800; font-size: 17px; }
+  .cmd .meta { color: var(--gris); font-size: 13px; margin-top: 2px; }
+  .pastille { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+  .p-prep { background: var(--orange-c); color: #9A5C06; }
+  .p-pret { background: var(--rose-c); color: var(--rose-f); }
+  .p-livre { background: var(--vert-c); color: #157A45; }
+  .vide { text-align: center; color: var(--gris); padding: 40px 10px; }
+  .vide .gros { font-size: 44px; }
+  .progression { background: #fff; border: 1px solid var(--bord); border-radius: 18px; padding: 14px 16px; margin-bottom: 12px; }
+  .progression .haut { display: flex; justify-content: space-between; align-items: baseline; }
+  .progression .grand { font-size: 26px; font-weight: 800; }
+  .barre { height: 12px; background: #E7E7EC; border-radius: 8px; overflow: hidden; margin-top: 10px; }
+  .barre div { height: 100%; background: var(--rose); border-radius: 8px; transition: width .25s; }
+  .barre.ok div { background: var(--vert); }
+  .scan { display: flex; gap: 8px; margin-bottom: 12px; }
+  .scan input { flex: 1; }
+  .scan button { flex: none; border: 0; border-radius: 14px; background: var(--anthracite); color: #fff;
+    font-size: 22px; width: 60px; }
+  .ligne { background: #fff; border: 2px solid var(--bord); border-radius: 18px; padding: 12px 14px; margin-bottom: 10px;
+    transition: background .3s, border-color .3s; }
+  .ligne.complete { border-color: var(--vert); background: var(--vert-c); }
+  .ligne.trop { border-color: var(--orange); background: var(--orange-c); }
+  .ligne.flash { background: #CFF2DD; }
+  .ligne .lib { font-weight: 700; font-size: 15px; line-height: 1.3; }
+  .ligne .ref { color: var(--gris); font-size: 12px; margin-top: 3px; }
+  .ligne .bas { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .ligne .compte { flex: 1; font-size: 22px; font-weight: 800; }
+  .ligne .compte small { font-size: 14px; color: var(--gris); font-weight: 600; }
+  .ligne .bas button { width: 48px; height: 48px; border-radius: 14px; border: 0; background: #E7E7EC;
+    font-size: 24px; font-weight: 800; color: var(--noir); }
+  .ligne .bas button.tout { width: auto; padding: 0 14px; font-size: 14px; background: var(--rose-c); color: var(--rose-f); }
+  .ligne .prep { font-size: 12px; color: var(--gris); margin-top: 4px; }
+  .haut-ligne { display: flex; gap: 10px; align-items: flex-start; }
+  .signaler { display: block; width: 100%; margin-top: 10px; border: 0; background: var(--orange-c); color: #8A5205;
+    border-radius: 14px; padding: 11px; font-size: 14px; font-weight: 700; }
+  .signale { margin-top: 10px; background: var(--orange); color: #fff; border-radius: 14px; padding: 9px 12px;
+    font-size: 14px; font-weight: 700; text-align: center; }
+  .haut-ligne .lib { flex: 1; }
+  .empl { flex: none; background: var(--noir); color: #fff; border-radius: 12px; padding: 6px 10px; font-weight: 800;
+    font-size: 17px; letter-spacing: .5px; cursor: pointer; }
+  .empl.vide-empl { background: #fff; color: var(--rose-f); border: 2px dashed var(--rose); font-size: 12px;
+    letter-spacing: 0; padding: 5px 8px; order: 2; }
+  .ligne .gerer { color: var(--rose-f); font-weight: 700; text-decoration: underline; cursor: pointer; }
+  .code-ligne { display: flex; align-items: center; gap: 10px; border: 2px solid var(--bord); border-radius: 14px;
+    padding: 10px 12px; margin: 8px 0; }
+  .code-ligne .num { flex: 1; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 16px; font-weight: 700; }
+  .code-ligne .src { font-size: 12px; color: var(--gris); font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; font-weight: 500; }
+  .code-ligne button { border: 0; border-radius: 12px; background: var(--rouge-c); color: var(--rouge);
+    font-weight: 700; padding: 10px 12px; font-size: 14px; }
+  .ligne .apprendre { display: block; width: 100%; margin-top: 10px; border: 2px dashed var(--rose); background: #fff;
+    color: var(--rose-f); border-radius: 14px; padding: 11px; font-size: 14px; font-weight: 700; }
+  #bandeau-apprendre { position: fixed; left: 0; right: 0; bottom: calc(80px + env(safe-area-inset-bottom)); z-index: 30;
+    margin: 0 16px; background: var(--rose); color: #fff; border-radius: 16px; padding: 12px 14px; display: none;
+    font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,.2); }
+  #bandeau-apprendre button { background: rgba(255,255,255,.22); color: #fff; border: 0; border-radius: 10px;
+    padding: 8px 10px; font-weight: 700; margin-left: 6px; }
+  .barre-bas { position: fixed; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,.96);
+    border-top: 1px solid var(--bord); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); z-index: 20; }
+  .barre-bas .btn { max-width: 608px; margin: 0 auto; }
+  #toast { position: fixed; left: 16px; right: 16px; top: calc(76px + env(safe-area-inset-top)); z-index: 50;
+    border-radius: 16px; padding: 14px 16px; font-weight: 700; color: #fff; display: none; text-align: center;
+    box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+  .modale { position: fixed; inset: 0; background: rgba(26,26,26,.6); z-index: 60; display: none;
+    align-items: flex-end; justify-content: center; }
+  .modale .boite { background: #fff; border-radius: 22px 22px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+    width: 100%; max-width: 640px; max-height: 88vh; overflow: auto; }
+  .modale h2 { margin: 4px 0 10px; font-size: 19px; }
+  .choix { display: block; width: 100%; text-align: left; border: 2px solid var(--bord); background: #fff;
+    border-radius: 14px; padding: 12px; margin: 8px 0; font-size: 15px; }
+  #video-zone { position: fixed; inset: 0; background: #000; z-index: 70; display: none; }
+  #video-zone video { width: 100%; height: 100%; object-fit: cover; }
+  #video-zone .viseur { position: absolute; left: 10%; right: 10%; top: 38%; height: 24%;
+    border: 4px solid var(--rose); border-radius: 18px; box-shadow: 0 0 0 9999px rgba(0,0,0,.35); }
+  #video-zone .bas { position: absolute; left: 16px; right: 16px; bottom: calc(20px + env(safe-area-inset-bottom)); }
+  #video-zone .aide { position: absolute; top: calc(24px + env(safe-area-inset-top)); left: 16px; right: 16px;
+    color: #fff; text-align: center; font-weight: 700; }
+  canvas#signature { width: 100%; height: 210px; border: 2px dashed var(--rose); border-radius: 16px; background: #fff;
+    touch-action: none; display: block; }
+  .apercu { width: 100%; border-radius: 14px; margin-top: 8px; display: none; }
+  .ecart { background: var(--orange-c); color: #7A4A05; border-radius: 14px; padding: 12px; font-size: 14px; margin: 8px 0; }
+  .attente { position: fixed; inset: 0; background: rgba(255,255,255,.75); z-index: 80; display: none;
+    align-items: center; justify-content: center; flex-direction: column; font-weight: 700; color: var(--rose-f); }
+  .roue { width: 46px; height: 46px; border-radius: 50%; border: 5px solid var(--rose-c); border-top-color: var(--rose);
+    animation: tourne 0.8s linear infinite; margin-bottom: 12px; }
+  @keyframes tourne { to { transform: rotate(360deg); } }
+  .logo-connexion { text-align: center; margin: 30px 0 22px; }
+  .logo-connexion .marque { font-size: 26px; font-weight: 900; color: var(--rose); }
+  .logo-connexion .sous { color: var(--gris); font-size: 14px; margin-top: 4px; }
+  .etapes { display: flex; gap: 6px; margin: 0 0 14px; }
+  .etapes div { flex: 1; text-align: center; font-size: 12px; font-weight: 700; color: var(--gris); }
+  .etapes div span { display: block; height: 6px; border-radius: 4px; background: #DADADF; margin-bottom: 6px; }
+  .etapes div.fait span { background: var(--vert); }
+  .etapes div.encours span { background: var(--rose); }
+  .etapes div.encours { color: var(--rose-f); }
+</style>
+<style>
+  .modes { display: flex; gap: 6px; background: #E7E7EC; border-radius: 16px; padding: 4px; margin-bottom: 12px; }
+  .modes button { flex: 1; border: 0; background: transparent; padding: 10px 2px; border-radius: 12px; font-size: 13px;
+    font-weight: 800; color: var(--gris); line-height: 1.25; }
+  .modes button small { display: block; font-weight: 600; font-size: 11px; }
+  .modes button.actif { background: var(--rose); color: #fff; }
+  .grand-scan { display: block; width: 100%; border: 0; border-radius: 22px; padding: 26px 16px; font-size: 21px;
+    font-weight: 800; color: #fff; background: var(--noir); margin: 4px 0 12px; }
+  .grand-scan small { display: block; font-size: 13px; font-weight: 600; color: #C9C9D1; margin-top: 4px; }
+  .qte-choix { display: flex; align-items: center; gap: 10px; justify-content: center; margin: 4px 0 12px; }
+  .qte-choix button { width: 48px; height: 48px; border-radius: 14px; border: 0; background: #E7E7EC; font-size: 24px; font-weight: 800; }
+  .qte-choix .val { font-size: 26px; font-weight: 800; min-width: 50px; text-align: center; }
+  .resultat { border-left: 8px solid var(--vert); }
+  .resultat.alerte { border-left-color: var(--orange); }
+  .resultat .nom { font-weight: 800; font-size: 17px; line-height: 1.3; }
+  .resultat .stock { font-size: 30px; font-weight: 900; margin: 8px 0 4px; }
+  .resultat .stock small { font-size: 15px; color: var(--gris); font-weight: 600; }
+  .bandeau-alerte { background: var(--orange-c); color: #7A4A05; border-radius: 14px; padding: 10px 12px; font-weight: 700;
+    font-size: 14px; margin-top: 8px; }
+  .art { display: flex; align-items: center; gap: 12px; background: #fff; border: 2px solid var(--bord); border-radius: 16px;
+    padding: 12px 14px; margin-bottom: 8px; }
+  .art.bas-stock { border-color: var(--orange); background: var(--orange-c); }
+  .art .info { flex: 1; min-width: 0; }
+  .art .lib { font-weight: 700; font-size: 15px; line-height: 1.3; }
+  .art .meta { color: var(--gris); font-size: 12px; margin-top: 3px; }
+  .art .q { font-size: 24px; font-weight: 900; min-width: 44px; text-align: right; }
+  .art button { width: 42px; height: 42px; border-radius: 12px; border: 0; background: #E7E7EC; font-size: 20px; font-weight: 800; }
+  .historique { font-size: 13px; color: var(--gris); }
+  .historique div { padding: 6px 0; border-bottom: 1px solid var(--bord); display: flex; justify-content: space-between; gap: 8px; }
+  .historique button { border: 0; background: var(--rouge-c); color: var(--rouge); border-radius: 10px; font-weight: 700; padding: 4px 8px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="titre">
+    <h1>ALTERNATIVE DENTAIRE</h1>
+    <div class="sous" id="sous-titre">Stock du cabinet</div>
+  </div>
+  <button id="btn-quitter" style="display:none" onclick="deconnexion()">⎋</button>
+</header>
+<div id="toast"></div>
+<main id="ecran"></main>
+<div class="modale" id="modale"><div class="boite" id="modale-boite"></div></div>
+<div id="video-zone">
+  <video id="video" playsinline muted></video>
+  <div class="aide" id="aide-camera">Placez le code-barres dans le cadre rose</div>
+  <div class="viseur"></div>
+  <div class="bas"><button class="btn second" onclick="arreterCamera()">Terminer</button></div>
+</div>
+<div class="attente" id="attente"><div class="roue"></div><div id="attente-texte">Un instant…</div></div>
+<input type="file" id="photo-code" accept="image/*" capture="environment" style="display:none">
+
+<script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
+<script>
+var API_URL = 'https://script.google.com/macros/s/AKfycbx5HO3kQI28Vk0Dh6Lcv7RdemekJSznX9T7lEBaAxyndu9JK3wq2SOTo1DE40Lc3HSrJg/exec';
+var S = { code: '', cabinet: '', onglet: 'scan', mode: 'sortie', qte: 1, stock: [], commandes: [], histo: [] };
+
+function lire(cle, defaut) { try { var v = localStorage.getItem(cle); return v === null ? defaut : JSON.parse(v); } catch (e) { return defaut; } }
+function ecrire(cle, v) { try { localStorage.setItem(cle, JSON.stringify(v)); } catch (e) {} }
+function effacer(cle) { try { localStorage.removeItem(cle); } catch (e) {} }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+  return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function $(id) { return document.getElementById(id); }
+function appel(fonction) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  return fetch(API_URL, { method: 'POST', body: JSON.stringify({ fn: fonction, args: args }), redirect: 'follow' })
+    .then(function (rep) { return rep.json(); })
+    .catch(function () { throw 'Pas de connexion Internet (ou service indisponible).'; })
+    .then(function (r) { if (!r.ok) throw (r.message || 'Erreur du service.'); return r.data; });
+}
+function attente(oui, texte) { $('attente').style.display = oui ? 'flex' : 'none'; $('attente-texte').textContent = texte || 'Un instant…'; }
+var toastMinuteur = null;
+function toast(texte, couleur) {
+  var t = $('toast'); t.textContent = texte; t.style.background = couleur || 'var(--anthracite)'; t.style.display = 'block';
+  clearTimeout(toastMinuteur); toastMinuteur = setTimeout(function () { t.style.display = 'none'; }, 2600);
+}
+var audio = null;
+function bip(bon) {
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    var o = audio.createOscillator(), g = audio.createGain();
+    o.frequency.value = bon ? 1250 : 320; o.type = 'sine'; g.gain.value = 0.18;
+    o.connect(g); g.connect(audio.destination); o.start(); o.stop(audio.currentTime + (bon ? 0.12 : 0.35));
+  } catch (e) {}
+  if (navigator.vibrate) navigator.vibrate(bon ? 60 : [120, 80, 120]);
+}
+function modale(html) { $('modale-boite').innerHTML = html; $('modale').style.display = 'flex'; }
+function fermerModale() { $('modale').style.display = 'none'; focusScan(); }
+function focusScan() { var c = $('saisie-scan'); if (c && !flux) c.focus(); }
+
+// ---------------- connexion ----------------
+function ecranConnexion(message) {
+  $('btn-quitter').style.display = 'none';
+  $('sous-titre').textContent = 'Stock du cabinet';
+  $('ecran').innerHTML = '<div class="logo-connexion"><div class="marque">Stock du cabinet</div>' +
+    '<div class="sous">Alternative Dentaire veille sur vos consommables</div></div>' +
+    '<div class="carte"><label class="lab">Code du cabinet</label>' +
+    '<input type="password" id="code" autocomplete="current-password" autocapitalize="characters" placeholder="Code donné par Alternative Dentaire">' +
+    '<label style="display:flex;align-items:center;gap:8px;margin:10px 0 4px;font-size:14px"><input type="checkbox" onchange="$(\'code\').type=this.checked?\'text\':\'password\'"> Afficher le code</label>' +
+    (message ? '<p style="color:var(--rouge);font-weight:700">' + esc(message) + '</p>' : '') +
+    '<button class="btn" onclick="connexion()">Se connecter</button></div>';
+  $('code').addEventListener('keydown', function (e) { if (e.key === 'Enter') connexion(); });
+}
+function connexion() {
+  var code = $('code').value.trim().toUpperCase();
+  if (!code) return;
+  attente(true, 'Connexion…');
+  appel('cabConnexion', code).then(function (r) {
+    attente(false); S.code = code; S.cabinet = r.cabinet; ecrire('ad_cab_code', code); charger();
+  }).catch(function (e) { attente(false); ecranConnexion(e); });
+}
+function deconnexion() {
+  if (!confirm('Se déconnecter de ce téléphone ?')) return;
+  effacer('ad_cab_code'); S.code = ''; ecranConnexion();
+}
+function charger(silencieux) {
+  if (!silencieux) attente(true, 'Chargement du stock…');
+  return appel('cabStock', S.code).then(function (r) {
+    attente(false); S.cabinet = r.cabinet; S.stock = r.lignes; S.commandes = r.commandes || []; afficher();
+  }).catch(function (e) { attente(false); if (/code|désactivé/i.test(e)) ecranConnexion(e); else toast(e, 'var(--rouge)'); });
+}
+
+// ---------------- écrans ----------------
+function afficher() {
+  $('btn-quitter').style.display = 'block';
+  $('sous-titre').textContent = S.cabinet;
+  var alertes = S.stock.filter(function (l) { return l.alerte; }).length;
+  var h = '<div class="onglets">' +
+    '<button class="' + (S.onglet === 'scan' ? 'actif' : '') + '" onclick="onglet(\'scan\')">📷 Scanner</button>' +
+    '<button class="' + (S.onglet === 'stock' ? 'actif' : '') + '" onclick="onglet(\'stock\')">📦 Mon stock' +
+    (alertes ? '<span class="nb">' + alertes + '</span>' : '') + '</button></div>';
+  h += S.onglet === 'scan' ? htmlScan() : htmlStock();
+  $('ecran').innerHTML = h;
+  if (S.onglet === 'scan') {
+    var champ = $('saisie-scan');
+    champ.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); var v = champ.value; champ.value = ''; scanne(v); }
+    });
+    focusScan();
+  } else {
+    var r = $('filtre');
+    if (r) r.addEventListener('input', function () { dessinerStock(r.value); });
+    dessinerStock('');
+  }
+}
+function onglet(o) { S.onglet = o; afficher(); }
+var MODES = { sortie: ['Boîte entamée', '−'], entree: ['Réception', '+'], inventaire: ['Inventaire', '=' ] };
+function htmlScan() {
+  var h = '<div class="modes">';
+  ['sortie', 'entree', 'inventaire'].forEach(function (m) {
+    h += '<button class="' + (S.mode === m ? 'actif' : '') + '" onclick="choisirMode(\'' + m + '\')">' + MODES[m][0] +
+      '<small>' + (m === 'sortie' ? 'on retire du stock' : m === 'entree' ? 'on ajoute au stock' : 'on compte le rayon') + '</small></button>';
+  });
+  h += '</div>';
+  h += '<div class="qte-choix"><button onclick="changerQte(-1)">−</button><div class="val" id="qte-val">' +
+    (S.mode === 'inventaire' ? 'qté ' : MODES[S.mode][1]) + S.qte + '</div><button onclick="changerQte(1)">+</button></div>';
+  h += '<button class="grand-scan" onclick="ouvrirCamera()">📷 Scanner une boîte<small>' +
+    (S.mode === 'sortie' ? 'à chaque boîte ouverte, scannez-la : le stock baisse tout seul' :
+     S.mode === 'entree' ? 'boîtes reçues hors livraison Alternative Dentaire' : 'scannez puis indiquez la quantité comptée') + '</small></button>';
+  h += '<div class="scan"><input type="search" id="saisie-scan" placeholder="Douchette : bipez ici (ou tapez un code)" ' +
+    'autocomplete="off" inputmode="none"><button onclick="var c=$(\'saisie-scan\');scanne(c.value);c.value=\'\'">OK</button></div>';
+  h += '<div id="resultat"></div>';
+  if (S.histo.length) {
+    h += '<div class="carte"><b>Derniers scans</b><div class="historique">' + S.histo.slice(0, 8).map(function (x, i) {
+      return '<div><span>' + esc(x.texte) + '</span>' + (x.annulable ? '<button onclick="annuler(' + i + ')">Annuler</button>' : '<span>' + esc(x.etat || '') + '</span>') + '</div>';
+    }).join('') + '</div></div>';
+  }
+  return h;
+}
+function choisirMode(m) { S.mode = m; S.qte = m === 'inventaire' ? 0 : 1; afficher(); }
+function changerQte(d) {
+  S.qte = Math.max(S.mode === 'inventaire' ? 0 : 1, S.qte + d);
+  $('qte-val').textContent = (S.mode === 'inventaire' ? 'qté ' : MODES[S.mode][1]) + S.qte;
+}
+function htmlStock() {
+  var h = '';
+  if (S.commandes.length) {
+    h += '<div class="carte" style="border-left:8px solid var(--orange)"><b>🚚 Réassort en cours chez Alternative Dentaire</b>' +
+      '<div class="historique">' + S.commandes.map(function (c) {
+        return '<div><span>' + esc(c.libelle) + '</span><span>' + esc(c.statut === 'Nouvelle' ? 'signalé' : c.statut.toLowerCase()) + '</span></div>';
+      }).join('') + '</div></div>';
+  }
+  h += '<input type="search" id="filtre" placeholder="Chercher un article…" style="margin-bottom:12px">';
+  h += '<div id="liste-stock"></div>';
+  return h;
+}
+function dessinerStock(filtre) {
+  var f = String(filtre || '').toLowerCase();
+  var l = S.stock.filter(function (x) { return !f || (x.libelle + ' ' + x.code).toLowerCase().indexOf(f) >= 0; });
+  l.sort(function (a, b) { return (b.alerte ? 1 : 0) - (a.alerte ? 1 : 0) || a.libelle.localeCompare(b.libelle); });
+  if (!l.length) {
+    $('liste-stock').innerHTML = '<div class="vide"><div class="gros">📦</div>' +
+      (S.stock.length ? 'Aucun article ne correspond.' : 'Alternative Dentaire n\'a pas encore paramétré votre stock.') + '</div>';
+    return;
+  }
+  $('liste-stock').innerHTML = l.map(function (x) {
+    return '<div class="art' + (x.alerte ? ' bas-stock' : '') + '"><div class="info"><div class="lib">' + esc(x.libelle) + '</div>' +
+      '<div class="meta">' + esc(x.code) + (x.seuil !== null ? ' · alerte à ' + x.seuil : '') +
+      (x.alerte ? ' · ⚠ réassort en cours' : '') + '</div></div>' +
+      '<button onclick="manuel(\'' + esc(x.code) + '\',\'sortie\')">−</button><div class="q">' + x.qte + '</div>' +
+      '<button onclick="manuel(\'' + esc(x.code) + '\',\'entree\')">+</button></div>';
+  }).join('');
+}
+
+// ---------------- scan ----------------
+var enCours = false, file = [];
+function scanne(brut) {
+  brut = String(brut || '').trim();
+  if (!brut) return;
+  if (enCours) { file.push(brut); return; }
+  enCours = true;
+  var mode = S.mode, qte = S.qte;
+  var suite = function () { enCours = false; if (file.length) scanne(file.shift()); };
+  if (mode === 'inventaire' && !flux) {
+    // inventaire : on demande la quantité comptée
+    var l = trouverLocal(brut);
+    var q = prompt((l ? l.libelle + '\n\n' : '') + 'Quantité comptée dans le cabinet :', l ? l.qte : '');
+    if (q === null || q === '' || isNaN(Number(q))) { suite(); return; }
+    qte = Number(q);
+  }
+  appel('cabScan', S.code, brut, mode, qte, 'Cabinet').then(function (r) {
+    if (r.inconnu) { bip(false); suite(); inconnu(brut); return; }
+    bip(true);
+    majLocal(r);
+    S.histo.unshift({ texte: (r.delta > 0 ? '+' : '') + r.delta + ' · ' + r.libelle.slice(0, 40) + ' → ' + r.qte,
+                      mouvement: r.mouvement, annulable: r.delta !== 0 });
+    montrerResultat(r);
+    if (flux) $('aide-camera').textContent = '✔ ' + r.libelle.slice(0, 40) + ' : stock ' + r.qte + (r.alerte ? ' ⚠' : '');
+    suite();
+  }).catch(function (e) { bip(false); toast(e, 'var(--rouge)'); suite(); });
+}
+function trouverLocal(brut) {
+  var b = String(brut).toUpperCase();
+  return S.stock.filter(function (l) { return l.code.toUpperCase() === b || l.eans.indexOf(brut) >= 0; })[0];
+}
+function majLocal(r) {
+  var l = S.stock.filter(function (x) { return x.code === r.code; })[0];
+  if (l) { l.qte = r.qte; l.alerte = r.alerte; l.eans = r.eans || l.eans; } else S.stock.push(r);
+}
+function montrerResultat(r) {
+  if (S.onglet !== 'scan') { afficher(); return; }
+  var h = '<div class="carte resultat' + (r.alerte ? ' alerte' : '') + '"><div class="nom">' + esc(r.libelle) + '</div>' +
+    '<div class="stock">' + r.qte + ' <small>en stock' + (r.delta ? ' (' + (r.delta > 0 ? '+' : '') + r.delta + ')' : '') + '</small></div>' +
+    (r.alerte ? '<div class="bandeau-alerte">⚠ Stock bas : Alternative Dentaire est prévenu et prépare le réassort.</div>' : '') +
+    '</div>';
+  afficher();
+  $('resultat').innerHTML = h;
+}
+function annuler(i) {
+  var x = S.histo[i];
+  if (!x || !x.annulable) return;
+  attente(true, 'Annulation…');
+  appel('cabAnnuler', S.code, x.mouvement).then(function (r) {
+    attente(false); x.annulable = false; x.etat = 'annulé'; majLocal(r); afficher(); toast('↩ Annulé : stock ' + r.qte, 'var(--anthracite)');
+  }).catch(function (e) { attente(false); toast(e, 'var(--rouge)'); });
+}
+function manuel(code, mode) {
+  appel('cabScan', S.code, code, mode, 1, 'Cabinet (liste)').then(function (r) {
+    majLocal(r); dessinerStock($('filtre') ? $('filtre').value : '');
+    toast((r.delta > 0 ? '+' : '') + r.delta + ' · ' + r.libelle.slice(0, 30) + ' → ' + r.qte, 'var(--anthracite)');
+  }).catch(function (e) { toast(e, 'var(--rouge)'); });
+}
+function inconnu(brut) {
+  arreterCamera();
+  var h = '<h2>Code-barres inconnu</h2><p style="margin-top:0;color:var(--gris)">' + esc(brut) +
+    '<br>De quel article s\'agit-il ? Le téléphone s\'en souviendra.</p>' +
+    '<input type="search" id="cherche-assoc" placeholder="Chercher dans votre stock…"><div id="choix-assoc"></div>' +
+    '<button class="btn second" onclick="fermerModale()">Ce n\'est pas un article suivi</button>';
+  modale(h);
+  var dessine = function (f) {
+    f = String(f || '').toLowerCase();
+    $('choix-assoc').innerHTML = S.stock.filter(function (x) { return !f || x.libelle.toLowerCase().indexOf(f) >= 0; })
+      .slice(0, 30).map(function (x) {
+        return '<button class="choix" onclick="associer(\'' + esc(brut).replace(/'/g, '') + '\',\'' + esc(x.code) + '\')">' + esc(x.libelle) + '</button>';
+      }).join('') || '<p style="color:var(--gris)">Aucun article. Prévenez Alternative Dentaire pour l\'ajouter à votre stock.</p>';
+  };
+  $('cherche-assoc').addEventListener('input', function (e) { dessine(e.target.value); });
+  dessine('');
+}
+function associer(brut, code) {
+  attente(true, 'Enregistrement…');
+  appel('cabAssocier', S.code, brut, code).then(function () {
+    attente(false); fermerModale(); toast('Code-barres retenu ✔', 'var(--vert)'); scanne(brut);
+  }).catch(function (e) { attente(false); toast(e, 'var(--rouge)'); });
+}
+
+// ---------------- caméra (en continu : on scanne plusieurs boîtes de suite) ----------------
+var flux = null, lecteur = null, boucle = null, dernier = { code: '', t: 0 };
+function resultatCamera(texte) {
+  var t = Date.now();
+  if (texte === dernier.code && t - dernier.t < 2500) return;   // la même boîte vue deux fois de suite
+  dernier = { code: texte, t: t };
+  if (S.mode === 'inventaire') { arreterCamera(); }
+  scanne(texte);
+}
+function ouvrirCamera() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { $('photo-code').click(); return; }
+  $('aide-camera').textContent = 'Placez le code-barres dans le cadre rose';
+  $('video-zone').style.display = 'block';
+  var video = $('video');
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false }).then(function (s) {
+    flux = s; video.srcObject = s; return video.play();
+  }).then(function () {
+    if ('BarcodeDetector' in window) {
+      var det = new BarcodeDetector();
+      var tick = function () {
+        if (!flux) return;
+        det.detect(video).then(function (codes) { if (codes.length) resultatCamera(codes[0].rawValue); })
+          .catch(function () {}).then(function () { boucle = setTimeout(tick, 180); });
+      };
+      tick();
+    } else if (window.ZXing) {
+      lecteur = new ZXing.BrowserMultiFormatReader();
+      var rappel = function (r) { if (r) resultatCamera(r.getText()); };
+      if (typeof lecteur.decodeFromVideoElementContinuously === 'function') lecteur.decodeFromVideoElementContinuously(video, rappel);
+      else { flux.getTracks().forEach(function (t) { t.stop(); }); lecteur.decodeFromVideoDevice(null, video, rappel); }
+    } else { throw new Error('lecteur indisponible'); }
+  }).catch(function () {
+    arreterCamera();
+    toast('Caméra en direct indisponible : prenez une photo du code-barres', 'var(--anthracite)');
+    $('photo-code').click();
+  });
+}
+function arreterCamera() {
+  clearTimeout(boucle);
+  if (lecteur) { try { lecteur.reset(); } catch (e) {} lecteur = null; }
+  if (flux) { flux.getTracks().forEach(function (t) { t.stop(); }); flux = null; }
+  $('video-zone').style.display = 'none';
+  focusScan();
+}
+$('photo-code').addEventListener('change', function (e) {
+  var f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  attente(true, 'Lecture du code-barres…');
+  var url = URL.createObjectURL(f);
+  var fin = function (txt) { attente(false); URL.revokeObjectURL(url); if (txt) scanne(txt); else { bip(false); toast('Code-barres illisible : réessayez de plus près', 'var(--rouge)'); } };
+  if ('BarcodeDetector' in window) {
+    createImageBitmap(f).then(function (img) { return new BarcodeDetector().detect(img); })
+      .then(function (c) { fin(c.length ? c[0].rawValue : ''); }).catch(function () { fin(''); });
+  } else if (window.ZXing) {
+    new ZXing.BrowserMultiFormatReader().decodeFromImageUrl(url).then(function (r) { fin(r.getText()); }).catch(function () { fin(''); });
+  } else { fin(''); }
+});
+// la douchette tape dans le champ : on garde le curseur dedans
+document.addEventListener('click', function (e) {
+  if (S.onglet === 'scan' && !/INPUT|BUTTON|TEXTAREA|SELECT/.test(e.target.tagName) && $('modale').style.display !== 'flex') focusScan();
+});
+document.addEventListener('visibilitychange', function () { if (!document.hidden && S.code) charger(true); });
+
+S.code = lire('ad_cab_code', '');
+if (S.code) charger(); else ecranConnexion();
+</script>
+</body>
+</html>
