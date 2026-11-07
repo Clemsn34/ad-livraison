@@ -39,7 +39,7 @@
   .btn[disabled] { opacity: .45; }
   .rangee { display: flex; gap: 10px; }
   .rangee .btn { margin: 0; }
-  input[type=text], input[type=password], input[type=search], textarea {
+  input[type=text], input[type=password], input[type=search], input[type=date], textarea {
     width: 100%; border: 2px solid var(--bord); border-radius: 14px; padding: 14px; font-size: 17px;
     background: #fff; outline: none; font-family: inherit; }
   input:focus, textarea:focus { border-color: var(--rose); }
@@ -204,7 +204,7 @@
 <script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
 <script>
 var API_URL = 'https://script.google.com/macros/s/AKfycbx5HO3kQI28Vk0Dh6Lcv7RdemekJSznX9T7lEBaAxyndu9JK3wq2SOTo1DE40Lc3HSrJg/exec';
-var S = { code: '', cabinet: '', onglet: 'scan', mode: 'sortie', qte: 1, stock: [], commandes: [], histo: [] };
+var S = { code: '', cabinet: '', onglet: 'scan', mode: 'sortie', qte: 1, stock: [], commandes: [], histo: [], panier: null };
 
 function lire(cle, defaut) { try { var v = localStorage.getItem(cle); return v === null ? defaut : JSON.parse(v); } catch (e) { return defaut; } }
 function ecrire(cle, v) { try { localStorage.setItem(cle, JSON.stringify(v)); } catch (e) {} }
@@ -267,8 +267,8 @@ function deconnexion() {
 function charger(silencieux) {
   if (!silencieux) attente(true, 'Chargement du stock…');
   return appel('cabStock', S.code).then(function (r) {
-    attente(false); S.cabinet = r.cabinet; S.stock = r.lignes; S.commandes = r.commandes || []; afficher();
-  }).catch(function (e) { attente(false); if (/code|désactivé/i.test(e)) ecranConnexion(e); else toast(e, 'var(--rouge)'); });
+    attente(false); S.cabinet = r.cabinet; S.stock = r.lignes; S.commandes = r.commandes || []; S.panier = r.panier || null; afficher();
+  }).catch(function (e) { attente(false); if (/code|désactivé|suspendu/i.test(e)) ecranConnexion(e); else toast(e, 'var(--rouge)'); });
 }
 
 // ---------------- écrans ----------------
@@ -279,8 +279,10 @@ function afficher() {
   var h = '<div class="onglets">' +
     '<button class="' + (S.onglet === 'scan' ? 'actif' : '') + '" onclick="onglet(\'scan\')">📷 Scanner</button>' +
     '<button class="' + (S.onglet === 'stock' ? 'actif' : '') + '" onclick="onglet(\'stock\')">📦 Mon stock' +
-    (alertes ? '<span class="nb">' + alertes + '</span>' : '') + '</button></div>';
-  h += S.onglet === 'scan' ? htmlScan() : htmlStock();
+    (alertes ? '<span class="nb">' + alertes + '</span>' : '') + '</button>' +
+    '<button class="' + (S.onglet === 'panier' ? 'actif' : '') + '" onclick="onglet(\'panier\')">🛒 Panier' +
+    (S.panier && S.panier.lignes.length ? '<span class="nb">' + S.panier.lignes.length + '</span>' : '') + '</button></div>';
+  h += S.onglet === 'scan' ? htmlScan() : (S.onglet === 'panier' ? htmlPanier() : htmlStock());
   $('ecran').innerHTML = h;
   if (S.onglet === 'scan') {
     var champ = $('saisie-scan');
@@ -288,26 +290,26 @@ function afficher() {
       if (e.key === 'Enter') { e.preventDefault(); var v = champ.value; champ.value = ''; scanne(v); }
     });
     focusScan();
-  } else {
+  } else if (S.onglet === 'stock') {
     var r = $('filtre');
     if (r) r.addEventListener('input', function () { dessinerStock(r.value); });
     dessinerStock('');
   }
 }
 function onglet(o) { S.onglet = o; afficher(); }
-var MODES = { sortie: ['Boîte entamée', '−'], entree: ['Réception', '+'], inventaire: ['Inventaire', '=' ] };
+var MODES = { sortie: ['Boîte entamée', '−'], inventaire: ['Inventaire', '=' ] };   // les entrées = livraisons AD uniquement
 function htmlScan() {
   var h = '<div class="modes">';
-  ['sortie', 'entree', 'inventaire'].forEach(function (m) {
+  ['sortie', 'inventaire'].forEach(function (m) {
     h += '<button class="' + (S.mode === m ? 'actif' : '') + '" onclick="choisirMode(\'' + m + '\')">' + MODES[m][0] +
-      '<small>' + (m === 'sortie' ? 'on retire du stock' : m === 'entree' ? 'on ajoute au stock' : 'on compte le rayon') + '</small></button>';
+      '<small>' + (m === 'sortie' ? 'on retire du stock' : 'on compte le rayon') + '</small></button>';
   });
   h += '</div>';
   h += '<div class="qte-choix"><button onclick="changerQte(-1)">−</button><div class="val" id="qte-val">' +
     (S.mode === 'inventaire' ? 'qté ' : MODES[S.mode][1]) + S.qte + '</div><button onclick="changerQte(1)">+</button></div>';
   h += '<button class="grand-scan" onclick="ouvrirCamera()">📷 Scanner une boîte<small>' +
     (S.mode === 'sortie' ? 'à chaque boîte ouverte, scannez-la : le stock baisse tout seul' :
-     S.mode === 'entree' ? 'boîtes reçues hors livraison Alternative Dentaire' : 'scannez puis indiquez la quantité comptée') + '</small></button>';
+     'scannez puis indiquez la quantité comptée') + '</small></button>';
   h += '<div class="scan"><input type="search" id="saisie-scan" placeholder="Douchette : bipez ici (ou tapez un code)" ' +
     'autocomplete="off" inputmode="none"><button onclick="var c=$(\'saisie-scan\');scanne(c.value);c.value=\'\'">OK</button></div>';
   h += '<div id="resultat"></div>';
@@ -324,16 +326,85 @@ function changerQte(d) {
   $('qte-val').textContent = (S.mode === 'inventaire' ? 'qté ' : MODES[S.mode][1]) + S.qte;
 }
 function htmlStock() {
-  var h = '';
-  if (S.commandes.length) {
-    h += '<div class="carte" style="border-left:8px solid var(--orange)"><b>🚚 Réassort en cours chez Alternative Dentaire</b>' +
-      '<div class="historique">' + S.commandes.map(function (c) {
-        return '<div><span>' + esc(c.libelle) + '</span><span>' + esc(c.statut === 'Nouvelle' ? 'signalé' : c.statut.toLowerCase()) + '</span></div>';
-      }).join('') + '</div></div>';
-  }
+  var h = '<div class="carte" style="font-size:14px;color:var(--gris)">ℹ️ Le stock augmente tout seul à chaque livraison ' +
+    'Alternative Dentaire signée. Il baisse quand vous scannez une boîte entamée.</div>';
   h += '<input type="search" id="filtre" placeholder="Chercher un article…" style="margin-bottom:12px">';
   h += '<div id="liste-stock"></div>';
   return h;
+}
+// ---------------- panier ----------------
+function htmlPanier() {
+  var p = S.panier || { lignes: [], en_cours: [] };
+  var h = '';
+  var freq = { 'Hebdomadaire': 'chaque semaine', 'Mensuelle': 'chaque mois', 'Tous les 2 mois': 'tous les 2 mois' }[p.frequence] || 'chaque mois';
+  if (p.lignes.length) {
+    h += '<div class="carte" style="border-left:8px solid ' + (p.a_valider_maintenant ? 'var(--rouge)' : 'var(--vert)') + '">' +
+      (p.rupture ? '<b>⚠ Un article est en rupture : validez votre panier dès maintenant.</b>' :
+       p.a_valider_maintenant ? '<b>📅 C\'est le moment de valider votre panier.</b>' :
+       '<b>📅 Livraison conseillée ' + freq + '</b><br><span style="color:var(--gris)">Prochaine validation conseillée le ' + esc(p.prochaine) +
+       ' : les articles s\'ajoutent d\'ici là pour grouper les frais de port.</span>') + '</div>';
+    h += '<div class="carte"><b>Mon panier</b><div style="font-size:13px;color:var(--gris);margin:2px 0 8px">Proposé d\'après votre stock. ' +
+      'Modifiez les quantités si besoin, puis validez.</div>' +
+      p.lignes.map(function (l) {
+        return '<div class="art"><div class="info"><div class="lib">' + esc(l.libelle) + '</div><div class="meta">' + esc(l.code) +
+          ' · en stock : ' + l.stock + (l.origine === 'Ajout cabinet' ? ' · ajouté par vous' : '') + '</div></div>' +
+          '<button onclick="qtePanier(\'' + esc(l.num) + '\',' + (l.qte - 1) + ')">' + (l.qte <= 1 ? '✕' : '−') + '</button>' +
+          '<div class="q">' + l.qte + '</div><button onclick="qtePanier(\'' + esc(l.num) + '\',' + (l.qte + 1) + ')">+</button></div>';
+      }).join('') +
+      '<button class="btn second" style="margin-top:10px" onclick="choisirArticlePanier()">➕ Ajouter un article</button></div>';
+    h += '<div class="carte"><label class="lab">Livraison souhaitée (facultatif)</label><input type="date" id="panier-date">' +
+      '<label class="lab" style="margin-top:10px">Commentaire (facultatif)</label><textarea id="panier-com" rows="2"></textarea></div>';
+    h += '<button class="btn vert" onclick="validerPanier()">✅ Valider mon panier (' + p.lignes.length + ' article' + (p.lignes.length > 1 ? 's' : '') + ')</button>';
+  } else {
+    h += '<div class="vide"><div class="gros">🛒</div>Votre panier est vide.<br><small>Il se remplit tout seul quand un article atteint son seuil.</small></div>' +
+      '<button class="btn second" onclick="choisirArticlePanier()">➕ Ajouter un article</button>';
+  }
+  if (p.en_cours.length) {
+    h += '<div class="carte" style="margin-top:14px;border-left:8px solid var(--orange)"><b>🚚 Commandes en cours</b><div class="historique">' +
+      p.en_cours.map(function (c) { return '<div><span>' + c.qte + ' × ' + esc(c.libelle) + '</span><span>' + esc(c.statut) + '</span></div>'; }).join('') +
+      '</div></div>';
+  }
+  return h;
+}
+function qtePanier(num, q) {
+  if (q <= 0 && !confirm('Retirer cet article du panier ?')) return;
+  attente(true, 'Mise à jour du panier…');
+  appel('cabPanierModifier', S.code, num, Math.max(0, q)).then(function (p) { attente(false); S.panier = p; afficher(); })
+    .catch(function (e) { attente(false); toast(e, 'var(--rouge)'); charger(true); });
+}
+function ajouterPanier(code, q) {
+  attente(true, 'Ajout au panier…');
+  appel('cabPanierAjouter', S.code, code, q || 1).then(function (p) {
+    attente(false); S.panier = p; fermerModale(); toast('🛒 Ajouté au panier', 'var(--vert)'); afficher();
+  }).catch(function (e) { attente(false); toast(e, 'var(--rouge)'); });
+}
+function choisirArticlePanier() {
+  modale('<h2>Ajouter au panier</h2><input type="search" id="cherche-panier" placeholder="Chercher dans votre stock…">' +
+    '<div id="choix-panier" style="max-height:50vh;overflow:auto;margin-top:8px"></div>' +
+    '<button class="btn second" onclick="fermerModale()">Fermer</button>');
+  var dessine = function (f) {
+    f = String(f || '').toLowerCase();
+    $('choix-panier').innerHTML = S.stock.filter(function (x) { return !f || (x.libelle + ' ' + x.code).toLowerCase().indexOf(f) >= 0; })
+      .slice(0, 40).map(function (x) {
+        return '<button class="btn second" style="text-align:left;margin:4px 0" onclick="ajouterPanier(\'' + esc(x.code) + '\')">' +
+          esc(x.libelle) + ' <small>(stock ' + x.qte + ')</small></button>';
+      }).join('') || '<p>Aucun article.</p>';
+  };
+  $('cherche-panier').addEventListener('input', function (e) { dessine(e.target.value); });
+  dessine('');
+}
+function validerPanier() {
+  var p = S.panier;
+  if (!p || !p.lignes.length) return;
+  if (!confirm('Envoyer ce panier à Alternative Dentaire (' + p.lignes.length + ' article(s)) ?')) return;
+  attente(true, 'Envoi du panier…');
+  appel('cabPanierValider', S.code, $('panier-date').value || '', $('panier-com').value.trim(), 'Cabinet')
+    .then(function (r) {
+      attente(false);
+      modale('<h2>✅ Panier envoyé</h2><p>' + r.nb + ' article(s) transmis à Alternative Dentaire (panier ' + esc(r.panier) + '). ' +
+             'Vous serez livré prochainement.</p><button class="btn" onclick="fermerModale()">OK</button>');
+      charger(true);
+    }).catch(function (e) { attente(false); toast(e, 'var(--rouge)'); });
 }
 function dessinerStock(filtre) {
   var f = String(filtre || '').toLowerCase();
@@ -347,9 +418,9 @@ function dessinerStock(filtre) {
   $('liste-stock').innerHTML = l.map(function (x) {
     return '<div class="art' + (x.alerte ? ' bas-stock' : '') + '"><div class="info"><div class="lib">' + esc(x.libelle) + '</div>' +
       '<div class="meta">' + esc(x.code) + (x.seuil !== null ? ' · alerte à ' + x.seuil : '') +
-      (x.alerte ? ' · ⚠ réassort en cours' : '') + '</div></div>' +
+      (x.alerte ? ' · ⚠ dans le panier' : '') + '</div></div>' +
       '<button onclick="manuel(\'' + esc(x.code) + '\',\'sortie\')">−</button><div class="q">' + x.qte + '</div>' +
-      '<button onclick="manuel(\'' + esc(x.code) + '\',\'entree\')">+</button></div>';
+      '<button title="Ajouter au panier" onclick="ajouterPanier(\'' + esc(x.code) + '\')">🛒</button></div>';
   }).join('');
 }
 
@@ -371,11 +442,19 @@ function scanne(brut) {
   }
   appel('cabScan', S.code, brut, mode, qte, 'Cabinet').then(function (r) {
     if (r.inconnu) { bip(false); suite(); inconnu(brut); return; }
+    if (r.refus) {
+      bip(false); suite();
+      modale('<h2>⚠ Inventaire non pris en compte</h2><p>' + esc(r.refus) + '</p>' +
+             '<button class="btn" onclick="fermerModale()">J\'ai compris</button>');
+      if (r.bloque) { effacer('ad_cab_code'); S.code = ''; setTimeout(function () { ecranConnexion('Accès suspendu. Contactez Alternative Dentaire.'); }, 4000); }
+      return;
+    }
     bip(true);
     majLocal(r);
     S.histo.unshift({ texte: (r.delta > 0 ? '+' : '') + r.delta + ' · ' + r.libelle.slice(0, 40) + ' → ' + r.qte,
                       mouvement: r.mouvement, annulable: r.delta !== 0 });
     montrerResultat(r);
+    if (r.nouvelle_alerte) charger(true);
     if (flux) $('aide-camera').textContent = '✔ ' + r.libelle.slice(0, 40) + ' : stock ' + r.qte + (r.alerte ? ' ⚠' : '');
     suite();
   }).catch(function (e) { bip(false); toast(e, 'var(--rouge)'); suite(); });
@@ -392,7 +471,7 @@ function montrerResultat(r) {
   if (S.onglet !== 'scan') { afficher(); return; }
   var h = '<div class="carte resultat' + (r.alerte ? ' alerte' : '') + '"><div class="nom">' + esc(r.libelle) + '</div>' +
     '<div class="stock">' + r.qte + ' <small>en stock' + (r.delta ? ' (' + (r.delta > 0 ? '+' : '') + r.delta + ')' : '') + '</small></div>' +
-    (r.alerte ? '<div class="bandeau-alerte">⚠ Stock bas : Alternative Dentaire est prévenu et prépare le réassort.</div>' : '') +
+    (r.alerte ? '<div class="bandeau-alerte">⚠ Stock bas : le réassort est ajouté à votre panier 🛒 (à valider).</div>' : '') +
     '</div>';
   afficher();
   $('resultat').innerHTML = h;
