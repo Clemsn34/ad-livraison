@@ -3,12 +3,13 @@
 <head>
 <base target="_top">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icone-192.png?v=2">
+<link rel="apple-touch-icon" href="icone-192.png?v=3">
+<link rel="icon" href="logo.png">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="AD Livraison">
 <meta charset="utf-8">
-<meta name="theme-color" content="#1A1A1A">
+<meta name="theme-color" content="#FFFFFF">
 <title>AD Préparation &amp; Livraison</title>
 <meta name="apple-mobile-web-app-title" content="AD Livraison">
 <style>
@@ -21,13 +22,17 @@
   html, body { margin: 0; background: var(--gris-c); color: var(--noir);
     font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 16px; }
   body { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
-  header { position: sticky; top: 0; z-index: 10; background: var(--noir); color: #fff;
-    padding: calc(12px + env(safe-area-inset-top)) 16px 12px; border-left: 8px solid var(--rose);
-    display: flex; align-items: center; gap: 12px; }
+  header { position: sticky; top: 0; z-index: 10; background: #fff; color: var(--noir);
+    padding: calc(10px + env(safe-area-inset-top)) 16px 10px; border-bottom: 1px solid var(--bord);
+    display: flex; align-items: center; gap: 12px; box-shadow: 0 1px 8px rgba(0,0,0,.04); }
+  header img.logo { width: 40px; height: 40px; flex: none; }
   header .titre { flex: 1; min-width: 0; }
-  header h1 { margin: 0; font-size: 17px; color: var(--rose); letter-spacing: .3px; }
-  header .sous { font-size: 12px; color: #C9C9D1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  header button { background: #3A3A3D; color: #fff; border: 0; border-radius: 12px; padding: 9px 12px; font-size: 14px; }
+  header h1 { margin: 0; font-size: 16px; color: var(--noir); letter-spacing: .2px; font-weight: 800; }
+  header .sous { font-size: 12.5px; color: var(--gris); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  header button { background: #F1EEF2; color: var(--noir); border: 0; border-radius: 12px; padding: 9px 12px; font-size: 14px; }
+  #pastille-file { display: none; font-size: 11px; font-weight: 700; color: #8A5A00; background: #FDF1DF; border-radius: 10px; padding: 2px 8px; margin-top: 2px; }
+  .mentions { display: block; text-align: center; color: var(--gris); font-size: 12.5px; margin: 18px 0 6px; }
+  .logo-connexion img { width: 112px; height: 112px; display: block; margin: 0 auto 10px; }
   main { padding: 16px; max-width: 640px; margin: 0 auto; }
   .carte { background: var(--blanc); border: 1px solid var(--bord); border-radius: 18px; padding: 16px;
     margin-bottom: 12px; box-shadow: 0 2px 0 rgba(0,0,0,.03); }
@@ -153,9 +158,11 @@
 </head>
 <body>
 <header>
+  <img class="logo" src="logo.png" alt="Alternative Dentaire">
   <div class="titre">
-    <h1>ALTERNATIVE DENTAIRE</h1>
+    <h1>Alternative Dentaire</h1>
     <div class="sous" id="sous-titre">Préparation &amp; livraison</div>
+    <div id="pastille-file"></div>
   </div>
   <button id="btn-retour" style="display:none" onclick="retour()">‹ Retour</button>
   <button id="btn-quitter" style="display:none" onclick="deconnexion()">⎋</button>
@@ -202,11 +209,61 @@ function appel(fonction) {
       r[fonction].apply(r, args);
     });
   }
-  return fetch(API_URL, { method: 'POST', body: JSON.stringify({ fn: fonction, args: args }), redirect: 'follow' })
-    .then(function (rep) { return rep.json(); })
-    .catch(function () { throw 'Pas de connexion Internet (ou service Google indisponible).'; })
+  return envoyer(fonction, args).catch(function (e) { if (e && e.reseau) throw 'Pas de connexion Internet (ou service Google indisponible).'; throw e; });
+}
+
+// ---------- identifiant du téléphone (blocage des codes faux) et file d'attente hors connexion ----------
+function idAppareil() {
+  try { var i = localStorage.getItem('ad_appareil'); if (!i) { i = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('ad_appareil', i); } return i; } catch (e) { return ''; }
+}
+function envoyer(fonction, args) {
+  return fetch(API_URL, { method: 'POST', body: JSON.stringify({ fn: fonction, args: args, dev: idAppareil() }), redirect: 'follow' })
+    .then(function (rep) { return rep.json(); }, function () { throw { reseau: true }; })
     .then(function (r) { if (!r.ok) throw (r.message || 'Erreur du service.'); return r.data; });
 }
+var FILE_CLE = 'ad_file_attente';
+function lireFile() { try { return JSON.parse(localStorage.getItem(FILE_CLE) || '[]'); } catch (e) { return []; } }
+function ecrireFile(f) { try { localStorage.setItem(FILE_CLE, JSON.stringify(f)); return true; } catch (e) { return false; } }
+function majPastilleFile() {
+  var n = lireFile().length, p = document.getElementById('pastille-file');
+  if (!p) return;
+  p.style.display = n ? 'inline-block' : 'none';
+  p.textContent = '⏳ ' + n + ' en attente';
+}
+/** Comme appel(), mais sans réseau l'action est gardée sur le téléphone et envoyée dès que possible. */
+function appelOuFile(fonction) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  return envoyer(fonction, args).catch(function (e) {
+    if (!(e && e.reseau)) throw e;
+    var f = lireFile();
+    f.push({ fn: fonction, args: args, quand: new Date().toISOString() });
+    if (!ecrireFile(f)) throw 'Pas de réseau et mémoire du téléphone pleine : réessayez dans un endroit capté.';
+    majPastilleFile();
+    return { horsLigne: true };
+  });
+}
+var envoiFileEnCours = false;
+function viderFile() {
+  var f = lireFile();
+  if (!f.length || envoiFileEnCours) { majPastilleFile(); return; }
+  envoiFileEnCours = true;
+  var un = f[0];
+  envoyer(un.fn, un.args).then(function () {
+    var g = lireFile(); g.shift(); ecrireFile(g); envoiFileEnCours = false; majPastilleFile();
+    if (!g.length) toast('✅ Réseau revenu : tout a été envoyé', 'var(--vert)');
+    viderFile();
+  }, function (e) {
+    envoiFileEnCours = false;
+    if (e && e.reseau) { majPastilleFile(); return; }        // toujours pas de réseau : on réessaiera
+    var g = lireFile(); g.shift(); ecrireFile(g);            // refusé par le serveur : on l'écarte et on prévient
+    toast('⚠ Une action en attente n\'a pas pu être enregistrée : ' + e, 'var(--rouge)');
+    viderFile();
+  });
+}
+window.addEventListener('online', viderFile);
+setInterval(viderFile, 30000);
+setTimeout(viderFile, 1500);
+
 function attente(oui, texte) { $('attente').style.display = oui ? 'flex' : 'none'; $('attente-texte').textContent = texte || 'Un instant…'; }
 var toastMinuteur = null;
 function toast(texte, couleur) {
@@ -232,7 +289,7 @@ function ecranConnexion(message) {
   entete('Préparation & livraison', false);
   $('barre-bas').style.display = 'none';
   $('ecran').innerHTML =
-    '<div class="logo-connexion"><div class="marque">Préparation & livraison</div>' +
+    '<div class="logo-connexion"><img src="logo.png" alt="Alternative Dentaire"><div class="marque">Préparation & livraison</div>' +
     '<div class="sous">Commandes consommables · Alternative Dentaire</div></div>' +
     '<div class="carte"><label class="lab">Votre code d\'accès</label>' +
     '<input type="password" id="code" autocomplete="current-password" placeholder="Le même que dans le logiciel">' +
@@ -241,7 +298,8 @@ function ecranConnexion(message) {
     'onchange="$(\'code\').type=this.checked?\'text\':\'password\'"> 👁 Afficher le code</label>' +
     (message ? '<div class="ecart" style="margin-top:10px">' + esc(message) + '</div>' : '') +
     '<button class="btn" onclick="connexion()">Se connecter</button></div>' +
-    '<p style="text-align:center;color:var(--gris);font-size:13px">Astuce : ajoutez cette page à l\'écran d\'accueil du téléphone.</p>';
+    '<p style="text-align:center;color:var(--gris);font-size:13px">Astuce : ajoutez cette page à l\'écran d\'accueil du téléphone.</p>' +
+    '<a class="mentions" href="../mentions.html" target="_blank">Mentions légales et confidentialité</a>';
   $('code').addEventListener('keydown', function (e) { if (e.key === 'Enter') connexion(); });
 }
 function connexion() {
@@ -752,9 +810,10 @@ function validerPrep() {
   var nbc = $('prep-cartons') ? Math.max(1, parseInt($('prep-cartons').value, 10) || 1) : 1;
   S.cartonsPrep = nbc;
   attente(true, 'Enregistrement…');
-  appel('mobPreparation', S.code, S.cmd.id, S.q, rem, nbc).then(function () {
+  appelOuFile('mobPreparation', S.code, S.cmd.id, S.q, rem, nbc).then(function (r) {
     attente(false); fermerModale(); effacer('ad_q_' + S.cmd.id + '_prep');
-    toast('✅ Commande N°' + S.cmd.id + ' prête à livrer', 'var(--vert)');
+    toast(r && r.horsLigne ? '📶 Pas de réseau : préparation gardée, envoyée automatiquement'
+                           : '✅ Commande N°' + S.cmd.id + ' prête à livrer', r && r.horsLigne ? 'var(--orange)' : 'var(--vert)');
     S.onglet = 'livr'; chargerListe();
   }).catch(function (err) { attente(false); toast(err, 'var(--rouge)'); });
 }
@@ -832,9 +891,18 @@ function validerLivraison() {
   if (sig.vide) { toast('La signature est obligatoire', 'var(--rouge)'); return; }
   if (!S.photo && !confirm('Pas de photo des colis. Valider quand même ?')) return;
   attente(true, 'Enregistrement de la livraison et du bon PDF…');
-  appel('mobLivraison', S.code, S.cmd.id, {}, nom, signatureBlanche(), S.photo || '', $('remarque-livr').value.trim(), S.cartons)
+  appelOuFile('mobLivraison', S.code, S.cmd.id, {}, nom, signatureBlanche(), S.photo || '', $('remarque-livr').value.trim(), S.cartons)
     .then(function (r) {
       attente(false); effacer('ad_q_' + S.cmd.id + '_livr'); S.photo = '';
+      if (r.horsLigne) {
+        S.onglet = 'fait';
+        $('ecran').innerHTML = '<div class="vide"><div class="gros">📶</div><h2 style="color:var(--noir)">Livraison gardée sur le téléphone</h2>' +
+          '<p>Pas de réseau ici : la signature et la livraison seront envoyées automatiquement dès que le téléphone capte. ' +
+          'Gardez l\'application ouverte ou rouvrez-la plus tard.</p></div>';
+        entete('Livraison en attente d\'envoi', false);
+        barreBas('<button class="btn" onclick="chargerListe()">Retour aux commandes</button>');
+        return;
+      }
       if (r.stock_cabinet) toast('📊 Stock du cabinet mis à jour (' + r.stock_cabinet + ' articles)', 'var(--vert)');
       S.onglet = 'fait';
       $('ecran').innerHTML = '<div class="vide"><div class="gros">🎉</div><h2 style="color:var(--noir)">Livraison enregistrée</h2>' +

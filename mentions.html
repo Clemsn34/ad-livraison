@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mentions légales et confidentialité – Alternative Dentaire</title>
+<link rel="icon" href="logo.png">
+<style>
+  :root { --rose: #B92C79; --noir: #26262B; --gris: #6B6B73; --bord: #ECE4E9; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F7F6F8; color: var(--noir); font: 16px/1.6 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  header { background: #fff; border-bottom: 1px solid var(--bord); padding: 14px 18px; display: flex; align-items: center; gap: 12px; }
+  header img { width: 42px; height: 42px; }
+  header b { font-size: 16px; }
+  main { max-width: 760px; margin: 0 auto; padding: 18px 16px 48px; }
+  h1 { font-size: 24px; margin: 8px 0 4px; }
+  h2 { font-size: 17px; color: var(--rose); margin: 26px 0 6px; }
+  .carte { background: #fff; border: 1px solid var(--bord); border-radius: 16px; padding: 4px 18px 14px; margin-top: 14px; }
+  p, li { color: #3D3D44; }
+  .muted { color: var(--gris); font-size: 14px; }
+  a { color: var(--rose); }
+</style>
+</head>
+<body>
+<header><img src="logo.png" alt=""><b>Alternative Dentaire</b></header>
+<main>
+  <h1>Mentions légales et confidentialité</h1>
+  <p class="muted">Applications « AD Stock » (cabinets) et « AD Livraison » (équipe Alternative Dentaire).</p>
+
+  <div class="carte">
+    <h2>Éditeur</h2>
+    <p id="editeur"></p>
+    <h2>Hébergement</h2>
+    <p>Pages : GitHub, Inc., 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, États-Unis.<br>
+       Données : Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irlande (Google Workspace).</p>
+  </div>
+
+  <div class="carte">
+    <h2>Données traitées</h2>
+    <ul>
+      <li>Cabinet : nom du cabinet et du praticien, code d'accès, articles suivis, quantités en stock, seuils, paniers et commandes.</li>
+      <li>Livraisons : nom de la personne qui réceptionne, signature, photo des colis, date et heure.</li>
+      <li>Équipe Alternative Dentaire : nom et code d'accès de chaque collaborateur.</li>
+      <li>Adresse e-mail du cabinet, seulement si vous nous la donnez pour les rappels.</li>
+    </ul>
+    <p>Aucune donnée de patient n'est demandée ni enregistrée.</p>
+    <h2>Pourquoi</h2>
+    <p>Gérer le réassort de vos consommables, préparer et livrer vos commandes, et garder la preuve de livraison.
+       Base légale : l'exécution de notre relation commerciale. Les données ne sont ni vendues ni utilisées à des fins publicitaires.</p>
+    <h2>Combien de temps</h2>
+    <p>Pendant toute la relation commerciale, puis 3 ans. Les bons de livraison sont conservés 10 ans (obligation comptable).</p>
+    <h2>Qui y a accès</h2>
+    <p>Uniquement l'équipe Alternative Dentaire. Google et GitHub interviennent comme hébergeurs.</p>
+    <h2>Sur votre téléphone</h2>
+    <p>L'application ne dépose aucun cookie. Elle garde seulement, sur l'appareil, votre code d'accès (pour ne pas le retaper)
+       et, en cas de coupure de réseau, les actions en attente d'envoi.</p>
+    <h2>Vos droits</h2>
+    <p>Vous pouvez demander l'accès, la correction ou la suppression de vos données, ou vous opposer à leur traitement,
+       en écrivant à <a id="mail" href="mailto:consommable@alternativedentaire.fr">consommable@alternativedentaire.fr</a>.
+       Vous pouvez aussi saisir la CNIL (<a href="https://www.cnil.fr" target="_blank">cnil.fr</a>).</p>
+  </div>
+  <p class="muted" style="margin-top:20px">Dernière mise à jour : novembre 2026.</p>
+</main>
+<script>
+  // Informations de l'éditeur (les lignes vides ne s'affichent pas)
+  var EDITEUR = {
+    nom: 'Alternative Dentaire Consommable',
+    forme: '',          // ex. SAS au capital de … €
+    siret: '',          // ex. SIRET 123 456 789 00012
+    adresse: 'Showroom de Lavérune (Montpellier), 34880 Lavérune',
+    directeur: '',      // directeur de la publication
+    telephone: '04 69 960 360',
+    email: 'consommable@alternativedentaire.fr'
+  };
+  document.getElementById('editeur').innerHTML = [
+    '<b>' + EDITEUR.nom + '</b>' + (EDITEUR.forme ? ', ' + EDITEUR.forme : ''),
+    EDITEUR.siret, EDITEUR.adresse,
+    EDITEUR.directeur ? 'Directeur de la publication : ' + EDITEUR.directeur : '',
+    'Téléphone : ' + EDITEUR.telephone, 'E-mail : ' + EDITEUR.email
+  ].filter(Boolean).join('<br>');
+</script>
+</body>
+</html>

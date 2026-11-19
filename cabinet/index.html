@@ -3,12 +3,13 @@
 <head>
 <base target="_top">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icone-192.png?v=2">
+<link rel="apple-touch-icon" href="icone-192.png?v=3">
+<link rel="icon" href="logo.png">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Stock cabinet">
+<meta name="apple-mobile-web-app-title" content="AD Stock">
 <meta charset="utf-8">
-<meta name="theme-color" content="#1A1A1A">
+<meta name="theme-color" content="#FFFFFF">
 <title>AD Stock – Alternative Dentaire</title>
 <meta name="apple-mobile-web-app-title" content="AD Stock">
 <meta name="application-name" content="AD Stock">
@@ -23,13 +24,17 @@
   html, body { margin: 0; background: var(--gris-c); color: var(--noir);
     font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 16px; }
   body { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
-  header { position: sticky; top: 0; z-index: 10; background: var(--noir); color: #fff;
-    padding: calc(12px + env(safe-area-inset-top)) 16px 12px; border-left: 8px solid var(--rose);
-    display: flex; align-items: center; gap: 12px; }
+  header { position: sticky; top: 0; z-index: 10; background: #fff; color: var(--noir);
+    padding: calc(10px + env(safe-area-inset-top)) 16px 10px; border-bottom: 1px solid var(--bord);
+    display: flex; align-items: center; gap: 12px; box-shadow: 0 1px 8px rgba(0,0,0,.04); }
+  header img.logo { width: 40px; height: 40px; flex: none; }
   header .titre { flex: 1; min-width: 0; }
-  header h1 { margin: 0; font-size: 17px; color: var(--rose); letter-spacing: .3px; }
-  header .sous { font-size: 12px; color: #C9C9D1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  header button { background: #3A3A3D; color: #fff; border: 0; border-radius: 12px; padding: 9px 12px; font-size: 14px; }
+  header h1 { margin: 0; font-size: 16px; color: var(--noir); letter-spacing: .2px; font-weight: 800; }
+  header .sous { font-size: 12.5px; color: var(--gris); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  header button { background: #F1EEF2; color: var(--noir); border: 0; border-radius: 12px; padding: 9px 12px; font-size: 14px; }
+  #pastille-file { display: none; font-size: 11px; font-weight: 700; color: #8A5A00; background: #FDF1DF; border-radius: 10px; padding: 2px 8px; margin-top: 2px; }
+  .mentions { display: block; text-align: center; color: var(--gris); font-size: 12.5px; margin: 18px 0 6px; }
+  .logo-connexion img { width: 112px; height: 112px; display: block; margin: 0 auto 10px; }
   main { padding: 16px; max-width: 640px; margin: 0 auto; }
   .carte { background: var(--blanc); border: 1px solid var(--bord); border-radius: 18px; padding: 16px;
     margin-bottom: 12px; box-shadow: 0 2px 0 rgba(0,0,0,.03); }
@@ -186,9 +191,11 @@
 </head>
 <body>
 <header>
+  <img class="logo" src="logo.png" alt="Alternative Dentaire">
   <div class="titre">
-    <h1>ALTERNATIVE DENTAIRE</h1>
+    <h1>Alternative Dentaire</h1>
     <div class="sous" id="sous-titre">Stock du cabinet</div>
+    <div id="pastille-file"></div>
   </div>
   <button id="btn-quitter" style="display:none" onclick="deconnexion()">⎋</button>
 </header>
@@ -217,11 +224,61 @@ function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function
 function $(id) { return document.getElementById(id); }
 function appel(fonction) {
   var args = Array.prototype.slice.call(arguments, 1);
-  return fetch(API_URL, { method: 'POST', body: JSON.stringify({ fn: fonction, args: args }), redirect: 'follow' })
-    .then(function (rep) { return rep.json(); })
-    .catch(function () { throw 'Pas de connexion Internet (ou service indisponible).'; })
+  return envoyer(fonction, args).catch(function (e) { if (e && e.reseau) throw 'Pas de connexion Internet (ou service indisponible).'; throw e; });
+}
+
+// ---------- identifiant du téléphone (blocage des codes faux) et file d'attente hors connexion ----------
+function idAppareil() {
+  try { var i = localStorage.getItem('ad_appareil'); if (!i) { i = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('ad_appareil', i); } return i; } catch (e) { return ''; }
+}
+function envoyer(fonction, args) {
+  return fetch(API_URL, { method: 'POST', body: JSON.stringify({ fn: fonction, args: args, dev: idAppareil() }), redirect: 'follow' })
+    .then(function (rep) { return rep.json(); }, function () { throw { reseau: true }; })
     .then(function (r) { if (!r.ok) throw (r.message || 'Erreur du service.'); return r.data; });
 }
+var FILE_CLE = 'ad_file_attente';
+function lireFile() { try { return JSON.parse(localStorage.getItem(FILE_CLE) || '[]'); } catch (e) { return []; } }
+function ecrireFile(f) { try { localStorage.setItem(FILE_CLE, JSON.stringify(f)); return true; } catch (e) { return false; } }
+function majPastilleFile() {
+  var n = lireFile().length, p = document.getElementById('pastille-file');
+  if (!p) return;
+  p.style.display = n ? 'inline-block' : 'none';
+  p.textContent = '⏳ ' + n + ' en attente';
+}
+/** Comme appel(), mais sans réseau l'action est gardée sur le téléphone et envoyée dès que possible. */
+function appelOuFile(fonction) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  return envoyer(fonction, args).catch(function (e) {
+    if (!(e && e.reseau)) throw e;
+    var f = lireFile();
+    f.push({ fn: fonction, args: args, quand: new Date().toISOString() });
+    if (!ecrireFile(f)) throw 'Pas de réseau et mémoire du téléphone pleine : réessayez dans un endroit capté.';
+    majPastilleFile();
+    return { horsLigne: true };
+  });
+}
+var envoiFileEnCours = false;
+function viderFile() {
+  var f = lireFile();
+  if (!f.length || envoiFileEnCours) { majPastilleFile(); return; }
+  envoiFileEnCours = true;
+  var un = f[0];
+  envoyer(un.fn, un.args).then(function () {
+    var g = lireFile(); g.shift(); ecrireFile(g); envoiFileEnCours = false; majPastilleFile();
+    if (!g.length) toast('✅ Réseau revenu : tout a été envoyé', 'var(--vert)');
+    viderFile();
+  }, function (e) {
+    envoiFileEnCours = false;
+    if (e && e.reseau) { majPastilleFile(); return; }        // toujours pas de réseau : on réessaiera
+    var g = lireFile(); g.shift(); ecrireFile(g);            // refusé par le serveur : on l'écarte et on prévient
+    toast('⚠ Une action en attente n\'a pas pu être enregistrée : ' + e, 'var(--rouge)');
+    viderFile();
+  });
+}
+window.addEventListener('online', viderFile);
+setInterval(viderFile, 30000);
+setTimeout(viderFile, 1500);
+
 function attente(oui, texte) { $('attente').style.display = oui ? 'flex' : 'none'; $('attente-texte').textContent = texte || 'Un instant…'; }
 var toastMinuteur = null;
 function toast(texte, couleur) {
@@ -246,13 +303,14 @@ function focusScan() { var c = $('saisie-scan'); if (c && !flux) c.focus(); }
 function ecranConnexion(message) {
   $('btn-quitter').style.display = 'none';
   $('sous-titre').textContent = 'Stock du cabinet';
-  $('ecran').innerHTML = '<div class="logo-connexion"><div class="marque">Stock du cabinet</div>' +
+  $('ecran').innerHTML = '<div class="logo-connexion"><img src="logo.png" alt="Alternative Dentaire"><div class="marque">Stock du cabinet</div>' +
     '<div class="sous">Alternative Dentaire veille sur vos consommables</div></div>' +
     '<div class="carte"><label class="lab">Code du cabinet</label>' +
     '<input type="password" id="code" autocomplete="current-password" autocapitalize="characters" placeholder="Code donné par Alternative Dentaire">' +
     '<label style="display:flex;align-items:center;gap:8px;margin:10px 0 4px;font-size:14px"><input type="checkbox" onchange="$(\'code\').type=this.checked?\'text\':\'password\'"> Afficher le code</label>' +
     (message ? '<p style="color:var(--rouge);font-weight:700">' + esc(message) + '</p>' : '') +
-    '<button class="btn" onclick="connexion()">Se connecter</button></div>';
+    '<button class="btn" onclick="connexion()">Se connecter</button></div>' +
+    '<a class="mentions" href="../mentions.html" target="_blank">Mentions légales et confidentialité</a>';
   $('code').addEventListener('keydown', function (e) { if (e.key === 'Enter') connexion(); });
 }
 function connexion() {
@@ -384,7 +442,14 @@ function enregistrerReglages() {
 // ---------------- scan « Commander » : le code-barres va dans le panier ----------------
 function scanPanier(brut, qte, description, suite) {
   suite = suite || function () {};
-  appel('cabPanierScan', S.code, brut, qte, description || '').then(function (r) {
+  appelOuFile('cabPanierScan', S.code, brut, qte, description || '').then(function (r) {
+    if (r.horsLigne) {
+      bip(true); suite();
+      S.histo.unshift({ texte: '⏳ 🛒 +' + qte + ' · ' + brut + ' (envoi au retour du réseau)', annulable: false, etat: 'attente' });
+      toast('📶 Pas de réseau : ajout au panier gardé, envoyé automatiquement', 'var(--orange)');
+      if (S.onglet === 'scan') afficher();
+      return;
+    }
     if (r.inconnu) { bip(false); suite(); inconnuPanier(brut, qte); return; }
     bip(true);
     S.panier = r.panier;
@@ -569,7 +634,14 @@ function scanne(brut) {
     qte = Number(q);
   }
   if (mode === 'panier') { scanPanier(brut, qte, '', suite); return; }
-  appel('cabScan', S.code, brut, mode, qte, 'Cabinet').then(function (r) {
+  (mode === 'sortie' ? appelOuFile : appel)('cabScan', S.code, brut, mode, qte, 'Cabinet').then(function (r) {
+    if (r.horsLigne) {
+      bip(true); suite();
+      S.histo.unshift({ texte: '⏳ ' + brut + ' · −' + qte + ' (envoi au retour du réseau)', annulable: false, etat: 'attente' });
+      toast('📶 Pas de réseau : scan gardé sur le téléphone, envoyé automatiquement', 'var(--orange)');
+      if (S.onglet === 'scan') afficher();
+      return;
+    }
     if (r.inconnu) { bip(false); suite(); inconnu(brut); return; }
     if (r.refus) {
       bip(false); suite();
