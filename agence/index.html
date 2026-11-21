@@ -258,7 +258,15 @@
     const o = instOuverte === i.n;
     return '<div class="toolbar" style="margin-top:8px"><button class="btn-light" onclick="instOuverte=instOuverte===\'' + esc(i.n) + '\'?\'\':\'' + esc(i.n) + '\';vueInstalls()">' + (o ? '▴ Fermer le chantier' : '▾ Chantier') + '</button>' +
       (c.prat ? '<span class="bdg v">📁 ' + esc(c.prat.nom) + '</span>' : '<span class="bdg o">📁 dossier praticien à associer</span>') + '<span class="bdg">' + c.artisans.length + ' artisan(s)</span><span class="bdg">' + c.docs.length + ' document(s)</span>' +
-      (c.reste.length ? '<span class="bdg o">' + c.reste.length + ' tâche(s) à faire</span>' : '') + '</div>' + (o ? ficheChantier(c) : '');
+      (c.reste.length ? '<span class="bdg o">' + c.reste.length + ' tâche(s) à faire</span>' : '') + '</div>' +
+      (c.prat && c.prat.dt ? '<label style="display:flex;gap:8px;align-items:center;font-weight:600;margin-top:6px;cursor:pointer"><input type="checkbox" style="width:18px;height:18px"' + (c.dtPartage ? ' checked' : '') + ' onchange="dtPartage(this,\'' + esc(i.n) + '\')">📤 Devis validé : dossier technique visible par le praticien (« Mes documents » de l\'Assistance)</label>' +
+        (c.dtPartage ? '<div class="meta">Partagé par ' + esc(c.dtPartage) + '</div>' : '') : '') + (o ? ficheChantier(c) : '');
+  }
+  async function dtPartage(cb, n) {
+    if (cb.checked && !confirm('Le praticien pourra ouvrir son dossier technique dans « Mes documents » de l\'Assistance. Le devis est bien validé ?')) { cb.checked = false; return; }
+    cb.disabled = true; const r = await api('install_dt_partage', { n, on: cb.checked });
+    if (!r.ok) { cb.checked = !cb.checked; cb.disabled = false; alert(r.message); return; }
+    CH = null; vueInstalls();
   }
   async function pratDoc(b, dossier, type) {
     const t = b.innerHTML; b.disabled = true; b.textContent = 'Téléchargement…';
