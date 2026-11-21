@@ -150,7 +150,9 @@
     const retard = mesTaches().filter(t => t.statut !== 'Fait' && jour(t.echeance) && jour(t.echeance) <= auj).length;
     let tabs = [['taches', 'Mes tâches', retard]].concat(D.estAD ? [['clients', 'Clients'], ['installs', 'Installations']] : [], D.prets ? [['prets', 'Prêts']] : [], D.devis ? [['devis', 'Devis entretien']] : [], [['publier', 'Publier']], D.revisions ? [['revs', 'Révisions']] : [], D.conso ? [['conso', 'Consommables']] : [],
       D.estAD ? [['demandes', 'Demandes des cabinets']] : [], [['docs', 'Documents'], ['orga', 'Organigramme'], ['aide', 'Mode d\'emploi']]);
-    if (APP === 'conso') tabs = [['taches', 'Mes tâches', retard], ['clients', 'Clients'], ['publier', 'Publier'], ['conso', 'Consommables'], ['demandes', 'Demandes des cabinets'], ['docs', 'Documents'], ['orga', 'Organigramme'], ['aide', 'Mode d\'emploi']];
+    // Le gérant voit tout, dans les deux applis
+    if (D.voitTout) { /* tous les onglets */ }
+    else if (APP === 'conso') tabs = [['taches', 'Mes tâches', retard], ['clients', 'Clients'], ['publier', 'Publier'], ['conso', 'Consommables'], ['demandes', 'Demandes des cabinets'], ['docs', 'Documents'], ['orga', 'Organigramme'], ['aide', 'Mode d\'emploi']];
     else if (D.estAD) tabs = tabs.filter(t => t[0] !== 'conso');
     if (!tabs.some(t => t[0] === onglet)) onglet = 'taches';
     document.getElementById('nav').innerHTML = tabs.map(t => '<button class="' + (onglet === t[0] ? 'on' : '') + '" onclick="aller(\'' + t[0] + '\')">' + t[1] + (t[2] ? '<span class="nb">' + t[2] + '</span>' : '') + '</button>').join('');
