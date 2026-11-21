@@ -234,26 +234,55 @@
         '<label>Notes</label><textarea id="niN" rows="2"></textarea><p class="err" id="niErr"></p><button class="btn" onclick="creerInstall(this)">Créer l\'installation et les tâches</button></div>' + datalistCabs();
     }
     const enCours = D.installations.filter(i => i.statut === 'Planifiée'), faites = D.installations.filter(i => i.statut === 'Réalisée');
-    h += '<div class="sec grp">En cours et à venir <em>' + enCours.length + '</em></div>' + (enCours.length ? enCours.map(carteInstall).join('') : '<div class="vide">Aucune installation en cours.</div>');
+    // Chantiers en cours : installations planifiées + dossiers praticiens avec un dossier technique (« Dossiers techniciens »)
+    const dosEC = CH && CH.praticiens && CH.praticiens.ok ? CH.praticiens.libres.filter(d => d.enCours).sort((a, b) => a.nom.localeCompare(b.nom, 'fr')) : [];
+    h += '<div class="sec grp">En cours et à venir <em>' + (enCours.length + dosEC.length) + '</em></div>' + enCours.map(carteInstall).join('') +
+      dosEC.map(d => '<div class="card"><div class="row" style="flex-wrap:wrap"><div style="flex:1;min-width:180px"><b style="color:var(--navy);font-size:15px">' + esc(d.nom) + '</b><div class="meta">Dossier technique du ' + esc(d.dt.date) + '</div></div>' +
+        '<button class="btn" onclick="pratOuvrir(this,\'' + esc(d.dt.id) + '\')">📄 Dossier technique' + mo(d.dt.taille) + '</button><button class="btn-light" onclick="pratDossier(\'' + esc(d.id) + '\')">📁 Dossier</button></div></div>').join('') +
+      (!enCours.length && !dosEC.length ? '<div class="vide">' + (D.chantiers && !CH ? 'Chargement…' : 'Aucune installation en cours.') + '</div>' : '');
     h += '<div class="sec grp">Praticiens installés <em id="nbFaites"></em></div>' +
       '<div class="toolbar"><input id="ifQ" placeholder="Rechercher un praticien, un cabinet, une ville…" style="flex:1;min-width:200px" value="' + esc(ifFiltre) + '" oninput="ifFiltre=this.value;listeFaites()"></div><div id="lFaites"></div>';
     main.innerHTML = h;
     listeFaites();
   }
-  let ifFiltre = '', instOuverte = '';
+  let ifFiltre = '', instOuverte = '', parcOuvert = '';
+  // Matériel installé chez un praticien (complété au fur et à mesure)
+  function blocParc(x) {
+    const l = (CH && CH.parc && CH.parc[x.cle]) || [], k = esc(x.cle);
+    return '<div style="border-top:1px solid var(--line);margin-top:8px;padding-top:6px">' +
+      (l.length ? l.map(a => '<div class="row" style="padding:3px 0"><div style="flex:1">🔧 <b>' + esc(a.appareil) + '</b>' + (a.modele ? ' · ' + esc(a.modele) : '') + (a.serie ? ' · n° ' + esc(a.serie) : '') + (a.date ? ' <span class="meta">· ' + esc(a.date) + '</span>' : '') + '</div><button class="btn-light" title="Retirer" onclick="parcSuppr(this,\'' + k + '\',' + a.ligne + ')">✕</button></div>').join('') : '<div class="meta">Aucun matériel enregistré.</div>') +
+      '<div class="g2" style="margin-top:6px"><div><label>Appareil</label><select id="pcA"><option value="">—</option>' + (D.materiels || []).concat(['Compresseur', 'Aspiration', 'Autoclave', 'Thermodésinfecteur', 'Scialytique', 'Mobilier', 'Informatique', 'Autre']).filter((v, i, a) => a.indexOf(v) === i).map(m => '<option>' + esc(m) + '</option>').join('') + '</select></div>' +
+      '<div><label>Marque / modèle</label><input id="pcM" placeholder="Ex. : Airel Quetin Chairman"></div></div>' +
+      '<div class="g2"><div><label>N° de série</label><input id="pcS"></div><div><label>Installé le</label><input id="pcD" type="date"></div></div>' +
+      '<div class="toolbar" style="margin-top:6px"><button class="btn" onclick="parcAjouter(this,\'' + k + '\',\'' + esc(x.nom) + '\')">Ajouter</button></div></div>';
+  }
+  async function parcAjouter(b, cle, praticien) {
+    const v = id => document.getElementById(id).value.trim();
+    if (!v('pcA')) { alert('Choisissez l\'appareil.'); return; }
+    b.disabled = true; const r = await api('parc_ajouter', { cle, praticien, appareil: v('pcA'), modele: v('pcM'), serie: v('pcS'), date: v('pcD') });
+    if (!r.ok) { b.disabled = false; alert(r.message); return; }
+    CH = null; await vueInstalls();
+  }
+  async function parcSuppr(b, cle, ligne) {
+    if (!confirm('Retirer cet appareil ?')) return;
+    b.disabled = true; const r = await api('parc_suppr', { cle, ligne });
+    if (!r.ok) { b.disabled = false; alert(r.message); return; }
+    CH = null; await vueInstalls();
+  }
   // Installations faites : celles de l'appli + les dossiers « Praticiens » d'avant l'appli
   function listeFaites() {
     const P = CH && CH.praticiens && CH.praticiens.ok ? CH.praticiens : null, chByN = {};
     (CH ? CH.chantiers : []).forEach(c => chByN[c.n] = c);
     const L = D.installations.filter(i => i.statut === 'Réalisée').map(i => { const c = chByN[i.n] || {}; const p = c.prat || (c.pratId ? { id: c.pratId, nom: c.pratNom } : null);
-      return { nom: i.cabinet + (i.praticien ? ' · ' + i.praticien : ''), info: 'Installé le ' + i.date + ' · ' + i.materiel, dossier: p ? p.id : '', n: i.n }; })
-      .concat(P ? P.libres.map(d => ({ nom: d.nom, info: 'Dossier praticien · modifié le ' + d.maj, dossier: d.id })) : []);
+      return { nom: i.cabinet + (i.praticien ? ' · ' + i.praticien : ''), info: 'Installé le ' + i.date + ' · ' + i.materiel, dossier: p ? p.id : '', dt: (c.prat && c.prat.dt) || c.pratDt || null, n: i.n, cle: i.n }; })
+      .concat(P ? P.libres.filter(d => !d.enCours).map(d => ({ nom: d.nom, info: 'Dossier praticien · modifié le ' + d.maj, dossier: d.id, cle: d.id })) : []);
     L.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
     const nrm = x => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''), f = nrm(ifFiltre).split(/\s+/).filter(Boolean);
     const l = L.filter(x => f.every(w => nrm(x.nom + ' ' + x.info).includes(w)));
     document.getElementById('nbFaites').textContent = L.length;
     document.getElementById('lFaites').innerHTML = l.length ? l.map(x => '<div class="card" style="padding:9px 12px"><div class="row" style="flex-wrap:wrap"><div style="flex:1;min-width:180px"><b style="color:var(--navy)">' + esc(x.nom) + '</b><div class="meta">' + esc(x.info) + '</div></div>' +
-      (x.dossier ? '<button class="btn-light" onclick="pratDoc(this,\'' + esc(x.dossier) + '\',\'dt\')">📄 Dossier technique</button><button class="btn-light" onclick="pratDossier(\'' + esc(x.dossier) + '\')">📁 Dossier</button>' : '<span class="meta">pas de dossier praticien</span>') + '</div></div>').join('')
+      '<button class="btn-light" onclick="parcOuvert=parcOuvert===\'' + esc(x.cle) + '\'?\'\':\'' + esc(x.cle) + '\';listeFaites()">🔧 Matériel (' + ((CH && CH.parc && CH.parc[x.cle]) || []).length + ')</button>' +
+      (x.dossier ? (x.dt ? '<button class="btn-light" onclick="pratOuvrir(this,\'' + esc(x.dt.id) + '\')">📄 Dossier technique</button>' : '') + '<button class="btn-light" onclick="pratDossier(\'' + esc(x.dossier) + '\')">📁 Dossier</button>' : '<span class="meta">pas de dossier praticien</span>') + '</div>' + (parcOuvert === x.cle ? blocParc(x) : '') + '</div>').join('')
       : '<div class="vide">' + (L.length ? 'Aucun résultat.' : (D.chantiers && !CH ? 'Chargement…' : 'Aucune installation effectuée.')) + '</div>';
   }
   // Partie « chantier » d'une installation en cours (équipe technique)
@@ -444,9 +473,10 @@
   function afficherCabDocs() {
     const z = document.getElementById('cabDocs'); if (!z || !CD) return;
     const l = CD[cdOnglet] || [], o = (k, t) => '<button class="' + (cdOnglet === k ? 'btn' : 'btn-light') + '" onclick="cdOnglet=\'' + k + '\';afficherCabDocs()">' + t + ' (' + (CD[k] || []).length + ')</button>';
-    z.innerHTML = '<div class="toolbar">' + o('mat', '🔧 Matériel') + o('conso', '📦 Consommable') + '</div>' +
-      (l.length ? l.map(x => '<div class="row" style="padding:4px 0"><div style="flex:1">📄 ' + esc(x.nom) + ' <span class="meta">· ' + (x.appareil && x.appareil !== 'Consommable' ? esc(x.appareil) + ' · ' : '') + esc(x.date) + '</span></div><button class="btn-light" onclick="cabDocOuvrir(this,\'' + esc(x.id) + '\')">Ouvrir</button></div>').join('') : '<div class="meta">Aucun document ' + (cdOnglet === 'conso' ? 'consommable' : 'matériel') + ' pour ce cabinet.</div>') +
-      '<div class="toolbar" style="margin-top:6px"><label class="btn-light" style="margin:0">+ Ajouter un document ' + (cdOnglet === 'conso' ? 'consommable' : 'matériel') + '<input type="file" style="display:none" onchange="cabDocAjouter(this)"></label><span class="meta" id="cdEtat">Visible aussi par le praticien dans « Mes documents ».</span></div>';
+    z.innerHTML = '<div class="toolbar">' + o('mat', '🔧 Matériel') + o('conso', '📦 Consommable') + o('praticien', '👁 Vue praticien') + '</div>' +
+      (cdOnglet === 'praticien' ? '<div class="meta" style="margin:4px 0">Ce que le praticien voit dans « Mes documents » de son Assistance : uniquement ces fichiers, jamais le reste de notre Drive.</div>' : '') +
+      (l.length ? l.map(x => '<div class="row" style="padding:4px 0"><div style="flex:1">📄 ' + esc(x.nom) + ' <span class="meta">· ' + (x.appareil && x.appareil !== 'Consommable' ? esc(x.appareil) + ' · ' : '') + esc(x.date) + '</span></div><button class="btn-light" onclick="cabDocOuvrir(this,\'' + esc(x.id) + '\')">Ouvrir</button></div>').join('') : '<div class="meta">' + (cdOnglet === 'praticien' ? 'Le praticien ne voit aucun document pour l\'instant.' : 'Aucun document ' + (cdOnglet === 'conso' ? 'consommable' : 'matériel') + ' pour ce cabinet.') + '</div>') +
+      (cdOnglet === 'praticien' ? '' : '<div class="toolbar" style="margin-top:6px"><label class="btn-light" style="margin:0">+ Ajouter un document ' + (cdOnglet === 'conso' ? 'consommable' : 'matériel') + '<input type="file" style="display:none" onchange="cabDocAjouter(this)"></label><span class="meta" id="cdEtat">Visible aussi par le praticien dans « Mes documents ».</span></div>');
   }
   async function cabDocAjouter(inp) {
     const f = inp.files[0], z = document.getElementById('cabDocs'); if (!f || !z) return;
@@ -673,6 +703,8 @@
     const bt = k => (l, e) => { const i = d[k].lignes.indexOf(l), t = d[k].taches && d[k].taches[i];
       return t ? '<span class="bdg t" style="white-space:nowrap">✓ Tâche ' + esc(t.n) + ' · ' + esc(t.pour) + '</span>' : '<button class="btn-light" style="white-space:nowrap" onclick="demandeEnTache(\'' + k + '\',' + i + ')">➕ Tâche</button>'; };
     document.getElementById('main').innerHTML = '<h2>Demandes des cabinets</h2><p class="sub">Les dernières demandes reçues depuis l\'Assistance et la page étudiants. Chaque nouvelle demande crée toute seule une tâche pour la bonne personne (✓ Tâche) ; quand la tâche est cochée « faite », la demande disparaît d\'ici. « ➕ Tâche » transforme une demande en tâche (à qui, quand, techniciens et temps à prévoir). Le suivi (statut, notes) se fait dans le tableau Google.</p>' +
+      (d.activations && d.activations.lignes.length ? '<div class="sec">Activations de l\'Assistance (QR code des formations)</div>' + tableau(d.activations, ['N°', 'Demandé le', 'Profil', 'Prénom', 'Nom', 'Portable', 'E-mail', 'Cabinet', 'Ville', 'Statut', 'Installé le'], (l) => { const i = d.activations.lignes.indexOf(l), st = l[9];
+        return st === 'À valider' && D.voitTout ? '<button class="btn" style="white-space:nowrap" onclick="activer(this,' + d.activations.ref[i] + ')">✓ Valider et envoyer le lien</button>' : st === 'Lien envoyé' && D.voitTout ? '<button class="btn-light" style="white-space:nowrap" onclick="activer(this,' + d.activations.ref[i] + ')">Renvoyer un nouveau lien</button>' : ''; }) : '') +
       '<div class="sec">Pannes et demandes d\'intervention</div>' + tableau(d.interventions, ['N°', 'Date', 'Cabinet', 'Contact', 'Téléphone', 'Problème décrit', 'Statut', 'Technicien'], bt('interventions')) +
       '<div class="sec">Devis et opportunités</div>' + tableau(d.opportunites, ['N°', 'Date', 'Cabinet', 'Contact', 'Téléphone', 'Service', 'Détail', 'Statut'], bt('opportunites')) +
       '<div class="sec">Devis d\'entretien</div>' + tableau(d.devis, null, bt('devis')) +
@@ -680,6 +712,13 @@
       '<div class="sec">Praticiens et assistantes (page formations)</div>' + tableau(d.pros, ['Inscrit le', 'Profil', 'Prénom', 'Nom', 'Portable', 'Cabinet', 'Ville', 'Événements', 'Statut'], bt('pros'));
   }
   let DM = null;
+  async function activer(b, ligne) {
+    if (!confirm('Envoyer par e-mail le lien d\'installation (valable pour 1 seule activation) ?')) return;
+    b.disabled = true; b.textContent = 'Envoi…';
+    const r = await api('activation_valider', { ligne });
+    if (!r.ok) { b.disabled = false; b.textContent = '✓ Valider et envoyer le lien'; alert(r.message); return; }
+    vueDemandes();
+  }
   // Transforme une demande reçue en tâche : ouvre le formulaire « Nouvelle tâche » déjà rempli
   function demandeEnTache(k, i) {
     const t = DM[k], l = t.lignes[i], g = c => { const j = t.entetes.indexOf(c); return j >= 0 ? String(l[j] || '').trim() : ''; }, court = x => x.length > 90 ? x.slice(0, 88) + '…' : x;
