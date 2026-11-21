@@ -759,12 +759,47 @@
       '<div class="sec">Alertes stock</div>' + tableau(c.alertes);
   }
   async function traiter(b, signale, code) { b.disabled = true; const r = await api('conso_traiter', { signale, code }); if (r.ok) vueConso(); else { b.disabled = false; alert(r.message); } }
+  // ---------------- Projets confidentiels (gérant uniquement) ----------------
+  let PRJ = null, prjOuvert = '';
+  async function chargerResultats() {
+    const r = await api('resultats'), box = document.getElementById('resBox'); if (!r.ok || !box) return;
+    const top = o => Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, v]) => esc(k) + ' ' + v).join(' · ') || '—';
+    const tuile = (v, l) => '<div style="flex:1;min-width:110px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px"><div style="font-size:22px;font-weight:800;color:var(--navy)">' + v + '</div><div class="meta">' + l + '</div></div>';
+    box.innerHTML = '<div class="sec">📊 Résultats des 90 derniers jours <span class="meta">· toi seul</span></div><div style="display:flex;gap:8px;flex-wrap:wrap">' +
+      tuile(r.opps, 'demandes commerciales') + tuile(r.gagnees + (r.montant ? ' · ' + Math.round(r.montant).toLocaleString('fr-FR') + ' €' : ''), 'gagnées (statut « Gagnée »)') + tuile(r.projets, 'projets confidentiels') +
+      tuile(r.nps === null ? '—' : (r.nps > 0 ? '+' : '') + r.nps, 'satisfaction NPS (' + (r.avis || 0) + ' avis, 12 mois)') + '</div>' +
+      '<div class="meta" style="margin-top:6px">D\'où viennent les demandes : ' + top(r.parSource) + '<br>Quels services : ' + top(r.parService) + '</div>';
+  }
+  async function chargerProjets() {
+    chargerResultats();
+    const box = document.getElementById('prjBox'); if (!box) return;
+    const r = await api('projets'); if (!r.ok) return; PRJ = r; afficherProjets();
+  }
+  function afficherProjets() {
+    const box = document.getElementById('prjBox'); if (!box || !PRJ) return;
+    const l = PRJ.projets;
+    box.innerHTML = '<div class="sec">🔒 Projets confidentiels (' + l.length + ') <span class="meta">· visibles par toi seul · jamais liés au cabinet où travaille le praticien</span></div>' +
+      (l.length ? l.map(p => '<div class="card"><div class="row"><div style="flex:1"><b style="color:var(--navy)">' + esc(p.prenom + ' ' + p.nom) + '</b> <span class="bdg">' + esc(p.etape) + '</span>' +
+        '<div class="meta">' + esc([p.situation, p.projet, p.horizon, p.secteur].filter(Boolean).join(' · ')) + '</div>' +
+        '<div class="meta">📞 <a href="tel:' + esc(p.tel.replace(/[^+\d]/g, '')) + '">' + esc(p.tel) + '</a> · ' + esc(p.mail) + ' · reçu le ' + esc(p.cree) + (p.source ? ' · ' + esc(p.source) : '') + '</div></div>' +
+        '<button class="btn-light" onclick="prjOuvert=prjOuvert===\'' + p.k + '\'?\'\':\'' + p.k + '\';afficherProjets()">Suivre</button></div>' +
+        (prjOuvert === p.k ? '<div style="border-top:1px solid var(--line);margin-top:8px;padding-top:6px">' + (p.messages ? '<div class="meta" style="white-space:pre-wrap;margin-bottom:6px">' + esc(p.messages) + '</div>' : '') +
+          '<label>Étape (visible par le praticien)</label><select id="pjE">' + PRJ.etapes.map(e => '<option' + (e === p.etape ? ' selected' : '') + '>' + esc(e) + '</option>').join('') + '</select>' +
+          '<label>Prochaine étape (message affiché dans son espace)</label><input id="pjP" value="' + esc(p.prochaine) + '">' +
+          '<div class="toolbar" style="margin-top:6px"><button class="btn" onclick="projetMaj(this,\'' + p.k + '\')">Enregistrer</button></div></div>' : '') + '</div>').join('')
+        : '<div class="vide">Aucun projet pour l\'instant. Lien à diffuser : page « Mon projet » (QR code dans Gestion).</div>');
+  }
+  async function projetMaj(b, k) {
+    b.disabled = true; const r = await api('projet_maj', { k, etape: document.getElementById('pjE').value, prochaine: document.getElementById('pjP').value });
+    b.disabled = false; if (!r.ok) { alert(r.message); return; } prjOuvert = ''; chargerProjets();
+  }
   async function vueDemandes() {
     document.getElementById('main').innerHTML = '<h2>Demandes des cabinets</h2><p class="sub">Chargement…</p>';
     const d = await api('demandes'); DM = d;
+    if (D.voitTout) setTimeout(chargerProjets, 0);
     const bt = k => (l, e) => { const i = d[k].lignes.indexOf(l), t = d[k].taches && d[k].taches[i];
       return t ? '<span class="bdg t" style="white-space:nowrap">✓ Tâche ' + esc(t.n) + ' · ' + esc(t.pour) + '</span>' : '<button class="btn-light" style="white-space:nowrap" onclick="demandeEnTache(\'' + k + '\',' + i + ')">➕ Tâche</button>'; };
-    document.getElementById('main').innerHTML = '<h2>Demandes des cabinets</h2><p class="sub">Les dernières demandes reçues depuis l\'Assistance et la page étudiants. Chaque nouvelle demande crée toute seule une tâche pour la bonne personne (✓ Tâche) ; quand la tâche est cochée « faite », la demande disparaît d\'ici. « ➕ Tâche » transforme une demande en tâche (à qui, quand, techniciens et temps à prévoir). Le suivi (statut, notes) se fait dans le tableau Google.</p>' +
+    document.getElementById('main').innerHTML = '<div id="resBox"></div><div id="prjBox"></div><h2>Demandes des cabinets</h2><p class="sub">Les dernières demandes reçues depuis l\'Assistance et la page étudiants. Chaque nouvelle demande crée toute seule une tâche pour la bonne personne (✓ Tâche) ; quand la tâche est cochée « faite », la demande disparaît d\'ici. « ➕ Tâche » transforme une demande en tâche (à qui, quand, techniciens et temps à prévoir). Le suivi (statut, notes) se fait dans le tableau Google.</p>' +
       (d.activations && d.activations.lignes.length ? '<div class="sec">Activations de l\'Assistance (QR code des formations)</div>' + tableau(d.activations, ['N°', 'Demandé le', 'Profil', 'Prénom', 'Nom', 'Portable', 'E-mail', 'Cabinet', 'Ville', 'Statut', 'Installé le'], (l) => { const i = d.activations.lignes.indexOf(l), st = l[9];
         return st === 'À valider' && D.voitTout ? '<button class="btn" style="white-space:nowrap" onclick="activer(this,' + d.activations.ref[i] + ')">✓ Valider et envoyer le lien</button>' : st === 'Lien envoyé' && D.voitTout ? '<button class="btn-light" style="white-space:nowrap" onclick="activer(this,' + d.activations.ref[i] + ')">Renvoyer un nouveau lien</button>' : ''; }) : '') +
       '<div class="sec">Pannes et demandes d\'intervention</div>' + tableau(d.interventions, ['N°', 'Date', 'Cabinet', 'Contact', 'Téléphone', 'Problème décrit', 'Statut', 'Technicien'], bt('interventions')) +
