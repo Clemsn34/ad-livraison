@@ -158,7 +158,7 @@
     document.getElementById('nav').innerHTML = tabs.map(t => '<button class="' + (onglet === t[0] ? 'on' : '') + '" onclick="aller(\'' + t[0] + '\')">' + t[1] + (t[2] ? '<span class="nb">' + t[2] + '</span>' : '') + '</button>').join('');
     ({ taches: vueTaches, clients: vueClients, installs: vueInstalls, conso: vueConso, demandes: vueDemandes, orga: vueOrga, docs: vueDocs, revs: vueRevs, chantiers: vueChantiers, devis: vueDevis, prets: vuePrets, publier: vuePublier, aide: vueAide })[onglet]();
   }
-  function aller(o) { onglet = o; PD = []; afficher(); }
+  function aller(o) { onglet = o; PD = []; facVue = false; afficher(); }
 
   // ---------------- Tâches ----------------
   function vueTaches() {
@@ -505,13 +505,52 @@
 
   // ---------------- Clients (liste des cabinets) ----------------
   let CL = null, clFiltre = '', clOuvert = '';
+  // ---------------- Factures en attente (Extrabat) ----------------
+  let facVue = false, FAC = null, facFiltre = 'aassocier';
+  const peutFactures = () => D.moi && D.moi.societe === 'Alternative Dentaire' && (D.moi.role === 'Gérant' || D.moi.role === 'Assistante de direction');
+  const eurF = n => (Math.round(n * 100) / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  async function vueFactures(recharger) {
+    const main = document.getElementById('main');
+    if (!FAC || recharger) { main.innerHTML = '<h2>Factures en attente</h2><p class="sub">Chargement…</p>'; const r = await api('factures'); if (!r.ok) { main.innerHTML = '<div class="vide">' + esc(r.message) + '</div>'; return; } FAC = r; }
+    if (!CL) { const d = await api('clients'); if (d.ok) CL = d.clients; }
+    const l = FAC.factures, aA = l.filter(f => !f.cab && f.how !== 'Ignoré (manuel)'), tot = l.reduce((a, f) => a + f.reste, 0);
+    const parCli = {}; aA.forEach(f => { (parCli[f.codeCli] = parCli[f.codeCli] || []).push(f); });
+    const liste = facFiltre === 'aassocier' ? null : l.filter(f => f.cab);
+    const opts = '<option value="">— choisir le cabinet —</option><option value="AUCUN">Ne pas afficher (pas un cabinet suivi)</option>' + (CL || []).map(c => '<option value="' + esc(c.id) + '">' + esc(c.nom) + ' · ' + esc(c.ville) + '</option>').join('');
+    main.innerHTML = '<div class="toolbar"><button class="btn-light" onclick="facVue=false;vueClients()">← Clients</button></div>' +
+      '<h2>Factures en attente de règlement</h2><p class="sub">' + l.length + ' factures · ' + eurF(tot) + ' TTC dû' + (FAC.maj ? ' · mis à jour le ' + esc(FAC.maj) : '') + '. Mise à jour automatique chaque matin depuis le dernier export Extrabat enregistré dans le dossier Drive « ' + esc(FAC.dossierNom) + ' » (en attendant l\'API Extrabat). Jamais de prix d\'achat ni de marge côté praticien.</p>' +
+      '<div class="card"><label style="display:flex;gap:8px;align-items:center;font-weight:700;cursor:pointer"><input type="checkbox" style="width:18px;height:18px"' + (FAC.visible ? ' checked' : '') + ' onchange="facVisible(this)">Afficher aux praticiens (« Mes documents » de leur Assistance : relevé PDF de leurs factures en attente)</label>' +
+      '<div class="toolbar" style="margin-top:8px"><button class="btn-light" onclick="facImport(this)">↻ Mettre à jour maintenant</button>' + (FAC.dossier ? '<a class="btn-light" style="text-decoration:none" href="' + esc(FAC.dossier) + '" target="_blank">📁 Dossier de l\'export</a>' : '') + '<span class="meta" id="facEtat"></span></div></div>' +
+      '<div class="toolbar"><button class="' + (facFiltre === 'aassocier' ? 'btn' : 'btn-light') + '" onclick="facFiltre=\'aassocier\';vueFactures()">À associer (' + Object.keys(parCli).length + ' clients)</button><button class="' + (facFiltre === 'ok' ? 'btn' : 'btn-light') + '" onclick="facFiltre=\'ok\';vueFactures()">Associées (' + l.filter(f => f.cab).length + ')</button></div>' +
+      (liste ? (liste.length ? liste.map(f => '<div class="card" style="padding:8px 12px"><div class="row"><div style="flex:1"><b>' + esc(f.cabNom || f.cab) + '</b> <span class="meta">← ' + esc(f.client) + ' · ' + esc(f.how) + '</span><div class="meta">' + esc(f.code) + ' du ' + esc(f.date) + ' · ' + esc(f.titre) + '</div></div><b>' + eurF(f.reste) + '</b></div></div>').join('') : '<div class="vide">Aucune.</div>')
+      : (Object.keys(parCli).length ? Object.keys(parCli).map(k => { const fs = parCli[k]; return '<div class="card" style="padding:8px 12px"><b>' + esc(fs[0].client) + '</b> <span class="meta">' + esc(k) + ' · ' + fs.length + ' facture(s) · ' + eurF(fs.reduce((a, f) => a + f.reste, 0)) + (fs[0].how && fs[0].how !== 'À associer' ? ' · ' + esc(fs[0].how) : '') + '</span>' +
+          '<div class="toolbar" style="margin-top:6px"><select style="flex:1;min-width:200px" onchange="facAssocier(this,\'' + esc(k) + '\')">' + opts + '</select></div></div>'; }).join('') : '<div class="vide">Toutes les factures sont associées à un cabinet. ✓</div>'));
+  }
+  async function facAssocier(sel, codeCli) {
+    if (!sel.value) return; sel.disabled = true;
+    const r = await api('fact_associer', { codeCli, cab: sel.value });
+    if (!r.ok) { sel.disabled = false; alert(r.message); return; }
+    vueFactures(true);
+  }
+  async function facVisible(cb) {
+    const r = await api('fact_visible', { visible: cb.checked });
+    if (!r.ok) { cb.checked = !cb.checked; alert(r.message); return; }
+    FAC.visible = r.visible;
+  }
+  async function facImport(b) {
+    b.disabled = true; document.getElementById('facEtat').textContent = 'Import…';
+    const r = await api('fact_import'); b.disabled = false;
+    if (!r.ok) { document.getElementById('facEtat').textContent = r.message; return; }
+    FAC = r; vueFactures();
+  }
   async function vueClients() {
     const main = document.getElementById('main');
     if (!CL) { main.innerHTML = '<h2>Clients</h2><p class="sub">Chargement…</p>'; const d = await api('clients'); if (!d.ok) { main.innerHTML = '<div class="vide">' + esc(d.message) + '</div>'; return; } CL = d.clients; }
     const f = clFiltre.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''), n = x => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     const l = CL.filter(c => !f || n([c.nom, c.ville, c.cp, c.id, c.contact, c.personnes.map(p => p.nom).join(' ')].join(' ')).includes(f));
     const tel = t => t ? '<a class="btn-light" style="text-decoration:none;display:inline-block" href="tel:' + esc(String(t).replace(/\s/g, '')) + '">📞 ' + esc(t) + '</a>' : '';
-    let h = '<h2>Clients</h2><p class="sub">' + CL.length + ' cabinets. Touchez un cabinet pour voir l\'adresse, les praticiens, le matériel prêté et les installations.</p>' +
+    if (facVue) { return vueFactures(); }
+    let h = (peutFactures() ? '<div class="toolbar" style="justify-content:flex-end"><button class="btn-light" onclick="facVue=true;vueFactures()">💶 Factures en attente (Extrabat)</button></div>' : '') + '<h2>Clients</h2><p class="sub">' + CL.length + ' cabinets. Touchez un cabinet pour voir l\'adresse, les praticiens, le matériel prêté et les installations.</p>' +
       '<div class="toolbar"><input id="clQ" placeholder="Rechercher (cabinet, ville, praticien…)" style="flex:1;min-width:200px" value="' + esc(clFiltre) + '" oninput="clFiltre=this.value;window.__clF=true;clearTimeout(window.__cl);window.__cl=setTimeout(vueClients,250)"></div>';
     h += l.slice(0, 150).map(c => {
       const o = clOuvert === c.id, adr = [c.adresse, (c.cp + ' ' + c.ville).trim()].filter(Boolean).join(', ');
