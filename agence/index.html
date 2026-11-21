@@ -517,7 +517,8 @@
       '<div class="sec">Pannes et demandes d\'intervention</div>' + tableau(d.interventions, ['N°', 'Date', 'Cabinet', 'Contact', 'Téléphone', 'Problème décrit', 'Statut', 'Technicien'], bt('interventions')) +
       '<div class="sec">Devis et opportunités</div>' + tableau(d.opportunites, ['N°', 'Date', 'Cabinet', 'Contact', 'Téléphone', 'Service', 'Détail', 'Statut'], bt('opportunites')) +
       '<div class="sec">Devis d\'entretien</div>' + tableau(d.devis, null, bt('devis')) +
-      '<div class="sec">Étudiants</div>' + tableau(d.etudiants, ['Inscrit le', 'Prénom', 'Nom', 'Portable', 'Année', 'Installation envisagée', 'Projet', 'Statut'], bt('etudiants'));
+      '<div class="sec">Étudiants</div>' + tableau(d.etudiants, ['Inscrit le', 'Prénom', 'Nom', 'Portable', 'Année', 'Installation envisagée', 'Projet', 'Statut'], bt('etudiants')) +
+      '<div class="sec">Praticiens et assistantes (page formations)</div>' + tableau(d.pros, ['Inscrit le', 'Profil', 'Prénom', 'Nom', 'Portable', 'Cabinet', 'Ville', 'Événements', 'Statut'], bt('pros'));
   }
   let DM = null;
   // Transforme une demande reçue en tâche : ouvre le formulaire « Nouvelle tâche » déjà rempli
@@ -527,6 +528,7 @@
     if (k === 'interventions') { titre = 'Intervention : ' + court(g('Problème décrit') || 'demande d\'intervention'); det = ['Demande ' + g('N°') + ' du ' + g('Date'), g('Contact'), g('Téléphone'), g('Problème décrit')]; }
     else if (k === 'opportunites') { titre = 'Devis : ' + court(g('Service') || 'demande de devis'); det = ['Demande ' + g('N°') + ' du ' + g('Date'), g('Contact'), g('Téléphone'), g('Détail')]; }
     else if (k === 'devis') { titre = 'Suivre le devis d\'entretien ' + (l[0] || ''); det = t.entetes.map((e, j) => l[j] ? e + ' : ' + l[j] : '').slice(0, 8); }
+    else if (k === 'pros') { cab = g('Cabinet') || (g('Prénom') + ' ' + g('Nom')).trim(); titre = 'Rappeler ' + (g('Prénom') + ' ' + g('Nom')).trim() + ' (' + g('Profil') + ')'; det = [g('Portable'), g('E-mail'), g('Ville'), g('Centres d\'intérêt'), g('Événements')]; }
     else { cab = (g('Prénom') + ' ' + g('Nom')).trim() + ' (étudiant)'; titre = 'Rappeler : ' + court(g('Projet') || g('Installation envisagée') || 'projet d\'installation'); det = [g('Portable'), g('Année'), g('Installation envisagée'), g('Projet')]; }
     onglet = 'taches'; filtreTaches = 'moi'; afficher();
     const f = document.getElementById('nt'); f.style.display = 'block';
