@@ -263,13 +263,18 @@
       h += '<div class="card"' + (!ok && c.statut === 'Planifiée' ? ' style="border-color:#E3A72F"' : '') + '><div class="row" style="cursor:pointer" onclick="chOuvert=chOuvert===\'' + esc(c.n) + '\'?\'\':\'' + esc(c.n) + '\';vueChantiers()"><div style="flex:1">' +
         '<b style="color:var(--navy);font-size:15px">' + esc(c.cabinet) + '</b>' + (c.praticien ? ' · ' + esc(c.praticien) : '') +
         '<div class="meta">📅 ' + esc(c.date || 'date à fixer') + (j !== null && c.statut === 'Planifiée' ? (j >= 0 ? ' (dans ' + j + ' j)' : ' (date passée)') : '') + ' · ' + esc(c.materiel) + '</div>' +
-        '<div style="margin-top:6px">' + badgeFin(c.financement) + '<span class="bdg">' + esc(c.statut) + '</span><span class="bdg">' + c.artisans.length + ' artisan(s)</span><span class="bdg">' + c.docs.length + ' document(s)</span>' +
+        '<div style="margin-top:6px">' + badgeFin(c.financement) + '<span class="bdg">' + esc(c.statut) + '</span><span class="bdg">' + c.artisans.length + ' artisan(s)</span><span class="bdg">' + c.docs.length + ' document(s)</span>' + (c.prat ? '<span class="bdg v">📁 ' + esc(c.prat.nom) + (c.prat.dt ? ' · dossier technique' : '') + '</span>' : (CH.praticiens && CH.praticiens.ok ? '<span class="bdg o">📁 dossier praticien à associer</span>' : '')) +
         (c.reste.length ? '<span class="bdg o">' + c.reste.length + ' tâche(s) à faire</span>' : '') + '</div>' +
         (!ok && c.statut === 'Planifiée' ? '<div class="meta" style="color:#8A5A00;font-weight:700;margin-top:6px">⚠ Financement non validé : ne pas installer.</div>' : '') +
         '</div><div style="font-size:20px;color:var(--muted)">' + (o ? '▴' : '▾') + '</div></div>';
       if (o) h += ficheChantier(c);
       h += '</div>';
     });
+    const L = CH.praticiens && CH.praticiens.libres || [];
+    if (L.length) {
+      h += '<div class="sec grp">Dossiers praticiens récents sans chantier <em>' + L.length + '</em></div><p class="sub">Dossiers du Drive « Praticiens » modifiés ces 4 derniers mois et liés à aucun chantier. Pour en faire un chantier, créez l\'installation (onglet « Installations ») avec le même nom de praticien : le dossier s\'y rattache tout seul.</p>' +
+        L.map(d => '<div class="card"><div class="row" style="flex-wrap:wrap"><div style="flex:1;min-width:180px"><b style="color:var(--navy)">📁 ' + esc(d.nom) + '</b><div class="meta">modifié le ' + esc(d.maj) + '</div></div>' + pratBoutons(d) + '</div></div>').join('');
+    }
     main.innerHTML = h;
   }
   function ficheChantier(c) {
@@ -281,6 +286,7 @@
       '<div class="toolbar"><button class="btn-light" onclick="majChantier(this,\'' + n + '\')">Enregistrer</button>' +
       (c.adresse ? '<a class="btn-light" target="_blank" href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(c.adresse) + '">Itinéraire</a>' : '') +
       (c.lien ? '<a class="btn-light" target="_blank" href="' + esc(c.lien) + '">Ouvrir le dossier technique</a>' : '') + '<span class="meta" id="chEtat"></span></div>' +
+      blocPraticien(c) +
       '<div class="sec">Documents du chantier (' + c.docs.length + ')</div>' +
       c.docs.map(x => '<div class="row" style="padding:4px 0"><div style="flex:1">📄 ' + esc(x.nom) + ' <span class="meta">· ' + esc(x.date) + '</span></div><button class="btn-light" onclick="chDoc(this,\'' + n + '\',\'' + esc(x.id) + '\')">Télécharger</button></div>').join('') +
       '<div class="toolbar"><label class="btn-light" style="margin:0">+ Ajouter un document (descriptif, plan, devis…)<input type="file" style="display:none" onchange="chEnvoyer(this,\'' + n + '\')"></label><span class="meta" id="chFic"></span></div>' +
@@ -316,6 +322,41 @@
     const rd = new FileReader();
     rd.onload = async () => { const r = await api('chantier_doc_ajouter', { n, nom: f.name, mime: f.type, base64: String(rd.result).split(',')[1] }); if (!r.ok) alert(r.message); rechargerCh(); };
     rd.readAsDataURL(f);
+  }
+  // ----- Dossier « Praticiens » du Drive (dossier technique, plans APS) -----
+  const mo = t => t ? ' (' + (Math.round(t / 104857.6) / 10) + ' Mo)' : '';
+  function pratBoutons(p) {
+    return (p.dt ? '<button class="btn" onclick="pratOuvrir(this,\'' + esc(p.dt.id) + '\')">📄 Dossier technique' + mo(p.dt.taille) + '</button>' : '') +
+      (p.aps ? '<button class="btn-light" onclick="pratOuvrir(this,\'' + esc(p.aps.id) + '\')">📐 ' + esc(p.aps.nom.replace(/\.pdf$/i, '')) + '</button>' : '') +
+      (p.url ? '<a class="btn-light" style="text-decoration:none" target="_blank" href="' + esc(p.url) + '">Ouvrir dans Drive</a>' : '');
+  }
+  function blocPraticien(c) {
+    const P = CH.praticiens || {}, n = esc(c.n);
+    if (!P.ok) return '<div class="sec">Dossier praticien</div><div class="meta">Dossier « Praticiens » du Drive inaccessible pour le moment.</div>';
+    const choix = '<select onchange="pratAssocier(this,\'' + n + '\')" style="width:auto;max-width:100%"><option value="">' + (c.prat ? 'Changer de dossier…' : 'Associer un dossier…') + '</option>' +
+      P.dossiers.map(d => '<option value="' + esc(d.id) + '">' + esc(d.nom) + '</option>').join('') + '<option value="AUCUN">— Aucun dossier pour ce chantier</option></select>';
+    if (!c.prat) return '<div class="sec">Dossier praticien (Drive)</div><div class="meta" style="margin-bottom:6px">Aucun dossier trouvé automatiquement dans « Praticiens ».</div>' + choix;
+    const p = c.prat;
+    return '<div class="sec">Dossier praticien (Drive) · ' + esc(p.nom) + '</div>' +
+      '<div class="toolbar">' + pratBoutons(p) + '</div>' +
+      (p.dt ? '<div class="meta">Dossier technique : ' + esc(p.dt.nom) + ' · ' + esc(p.dt.date) + '</div>' : '<div class="meta">Pas encore de « Dossier technique » PDF dans ce dossier.</div>') +
+      (p.recents && p.recents.length ? '<details style="margin-top:6px"><summary class="meta" style="cursor:pointer">Derniers fichiers (' + p.nb + ' au total)</summary>' +
+        p.recents.map(x => '<div class="row" style="padding:3px 0"><div style="flex:1">📄 ' + esc(x.nom) + ' <span class="meta">· ' + (x.sous ? esc(x.sous) + ' · ' : '') + esc(x.date) + '</span></div><button class="btn-light" onclick="pratOuvrir(this,\'' + esc(x.id) + '\')">Ouvrir</button></div>').join('') + '</details>' : '') +
+      '<div style="margin-top:6px">' + choix + '</div>';
+  }
+  async function pratOuvrir(b, id) {
+    const t = b.innerHTML; b.disabled = true; b.textContent = 'Téléchargement…';
+    let r; try { r = await api('chantier_prat_ouvrir', { id }); } catch (e) { r = { ok: false, message: 'Connexion impossible.' }; }
+    b.disabled = false; b.innerHTML = t;
+    if (!r.ok) { alert(r.message); return; }
+    const bin = Uint8Array.from(atob(r.base64), c => c.charCodeAt(0)), url = URL.createObjectURL(new Blob([bin], { type: r.mime }));
+    const a = document.createElement('a'); a.href = url; a.download = r.nom; document.body.appendChild(a); a.click(); a.remove();
+  }
+  async function pratAssocier(sel, n) {
+    if (!sel.value) return;
+    sel.disabled = true; const r = await api('chantier_prat_associer', { n, dossier: sel.value });
+    if (!r.ok) { sel.disabled = false; alert(r.message); return; }
+    CH = null; vueChantiers();
   }
   async function chDoc(b, n, id) {
     b.disabled = true; b.textContent = 'Téléchargement…';
@@ -647,7 +688,7 @@
       '<p><b>Installations</b> : « + Nouvelle installation », choisissez le cabinet, le praticien, la date et cochez le matériel. Les tâches sont créées et réparties toutes seules : vérification du financement (assistante de direction), réunion de chantier (responsable technique), classeur d\'installation, fiche d\'identification du générateur et PV pour la radio, panoramique et cône beam, révision annuelle, proposition de contrat… ' +
       'Tant que le financement n\'est pas « Validé », une alerte part chaque matin dans les 30 jours avant l\'installation (et au gérant à 7 jours). Changez le financement et le statut directement sur la fiche.</p>' +
       '<p><b>Documents du cabinet</b> : déposez les PDF (PV, fiche d\'identification, contrôle qualité…) dans le dossier Google Drive du cabinet (onglet « Documents cabinets » du tableau). Le praticien les retrouve dans son Assistance, rubrique « Mes documents », et reçoit une notification.</p>' +
-      '<p><b>Chantiers</b> (responsable technique, techniciens, direction) : chaque installation à venir avec la date, le financement (⚠ si pas validé), l\'adresse et l\'itinéraire, le dossier technique (documents déposés ici + lien), les artisans du chantier avec leurs coordonnées (touchez le numéro pour appeler) et les tâches qui restent. Ces documents ne sont jamais visibles par le praticien.</p>' +
+      '<p><b>Chantiers</b> (responsable technique, techniciens, direction) : chaque installation à venir avec la date, le financement (⚠ si pas validé), l\'adresse et l\'itinéraire, le dossier technique (documents déposés ici + lien), les artisans du chantier avec leurs coordonnées (touchez le numéro pour appeler) et les tâches qui restent. Le dossier du praticien dans le Drive « Praticiens » est retrouvé tout seul par le nom : bouton 📄 Dossier technique (le PDF le plus récent), plans APS et derniers fichiers. S\'il n\'est pas trouvé, choisissez-le dans la liste « Associer un dossier ». Ces documents ne sont jamais visibles par le praticien.</p>' +
       '<p><b>Rendez-vous</b> : sur une tâche, ⏱ indique le nombre de techniciens et le temps à prévoir pour l\'intervention (visible par la secrétaire et Bruno pour caler le rendez-vous). 👥 l\'attribue à une ou plusieurs personnes.</p>' +
       '<p><b>Clients</b> : tous les cabinets, avec recherche. Touchez un cabinet : adresse et itinéraire, téléphone (appel direct), praticiens, matériel prêté chez lui et installations.</p>' +
       '<p><b>Prêts</b> : « + Ajouter un matériel au parc » (type, marque, n° de série). « Prêter » l\'attribue à un cabinet et un praticien avec une date de retour ; « Récupéré ✓ » quand il revient au dépôt. Un prêt en retard est signalé chaque matin au responsable technique.</p>' +
