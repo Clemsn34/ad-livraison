@@ -58,12 +58,12 @@
   .prog { height: 6px; background: #EEF2F8; border-radius: 4px; overflow: hidden; margin-top: 6px; } .prog i { display: block; height: 100%; background: var(--gold); }
   .vide { color: var(--muted); background: #fff; border: 1px dashed var(--line); border-radius: 12px; padding: 14px; }
   .aide p, .aide li { line-height: 1.55; }
-  :root { --navy: #3E1236; --gold: #C32E80; --bg: #FAF4F8; --line: #EAD9E4; }
-  nav button.on { color: #3E1236; }
-  .bdg { background: #F6E6F0; color: #3E1236; }
+  :root { --navy: #1A1A1A; --gold: #B8297A; --bg: #FAF5F8; --line: #E8DCE3; }
+  nav button.on { color: #1A1A1A; }
+  .bdg { background: #F7E7F0; color: #1A1A1A; }
 </style>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#3E1236">
+<meta name="theme-color" content="#1A1A1A">
 <link rel="icon" href="icone-192.png?v=2">
 <link rel="apple-touch-icon" href="icone-192.png?v=2">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -150,7 +150,8 @@
     const retard = mesTaches().filter(t => t.statut !== 'Fait' && jour(t.echeance) && jour(t.echeance) <= auj).length;
     let tabs = [['taches', 'Mes tâches', retard]].concat(D.estAD ? [['clients', 'Clients'], ['installs', 'Installations']] : [], D.prets ? [['prets', 'Prêts']] : [], D.devis ? [['devis', 'Devis entretien']] : [], [['publier', 'Publier']], D.revisions ? [['revs', 'Révisions']] : [], D.conso ? [['conso', 'Consommables']] : [],
       D.estAD ? [['demandes', 'Demandes des cabinets']] : [], [['docs', 'Documents'], ['orga', 'Organigramme'], ['aide', 'Mode d\'emploi']]);
-    if (APP === 'conso') tabs = tabs.filter(t => ['taches', 'conso', 'publier', 'docs', 'orga', 'aide'].includes(t[0]));
+    if (APP === 'conso') tabs = [['taches', 'Mes tâches', retard], ['clients', 'Clients'], ['publier', 'Publier'], ['conso', 'Consommables'], ['demandes', 'Demandes des cabinets'], ['docs', 'Documents'], ['orga', 'Organigramme'], ['aide', 'Mode d\'emploi']];
+    else if (D.estAD) tabs = tabs.filter(t => t[0] !== 'conso');
     if (!tabs.some(t => t[0] === onglet)) onglet = 'taches';
     document.getElementById('nav').innerHTML = tabs.map(t => '<button class="' + (onglet === t[0] ? 'on' : '') + '" onclick="aller(\'' + t[0] + '\')">' + t[1] + (t[2] ? '<span class="nb">' + t[2] + '</span>' : '') + '</button>').join('');
     ({ taches: vueTaches, clients: vueClients, installs: vueInstalls, conso: vueConso, demandes: vueDemandes, orga: vueOrga, docs: vueDocs, revs: vueRevs, chantiers: vueChantiers, devis: vueDevis, prets: vuePrets, publier: vuePublier, aide: vueAide })[onglet]();
@@ -407,6 +408,37 @@
     if (!r.ok) { sel.disabled = false; alert(r.message); return; }
     CH = null; vueChantiers();
   }
+  // ----- Documents du cabinet (vus aussi dans « Mes documents » de l'Assistance) : Matériel / Consommable -----
+  let CD = null, cdOnglet = APP === 'conso' ? 'conso' : 'mat';
+  async function chargerCabDocs() {
+    const z = document.getElementById('cabDocs'); if (!z) return;
+    let r; try { r = await api('cab_docs', { id: z.dataset.id, nom: z.dataset.nom }); } catch (e) { r = { ok: false, message: 'Connexion impossible.' }; }
+    if (!r.ok) { z.innerHTML = '<div class="meta">' + esc(r.message) + '</div>'; return; }
+    CD = r; afficherCabDocs();
+  }
+  function afficherCabDocs() {
+    const z = document.getElementById('cabDocs'); if (!z || !CD) return;
+    const l = CD[cdOnglet] || [], o = (k, t) => '<button class="' + (cdOnglet === k ? 'btn' : 'btn-light') + '" onclick="cdOnglet=\'' + k + '\';afficherCabDocs()">' + t + ' (' + (CD[k] || []).length + ')</button>';
+    z.innerHTML = '<div class="toolbar">' + o('mat', '🔧 Matériel') + o('conso', '📦 Consommable') + '</div>' +
+      (l.length ? l.map(x => '<div class="row" style="padding:4px 0"><div style="flex:1">📄 ' + esc(x.nom) + ' <span class="meta">· ' + (x.appareil && x.appareil !== 'Consommable' ? esc(x.appareil) + ' · ' : '') + esc(x.date) + '</span></div><button class="btn-light" onclick="cabDocOuvrir(this,\'' + esc(x.id) + '\')">Ouvrir</button></div>').join('') : '<div class="meta">Aucun document ' + (cdOnglet === 'conso' ? 'consommable' : 'matériel') + ' pour ce cabinet.</div>') +
+      '<div class="toolbar" style="margin-top:6px"><label class="btn-light" style="margin:0">+ Ajouter un document ' + (cdOnglet === 'conso' ? 'consommable' : 'matériel') + '<input type="file" style="display:none" onchange="cabDocAjouter(this)"></label><span class="meta" id="cdEtat">Visible aussi par le praticien dans « Mes documents ».</span></div>';
+  }
+  async function cabDocAjouter(inp) {
+    const f = inp.files[0], z = document.getElementById('cabDocs'); if (!f || !z) return;
+    if (f.size > 15 * 1024 * 1024) { alert('Fichier trop volumineux (15 Mo maximum).'); return; }
+    document.getElementById('cdEtat').textContent = 'Envoi…';
+    const b64 = await new Promise(ok => { const rd = new FileReader(); rd.onload = () => ok(String(rd.result).split(',')[1]); rd.readAsDataURL(f); });
+    const r = await api('cab_doc_ajouter', { id: z.dataset.id, nom: z.dataset.nom, cat: cdOnglet, nomFichier: f.name, mime: f.type || 'application/octet-stream', base64: b64 });
+    if (!r.ok) { document.getElementById('cdEtat').textContent = r.message; return; }
+    chargerCabDocs();
+  }
+  async function cabDocOuvrir(b, doc) {
+    const z = document.getElementById('cabDocs'), t = b.textContent; b.disabled = true; b.textContent = '…';
+    const r = await api('cab_doc_ouvrir', { id: z.dataset.id, doc }); b.disabled = false; b.textContent = t;
+    if (!r.ok) { alert(r.message); return; }
+    const bin = Uint8Array.from(atob(r.base64), c => c.charCodeAt(0)), url = URL.createObjectURL(new Blob([bin], { type: r.mime }));
+    const a = document.createElement('a'); a.href = url; a.download = r.nom; document.body.appendChild(a); a.click(); a.remove();
+  }
   async function chDoc(b, n, id) {
     b.disabled = true; b.textContent = 'Téléchargement…';
     const r = await api('chantier_doc_ouvrir', { n, id });
@@ -437,9 +469,11 @@
           (c.personnes.length ? '<div class="sec" style="margin-top:10px">Praticiens et équipe</div>' + c.personnes.map(p => '<div class="row" style="padding:3px 0"><div style="flex:1"><b>' + esc(p.nom) + '</b>' + (p.fonction ? ' · <span class="meta">' + esc(p.fonction) + '</span>' : '') + '</div>' + (p.tel ? '<a href="tel:' + esc(String(p.tel).replace(/\s/g, '')) + '">' + esc(p.tel) + '</a>' : '') + '</div>').join('') : (c.contact ? '<div class="meta">Contact : ' + esc(c.contact) + '</div>' : '')) +
           (c.prets.length ? '<div class="sec" style="margin-top:10px">Matériel prêté</div>' + c.prets.map(p => '<div class="meta" style="padding:2px 0">' + esc(p.materiel) + (p.serie ? ' · n° ' + esc(p.serie) : '') + (p.retour ? ' · retour ' + (p.retard ? '<b style="color:#C0392B">prévu le ' + esc(p.retour) + ' (en retard)</b>' : 'prévu le ' + esc(p.retour)) : '') + '</div>').join('') : '') +
           (c.installs.length ? '<div class="sec" style="margin-top:10px">Installations</div>' + c.installs.map(i => '<div class="meta" style="padding:2px 0">' + esc(i.date || 'Date à fixer') + ' · ' + esc(i.materiel) + ' · ' + esc(i.statut) + '</div>').join('') : '') +
-          (c.notes ? '<div class="sec" style="margin-top:10px">Notes</div><div class="meta">' + esc(c.notes) + '</div>' : '') + '</div>' : '') + '</div>';
+          (c.notes ? '<div class="sec" style="margin-top:10px">Notes</div><div class="meta">' + esc(c.notes) + '</div>' : '') +
+          '<div class="sec" style="margin-top:10px">Documents du cabinet</div><div id="cabDocs" data-id="' + esc(c.id) + '" data-nom="' + esc(c.nom) + '"><div class="meta">Chargement…</div></div>' + '</div>' : '') + '</div>';
     }).join('') + (l.length > 150 ? '<div class="vide">' + (l.length - 150) + ' autres : affinez la recherche.</div>' : '') + (!l.length ? '<div class="vide">Aucun cabinet trouvé.</div>' : '');
     main.innerHTML = h;
+    if (document.getElementById('cabDocs')) chargerCabDocs();
     if (window.__clF) { const q = document.getElementById('clQ'); q.focus(); q.setSelectionRange(q.value.length, q.value.length); window.__clF = false; }
   }
 
@@ -611,8 +645,9 @@
   async function vueDemandes() {
     document.getElementById('main').innerHTML = '<h2>Demandes des cabinets</h2><p class="sub">Chargement…</p>';
     const d = await api('demandes'); DM = d;
-    const bt = k => (l, e) => '<button class="btn-light" style="white-space:nowrap" onclick="demandeEnTache(\'' + k + '\',' + d[k].lignes.indexOf(l) + ')">➕ Tâche</button>';
-    document.getElementById('main').innerHTML = '<h2>Demandes des cabinets</h2><p class="sub">Les dernières demandes reçues depuis l\'Assistance et la page étudiants. « ➕ Tâche » transforme une demande en tâche (à qui, quand, techniciens et temps à prévoir). Le suivi (statut, notes) se fait dans le tableau Google.</p>' +
+    const bt = k => (l, e) => { const i = d[k].lignes.indexOf(l), t = d[k].taches && d[k].taches[i];
+      return t ? '<span class="bdg t" style="white-space:nowrap">✓ Tâche ' + esc(t.n) + ' · ' + esc(t.pour) + '</span>' : '<button class="btn-light" style="white-space:nowrap" onclick="demandeEnTache(\'' + k + '\',' + i + ')">➕ Tâche</button>'; };
+    document.getElementById('main').innerHTML = '<h2>Demandes des cabinets</h2><p class="sub">Les dernières demandes reçues depuis l\'Assistance et la page étudiants. Chaque nouvelle demande crée toute seule une tâche pour la bonne personne (✓ Tâche) ; quand la tâche est cochée « faite », la demande disparaît d\'ici. « ➕ Tâche » transforme une demande en tâche (à qui, quand, techniciens et temps à prévoir). Le suivi (statut, notes) se fait dans le tableau Google.</p>' +
       '<div class="sec">Pannes et demandes d\'intervention</div>' + tableau(d.interventions, ['N°', 'Date', 'Cabinet', 'Contact', 'Téléphone', 'Problème décrit', 'Statut', 'Technicien'], bt('interventions')) +
       '<div class="sec">Devis et opportunités</div>' + tableau(d.opportunites, ['N°', 'Date', 'Cabinet', 'Contact', 'Téléphone', 'Service', 'Détail', 'Statut'], bt('opportunites')) +
       '<div class="sec">Devis d\'entretien</div>' + tableau(d.devis, null, bt('devis')) +
