@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alternative Dentaire · Agence</title>
+<style>
+  :root { --navy: #0F2347; --gold: #E3A72F; --text: #1F2937; --muted: #5A6880; --line: #DCE3EE; --bg: #F4F6FA; --ok: #1E8449; --ko: #C0392B; }
+  /*CHARTE*/
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; color: var(--text); background: var(--bg); font-size: 14px; }
+  header { background: var(--navy); color: #fff; display: flex; align-items: center; gap: 12px; padding: 12px 22px; border-bottom: 3px solid var(--gold); }
+  header img { width: 40px; height: 40px; background: #fff; border-radius: 50%; padding: 3px; }
+  header .brand b { display: block; letter-spacing: 2px; font-size: 13px; color: var(--gold); }
+  header .brand span { font-size: 18px; font-weight: 700; }
+  header .moi { margin-left: auto; text-align: right; font-size: 13px; }
+  header .moi small { display: block; color: #AFC0DA; }
+  nav { display: flex; gap: 4px; padding: 10px 22px 0; background: #fff; border-bottom: 1px solid var(--line); overflow-x: auto; }
+  nav button { border: 0; background: none; padding: 10px 14px; font: inherit; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; }
+  nav button.on { color: var(--navy); border-bottom-color: var(--gold); }
+  nav button .nb { background: var(--ko); color: #fff; border-radius: 10px; padding: 1px 7px; font-size: 11px; margin-left: 4px; }
+  main { max-width: 1100px; margin: 0 auto; padding: 18px 16px 50px; }
+  h2 { color: var(--navy); margin: 0 0 4px; font-size: 20px; }
+  .sub { color: var(--muted); margin: 0 0 14px; }
+  .sec { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; }
+  .row { display: flex; align-items: center; gap: 12px; }
+  .tache input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--navy); flex-shrink: 0; cursor: pointer; }
+  .tache .t { flex: 1; }
+  .tache .t b { color: var(--navy); }
+  .tache .cli { font-size: 14.5px; font-weight: 700; color: #1F4FA8; line-height: 1.25; }
+  .bdg.t { background: #EEF0FF; color: #3B3FA8; }
+  .tache .tt { font-size: 14.5px; color: var(--text); margin-top: 2px; }
+  .tache.fait .cli, .tache.fait .tt { text-decoration: line-through; color: var(--muted); }
+  .sec.grp { font-size: 13px; color: var(--navy); border-bottom: 2px solid var(--gold); padding-bottom: 4px; margin-top: 22px; }
+  .sec.grp em { font-style: normal; background: #EAF0FA; color: #1F4FA8; border-radius: 99px; padding: 1px 8px; margin-left: 4px; }
+  .tache.fait .t b { text-decoration: line-through; color: var(--muted); }
+  .meta { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .bdg { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 20px; background: #EAF0FA; color: var(--navy); margin-right: 4px; }
+  .bdg.r { background: #FDECEA; color: var(--ko); } .bdg.v { background: #E7F5EC; color: var(--ok); } .bdg.o { background: #FFF4DC; color: #8A5A00; }
+  .btn { background: var(--navy); color: #fff; border: 2px solid var(--gold); border-radius: 10px; padding: 9px 16px; font: inherit; font-weight: 700; cursor: pointer; }
+  .btn-light { background: #fff; color: var(--navy); border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 14px; font: inherit; font-weight: 600; cursor: pointer; }
+  .btn:disabled { opacity: .6; }
+  label { display: block; font-size: 12.5px; font-weight: 700; color: var(--navy); margin: 10px 0 4px; }
+  input, select, textarea { width: 100%; padding: 9px 11px; border: 1.5px solid var(--line); border-radius: 9px; font: inherit; background: #fff; }
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; } .g3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
+  @media (max-width: 700px) { .g2, .g3 { grid-template-columns: 1fr; } }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips label { margin: 0; font-weight: 600; color: var(--text); border: 1.5px solid var(--line); border-radius: 20px; padding: 6px 11px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+  .chips input { width: auto; } .chips label:has(input:checked) { border-color: var(--gold); background: #FFF8E8; }
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  .toolbar select { width: auto; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 13px; }
+  th { background: #EEF2F8; color: var(--navy); text-align: left; padding: 7px 9px; font-size: 12px; white-space: nowrap; }
+  td { padding: 7px 9px; border-top: 1px solid var(--line); vertical-align: top; }
+  .tw { overflow-x: auto; margin-bottom: 14px; }
+  .err { color: var(--ko); min-height: 18px; margin: 8px 0 0; }
+  .prog { height: 6px; background: #EEF2F8; border-radius: 4px; overflow: hidden; margin-top: 6px; } .prog i { display: block; height: 100%; background: var(--gold); }
+  .vide { color: var(--muted); background: #fff; border: 1px dashed var(--line); border-radius: 12px; padding: 14px; }
+  .aide p, .aide li { line-height: 1.55; }
+</style>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0F2347">
+<link rel="icon" href="icone-192.png">
+<link rel="apple-touch-icon" href="icone-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+</head>
+<body>
+<header>
+  <img src="logo.png" alt="">
+  <div class="brand"><b>ALTERNATIVE DENTAIRE</b><span>Agence</span></div>
+  <div class="moi" id="moi"></div>
+</header>
+<nav id="nav"></nav>
+<main id="main"><div class="vide">Chargement…</div></main>
+<script>
+  const EXEC = 'https://script.google.com/macros/s/AKfycbylyfquDSMq2V5u_fq6L0a8N-MNIRzZhmXa1vGSX_h-k6lBg0w4P-QcrAjZzz_y7pw2hQ/exec'; let TOKEN = '';
+  let D = null, onglet = 'taches', filtreTaches = 'moi', formInstall = false;
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const jour = s => { const m = String(s || '').match(/^(\d{2})\/(\d{2})\/(\d{4})/); return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null; };
+  const auj = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })();
+  let QUI = ''; try { QUI = localStorage.getItem('ag_qui') || ''; } catch (e) {}
+  async function api(op, data) {
+    const r = await fetch(EXEC, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ action: 'agence', token: TOKEN, op, qui: QUI }, data || {})) });
+    const j = await r.json();
+    if (j.expire) {
+      let code = ''; try { code = localStorage.getItem('ag_code') || ''; } catch (e) {}
+      if (code && !api.relance) { api.relance = true; const l = await connecter(code); api.relance = false; if (l) return api(op, data); }
+      ecranCode(); throw new Error('expire');
+    }
+    return j;
+  }
+  // Connexion par code personnel (quand le compte Google du téléphone n'est pas celui de l'agence)
+  async function connecter(code) {
+    const r = await fetch(EXEC, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'agence', op: 'login', code }) });
+    const j = await r.json();
+    if (!j.ok) { try { localStorage.removeItem('ag_code'); } catch (e) {} return false; }
+    TOKEN = j.token; try { localStorage.setItem('ag_code', code); } catch (e) {} return true;
+  }
+  function ecranCode(msg) {
+    document.getElementById('nav').innerHTML = ''; document.getElementById('moi').innerHTML = '';
+    document.getElementById('main').innerHTML = '<div class="card" style="max-width:420px;margin:40px auto"><h2>Connexion</h2><p class="sub">Entrez votre code personnel (donné par Clément). Il sera retenu sur cet appareil.<br>Sur l\'ordinateur du bureau, la connexion avec le compte @alternativedentaire.fr se fait toute seule.</p>' +
+      '<input id="cdIn" autocomplete="off" autocapitalize="characters" placeholder="Code personnel" style="font-size:18px;letter-spacing:2px;text-transform:uppercase" onkeydown="if(event.key===\'Enter\')essaiCode(this)">' +
+      '<label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" style="width:auto" onchange="document.getElementById(\'cdIn\').type=this.checked?\'text\':\'password\'" checked> Afficher le code</label>' +
+      '<p class="err" id="cdErr">' + (msg || '') + '</p><button class="btn" style="width:100%" onclick="essaiCode(document.getElementById(\'cdIn\'))">Se connecter</button></div>';
+  }
+  async function essaiCode(inp) {
+    const c = String(inp.value || '').trim().toUpperCase().replace(/\s/g, '');
+    if (c.length < 6) { document.getElementById('cdErr').textContent = 'Code incomplet.'; return; }
+    document.getElementById('cdErr').textContent = 'Connexion…';
+    if (await connecter(c)) charger(); else document.getElementById('cdErr').textContent = 'Code incorrect.';
+  }
+  async function charger() {
+    if (!TOKEN) {
+      let code = ''; try { code = localStorage.getItem('ag_code') || ''; } catch (e) {}
+      if (!code || !(await connecter(code))) { ecranCode(); return; }
+    }
+    D = await api('init'); if (!D.ok) { document.getElementById('main').innerHTML = '<div class="vide">' + esc(D.message) + '</div>'; return; }
+    if (D.partage && D.partage.indexOf(QUI) < 0) { choisirQui(); return; }
+    afficher();
+  }
+  // Compte partagé (ex. : consommable@) : chacun choisit son prénom une fois sur son ordinateur
+  function choisirQui() {
+    document.getElementById('nav').innerHTML = '';
+    document.getElementById('main').innerHTML = '<div class="card" style="max-width:420px;margin:40px auto;text-align:center"><h2>Qui êtes-vous ?</h2><p class="sub">Ce compte est partagé. Choisissez votre prénom : il sera retenu sur cet ordinateur.</p>' +
+      D.partage.map(p => '<button class="btn" style="margin:6px" onclick="choisir(\'' + esc(p) + '\')">' + esc(p) + '</button>').join('') + '</div>';
+  }
+  function choisir(p) { QUI = p; try { localStorage.setItem('ag_qui', p); } catch (e) {} charger(); }
+  function changerQui() { try { localStorage.removeItem('ag_qui'); } catch (e) {} QUI = ''; charger(); }
+  const pourDe = t => String(t.pour || '').split(/\s*[,;]\s*/).filter(Boolean);
+  function mesTaches() { return D.taches.filter(t => pourDe(t).includes(D.moi.prenom)); }
+  let attribuant = '';
+  function chipsPour(nom, choisis) { return '<div class="chips">' + D.equipe.map(e => '<label><input type="checkbox" name="' + nom + '" value="' + esc(e.prenom) + '"' + (choisis.includes(e.prenom) ? ' checked' : '') + '>' + esc(e.prenom) + '</label>').join('') + '</div>'; }
+  const cochés = nom => [...document.querySelectorAll('input[name=' + nom + ']:checked')].map(i => i.value);
+  async function attribuer(b, n) {
+    const l = cochés('at_' + n); if (!l.length) { alert('Choisissez au moins une personne.'); return; }
+    b.disabled = true; const r = await api('tache_attribuer', { n, pour: l });
+    if (!r.ok) { b.disabled = false; alert(r.message); return; }
+    const t = D.taches.find(x => x.n === n); if (t) t.pour = r.pour; attribuant = ''; afficher();
+  }
+  function afficher() {
+    document.getElementById('moi').innerHTML = esc(D.moi.prenom + ' ' + D.moi.nom) + '<small>' + esc(D.moi.poste || D.moi.role) + ' · ' + esc(D.moi.societe) +
+      (D.partage ? ' · <a href="#" onclick="changerQui();return false" style="color:inherit">changer</a>' : '') + '</small>';
+    const retard = mesTaches().filter(t => t.statut !== 'Fait' && jour(t.echeance) && jour(t.echeance) <= auj).length;
+    const tabs = [['taches', 'Mes tâches', retard]].concat(D.estAD ? [['clients', 'Clients'], ['installs', 'Installations']] : [], D.chantiers ? [['chantiers', 'Chantiers']] : [], D.prets ? [['prets', 'Prêts']] : [], D.devis ? [['devis', 'Devis entretien']] : [], [['publier', 'Publier']], D.revisions ? [['revs', 'Révisions']] : [], D.conso ? [['conso', 'Consommables']] : [],
+      D.estAD ? [['demandes', 'Demandes des cabinets']] : [], [['docs', 'Documents'], ['orga', 'Organigramme'], ['aide', 'Mode d\'emploi']]);
+    document.getElementById('nav').innerHTML = tabs.map(t => '<button class="' + (onglet === t[0] ? 'on' : '') + '" onclick="aller(\'' + t[0] + '\')">' + t[1] + (t[2] ? '<span class="nb">' + t[2] + '</span>' : '') + '</button>').join('');
+    ({ taches: vueTaches, clients: vueClients, installs: vueInstalls, conso: vueConso, demandes: vueDemandes, orga: vueOrga, docs: vueDocs, revs: vueRevs, chantiers: vueChantiers, devis: vueDevis, prets: vuePrets, publier: vuePublier, aide: vueAide })[onglet]();
+  }
+  function aller(o) { onglet = o; afficher(); }
+
+  // ---------------- Tâches ----------------
+  function vueTaches() {
+    const liste = filtreTaches === 'moi' ? mesTaches() : filtreTaches === 'tous' ? D.taches : D.taches.filter(t => pourDe(t).includes(filtreTaches));
+    let h = '<h2>' + (filtreTaches === 'moi' ? 'Mes tâches' : 'Tâches') + '</h2><p class="sub">Cochez une tâche quand elle est faite. Chaque matin, vos tâches du jour arrivent en notification sur votre téléphone.</p>' +
+      '<div class="toolbar"><select onchange="filtreTaches=this.value;afficher()"><option value="moi">Mes tâches</option><option value="tous"' + (filtreTaches === 'tous' ? ' selected' : '') + '>Toute l\'équipe</option>' +
+      D.equipe.filter(e => e.prenom !== D.moi.prenom).map(e => '<option value="' + esc(e.prenom) + '"' + (filtreTaches === e.prenom ? ' selected' : '') + '>' + esc(e.prenom) + ' (' + esc(e.role) + ')</option>').join('') + '</select>' +
+      '<button class="btn-light" onclick="document.getElementById(\'nt\').style.display=\'block\'">+ Nouvelle tâche</button></div>' +
+      '<div class="card" id="nt" style="display:none"><div class="g3"><div><label>Client / cabinet (vide = tâche interne)</label><input id="ntC" list="cabs" placeholder="Ex. : Dr Marty"></div><div><label>Tâche</label><input id="ntT" placeholder="Ex. : rappeler le Dr Martin pour le devis"></div>' +
+      '<div><label>Échéance</label><input id="ntE" type="date" value="' + new Date().toISOString().slice(0, 10) + '"></div></div>' +
+      '<label>Pour (une ou plusieurs personnes : la première qui la fait la coche)</label>' + chipsPour('ntP', [D.moi.prenom]) +
+      '<div class="g3"><div><label>Techniciens à prévoir</label><select id="ntN">' + optTechs('') + '</select></div><div><label>Temps à prévoir</label><select id="ntDu">' + optDuree('') + '</select></div><div><label>Détail (facultatif)</label><input id="ntD"></div></div>' +
+      '<p class="err" id="ntErr"></p><button class="btn" onclick="ajouterTache(this)">Ajouter</button></div>' + datalistCabs();
+    const cli = t => { if (t.cabinet) return { c: t.cabinet, t: t.titre }; const m = /^([^:]{2,60})\s*:\s*(.+)$/.exec(t.titre || ''); return m ? { c: m[1].trim(), t: m[2].trim().charAt(0).toUpperCase() + m[2].trim().slice(1) } : (t.install ? { c: 'Installation ' + t.install, t: t.titre } : null); };
+    const ordre = (a, b) => (jour(a.echeance) || 9e15) - (jour(b.echeance) || 9e15);
+    const carte = t => {
+      const k = cli(t), fait = t.statut === 'Fait', j = jour(t.echeance);
+      const bd = fait ? '' : !j ? '' : j < auj ? '<span class="bdg r">En retard · ' + esc(t.echeance) + '</span>' : +j === +auj ? '<span class="bdg o">Aujourd\'hui</span>' : '<span class="bdg">' + esc(t.echeance) + '</span>';
+      return '<div class="card tache' + (fait ? ' fait' : '') + '"><div class="row" style="align-items:flex-start">' +
+        '<input type="checkbox"' + (fait ? ' checked' : '') + ' onchange="cocher(\'' + esc(t.n) + '\', this.checked)" style="margin-top:3px">' +
+        '<div class="t">' + (k ? '<div class="cli">' + esc(k.c) + '</div><div class="tt">' + esc(k.t) + '</div>' : '<div class="tt">' + esc(t.titre) + '</div>') +
+        (t.techs || t.duree ? '<div style="margin-top:4px">' + (t.techs ? '<span class="bdg t">👷 ' + esc(t.techs) + ' technicien' + (t.techs > 1 ? 's' : '') + '</span>' : '') + (t.duree ? '<span class="bdg t">⏱ ' + esc(t.duree) + '</span>' : '') + '</div>' : '') +
+        '<div class="meta">' + bd + (t.install && t.cabinet ? 'Installation ' + esc(t.install) + ' · ' : '') + (filtreTaches !== 'moi' || pourDe(t).length > 1 ? 'pour ' + esc(t.pour) : '') + (fait ? ' · fait par ' + esc(t.faitPar) + ' le ' + esc(t.faitLe) : '') + '</div>' +
+        (t.detail ? '<div class="meta">' + esc(t.detail) + '</div>' : '') +
+        (infosEdit === t.n ? '<div class="g2" style="margin-top:8px"><div><label>Techniciens à prévoir</label><select id="ie_n">' + optTechs(t.techs) + '</select></div><div><label>Temps à prévoir</label><select id="ie_d">' + optDuree(t.duree) + '</select></div></div><div class="toolbar" style="margin-top:6px"><button class="btn" onclick="enregInfos(this,\'' + esc(t.n) + '\')">Enregistrer</button><button class="btn-light" onclick="infosEdit=\'\';afficher()">Annuler</button></div>' : '') +
+        (attribuant === t.n ? '<div style="margin-top:8px">' + chipsPour('at_' + t.n, pourDe(t)) + '<div class="toolbar" style="margin-top:6px"><button class="btn" onclick="attribuer(this,\'' + esc(t.n) + '\')">Attribuer</button><button class="btn-light" onclick="attribuant=\'\';afficher()">Annuler</button></div></div>' : '') + '</div>' +
+        (!fait && attribuant !== t.n && infosEdit !== t.n ? '<div style="display:flex;flex-direction:column;gap:6px"><button class="btn-light" title="Attribuer à une ou plusieurs personnes" onclick="attribuant=\'' + esc(t.n) + '\';afficher()">👥</button><button class="btn-light" title="Techniciens et temps à prévoir" onclick="infosEdit=\'' + esc(t.n) + '\';afficher()">⏱</button></div>' : '') + '</div></div>';
+    };
+    const af = liste.filter(t => t.statut !== 'Fait');
+    [['Clients', af.filter(t => cli(t))], ['Interne', af.filter(t => !cli(t))], ['Faites ces 14 derniers jours', liste.filter(t => t.statut === 'Fait')]].forEach(([titre, l]) => {
+      if (!l.length) return;
+      h += '<div class="sec grp">' + titre + ' <em>' + l.length + '</em></div>' + l.sort(ordre).map(carte).join('');
+    });
+    if (!liste.length) h += '<div class="vide">Aucune tâche. 🎉</div>';
+    document.getElementById('main').innerHTML = h;
+  }
+  let infosEdit = '';
+  const optTechs = cur => ['', 1, 2, 3, 4].map(x => '<option value="' + x + '"' + (String(cur) === String(x) ? ' selected' : '') + '>' + (x === '' ? '—' : x + ' technicien' + (x > 1 ? 's' : '')) + '</option>').join('');
+  const optDuree = cur => [''].concat(D.durees || []).map(x => '<option value="' + esc(x) + '"' + (cur === x ? ' selected' : '') + '>' + (x || '—') + '</option>').join('');
+  async function enregInfos(b, n) {
+    b.disabled = true; const r = await api('tache_infos', { n, techs: document.getElementById('ie_n').value, duree: document.getElementById('ie_d').value });
+    if (!r.ok) { b.disabled = false; alert(r.message); return; }
+    const t = D.taches.find(x => x.n === n); if (t) { t.techs = r.techs; t.duree = r.duree; } infosEdit = ''; afficher();
+  }
+  async function cocher(n, fait) {
+    const t = D.taches.find(x => x.n === n); if (t) { t.statut = fait ? 'Fait' : 'À faire'; t.faitPar = D.moi.prenom; t.faitLe = new Date().toLocaleDateString('fr-FR'); }
+    afficher(); await api('tache_fait', { n, fait });
+  }
+  async function ajouterTache(b) {
+    const v = id => document.getElementById(id).value.trim();
+    if (v('ntT').length < 3) { document.getElementById('ntErr').textContent = 'Indiquez la tâche.'; return; }
+    b.disabled = true;
+    const pour = cochés('ntP'); if (!pour.length) { document.getElementById('ntErr').textContent = 'Choisissez au moins une personne.'; return; }
+    const r = await api('tache_ajouter', { titre: v('ntT'), pour, echeance: v('ntE'), cabinet: v('ntC'), detail: v('ntD'), techs: v('ntN'), duree: v('ntDu') });
+    if (!r.ok) { b.disabled = false; document.getElementById('ntErr').textContent = r.message; return; }
+    await charger();
+  }
+  function datalistCabs() { return '<datalist id="cabs">' + D.cabinets.map(c => '<option value="' + esc(c.nom) + '">' + esc(c.id + (c.ville ? ' · ' + c.ville : '')) + '</option>').join('') + '</datalist>'; }
+
+  // ---------------- Installations ----------------
+  function badgeFin(f) { return '<span class="bdg ' + (f === 'Validé' || f === 'Non nécessaire' ? 'v' : f === 'Refusé' ? 'r' : 'o') + '">Financement : ' + esc(f) + '</span>'; }
+  function vueInstalls() {
+    let h = '<h2>Installations</h2><p class="sub">Notez chaque installation : le matériel coché crée automatiquement les tâches de chacun (financement, réunion de chantier, classeur, fiches d\'identification, PV, révision annuelle…).</p>' +
+      '<div class="toolbar"><button class="btn" onclick="formInstall=!formInstall;afficher()">' + (formInstall ? 'Fermer' : '+ Nouvelle installation') + '</button></div>';
+    if (formInstall) {
+      h += '<div class="card"><div class="g3"><div><label>Cabinet</label><input id="niC" list="cabs" placeholder="Nom du cabinet"></div><div><label>Praticien</label><input id="niP" placeholder="Dr …"></div>' +
+        '<div><label>Date d\'installation</label><input id="niD" type="date"></div></div>' +
+        '<label>Matériel installé</label><div class="chips">' + D.materiels.map(m => '<label><input type="checkbox" name="niM" value="' + esc(m) + '">' + esc(m) + '</label>').join('') + '</div>' +
+        '<div class="g2"><div><label>Financement</label><select id="niF">' + D.financements.map(f => '<option>' + esc(f) + '</option>').join('') + '</select></div>' +
+        '<div><label>Organisme de financement</label><input id="niO" placeholder="Ex. : banque, leasing…"></div></div>' +
+        '<label>Notes</label><textarea id="niN" rows="2"></textarea><p class="err" id="niErr"></p><button class="btn" onclick="creerInstall(this)">Créer l\'installation et les tâches</button></div>' + datalistCabs();
+    }
+    if (!D.installations.length) h += '<div class="vide">Aucune installation enregistrée.</div>';
+    D.installations.forEach(i => {
+      const ts = D.taches.filter(t => t.install === i.n), faites = ts.filter(t => t.statut === 'Fait').length;
+      const d = jour(i.date), j = d ? Math.round((d - auj) / 86400000) : null;
+      const alerte = i.statut === 'Planifiée' && i.financement !== 'Validé' && i.financement !== 'Non nécessaire' && j !== null && j <= 30;
+      h += '<div class="card"' + (alerte ? ' style="border-color:#E3A72F;box-shadow:0 0 0 2px #FFF4DC"' : '') + '><div class="row" style="align-items:flex-start"><div style="flex:1">' +
+        '<b style="color:var(--navy);font-size:15px">' + esc(i.cabinet) + '</b>' + (i.praticien ? ' · ' + esc(i.praticien) : '') +
+        '<div class="meta">' + esc(i.n) + ' · le ' + esc(i.date) + (j !== null && i.statut === 'Planifiée' ? (j >= 0 ? ' (dans ' + j + ' j)' : ' (date passée)') : '') + ' · ' + esc(i.materiel) + '</div>' +
+        '<div style="margin-top:6px">' + badgeFin(i.financement) + (i.organisme ? '<span class="bdg">' + esc(i.organisme) + '</span>' : '') + '<span class="bdg">' + esc(i.statut) + '</span></div>' +
+        (alerte ? '<div class="meta" style="color:#8A5A00;font-weight:700;margin-top:6px">⚠ Financement non validé : ne pas installer avant validation.</div>' : '') +
+        (ts.length ? '<div class="meta">' + faites + ' / ' + ts.length + ' tâches faites</div><div class="prog"><i style="width:' + Math.round(100 * faites / ts.length) + '%"></i></div>' : '') + '</div>' +
+        '<div style="width:180px"><label style="margin-top:0">Financement</label><select onchange="majInstall(\'' + esc(i.n) + '\',{financement:this.value})">' + D.financements.map(f => '<option' + (f === i.financement ? ' selected' : '') + '>' + esc(f) + '</option>').join('') + '</select>' +
+        '<label>Statut</label><select onchange="majInstall(\'' + esc(i.n) + '\',{statut:this.value})">' + D.statuts.map(s => '<option' + (s === i.statut ? ' selected' : '') + '>' + esc(s) + '</option>').join('') + '</select></div></div></div>';
+    });
+    document.getElementById('main').innerHTML = h;
+  }
+  async function creerInstall(b) {
+    const v = id => document.getElementById(id).value.trim(), err = document.getElementById('niErr');
+    const nom = v('niC'), cab = D.cabinets.find(c => c.nom.toLowerCase() === nom.toLowerCase());
+    const mat = [...document.querySelectorAll('input[name=niM]:checked')].map(i => i.value);
+    if (nom.length < 3) { err.textContent = 'Indiquez le cabinet.'; return; }
+    if (!v('niD')) { err.textContent = 'Indiquez la date d\'installation.'; return; }
+    if (!mat.length) { err.textContent = 'Cochez le matériel installé.'; return; }
+    b.disabled = true; b.textContent = 'Création…';
+    const r = await api('installation_creer', { cabinet: nom, cabId: cab ? cab.id : '', praticien: v('niP'), date: v('niD'), materiel: mat, financement: v('niF'), organisme: v('niO'), notes: v('niN') });
+    if (!r.ok) { b.disabled = false; b.textContent = 'Créer l\'installation et les tâches'; err.textContent = r.message; return; }
+    formInstall = false; await charger(); alert('Installation ' + r.n + ' créée avec ' + r.taches + ' tâche(s).');
+  }
+  async function majInstall(n, data) { const r = await api('installation_maj', Object.assign({ n }, data)); if (r.ok) await charger(); }
+
+  // ---------------- Chantiers (Bruno, techniciens) ----------------
+  let CH = null, chOuvert = '';
+  async function vueChantiers() {
+    const main = document.getElementById('main');
+    if (!CH) { main.innerHTML = '<h2>Chantiers</h2><p class="sub">Chargement…</p>'; const d = await api('chantiers'); if (!d.ok) { main.innerHTML = '<div class="vide">' + esc(d.message) + '</div>'; return; } CH = d; }
+    let h = '<h2>Chantiers</h2><p class="sub">Les installations à venir et celles du dernier mois : date prévue, financement, dossier technique, artisans et tâches restantes. Touchez un chantier pour l\'ouvrir.</p>';
+    if (!CH.chantiers.length) h += '<div class="vide">Aucun chantier en cours. Les installations se créent dans l\'onglet « Installations ».</div>';
+    CH.chantiers.forEach(c => {
+      const d = jour(c.date), j = d ? Math.round((d - auj) / 86400000) : null, ok = c.financement === 'Validé' || c.financement === 'Non nécessaire', o = chOuvert === c.n;
+      h += '<div class="card"' + (!ok && c.statut === 'Planifiée' ? ' style="border-color:#E3A72F"' : '') + '><div class="row" style="cursor:pointer" onclick="chOuvert=chOuvert===\'' + esc(c.n) + '\'?\'\':\'' + esc(c.n) + '\';vueChantiers()"><div style="flex:1">' +
+        '<b style="color:var(--navy);font-size:15px">' + esc(c.cabinet) + '</b>' + (c.praticien ? ' · ' + esc(c.praticien) : '') +
+        '<div class="meta">📅 ' + esc(c.date || 'date à fixer') + (j !== null && c.statut === 'Planifiée' ? (j >= 0 ? ' (dans ' + j + ' j)' : ' (date passée)') : '') + ' · ' + esc(c.materiel) + '</div>' +
+        '<div style="margin-top:6px">' + badgeFin(c.financement) + '<span class="bdg">' + esc(c.statut) + '</span><span class="bdg">' + c.artisans.length + ' artisan(s)</span><span class="bdg">' + c.docs.length + ' document(s)</span>' +
+        (c.reste.length ? '<span class="bdg o">' + c.reste.length + ' tâche(s) à faire</span>' : '') + '</div>' +
+        (!ok && c.statut === 'Planifiée' ? '<div class="meta" style="color:#8A5A00;font-weight:700;margin-top:6px">⚠ Financement non validé : ne pas installer.</div>' : '') +
+        '</div><div style="font-size:20px;color:var(--muted)">' + (o ? '▴' : '▾') + '</div></div>';
+      if (o) h += ficheChantier(c);
+      h += '</div>';
+    });
+    main.innerHTML = h;
+  }
+  function ficheChantier(c) {
+    const n = esc(c.n);
+    return '<div style="border-top:1px solid var(--line);margin-top:10px;padding-top:6px">' +
+      '<div class="sec">Chantier</div><div class="g2"><div><label>Adresse du chantier</label><input id="chA" value="' + esc(c.adresse) + '" placeholder="Adresse, étage, code d\'accès…"></div>' +
+      '<div><label>Lien du dossier technique (Drive, plans…)</label><input id="chL" value="' + esc(c.lien) + '" placeholder="https://…"></div></div>' +
+      '<label>Notes</label><textarea id="chN" rows="2">' + esc(c.notes) + '</textarea>' +
+      '<div class="toolbar"><button class="btn-light" onclick="majChantier(this,\'' + n + '\')">Enregistrer</button>' +
+      (c.adresse ? '<a class="btn-light" target="_blank" href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(c.adresse) + '">Itinéraire</a>' : '') +
+      (c.lien ? '<a class="btn-light" target="_blank" href="' + esc(c.lien) + '">Ouvrir le dossier technique</a>' : '') + '<span class="meta" id="chEtat"></span></div>' +
+      '<div class="sec">Documents du chantier (' + c.docs.length + ')</div>' +
+      c.docs.map(x => '<div class="row" style="padding:4px 0"><div style="flex:1">📄 ' + esc(x.nom) + ' <span class="meta">· ' + esc(x.date) + '</span></div><button class="btn-light" onclick="chDoc(this,\'' + n + '\',\'' + esc(x.id) + '\')">Télécharger</button></div>').join('') +
+      '<div class="toolbar"><label class="btn-light" style="margin:0">+ Ajouter un document (descriptif, plan, devis…)<input type="file" style="display:none" onchange="chEnvoyer(this,\'' + n + '\')"></label><span class="meta" id="chFic"></span></div>' +
+      '<div class="sec">Artisans (' + c.artisans.length + ')</div>' +
+      c.artisans.map(a => '<div class="row" style="padding:5px 0;border-bottom:1px solid var(--line)"><div style="flex:1"><b>' + esc(a.metier) + '</b> · ' + esc(a.nom) +
+        '<div class="meta">' + (a.tel ? '<a href="tel:' + esc(a.tel.replace(/\s/g, '')) + '">📞 ' + esc(a.tel) + '</a> ' : '') + (a.email ? ' <a href="mailto:' + esc(a.email) + '">✉ ' + esc(a.email) + '</a>' : '') + (a.remarque ? ' · ' + esc(a.remarque) : '') + '</div></div>' +
+        '<button class="btn-light" title="Retirer" onclick="chSuppr(this,\'' + n + '\',' + a.ligne + ')">✕</button></div>').join('') +
+      '<div class="g3" style="margin-top:8px"><div><label>Métier</label><select id="arM">' + CH.metiers.map(x => '<option>' + esc(x) + '</option>').join('') + '</select></div>' +
+      '<div><label>Nom / société</label><input id="arN"></div><div><label>Téléphone</label><input id="arT" type="tel"></div></div>' +
+      '<div class="g2"><div><label>E-mail</label><input id="arE" type="email"></div><div><label>Remarque</label><input id="arR"></div></div>' +
+      '<p class="err" id="arErr"></p><button class="btn" onclick="chArtisan(this,\'' + n + '\')">Ajouter l\'artisan</button>' +
+      '<div class="sec">Tâches restantes</div>' + (c.reste.length ? c.reste.map(t => '<div class="meta">☐ ' + esc(t.titre) + ' · ' + esc(t.pour) + ' · ' + esc(t.echeance) + '</div>').join('') : '<div class="meta">✅ Tout est fait (' + c.faites + ' tâche(s)).</div>') +
+      '</div>';
+  }
+  async function rechargerCh() { CH = null; await vueChantiers(); }
+  async function majChantier(b, n) {
+    b.disabled = true;
+    const r = await api('chantier_maj', { n, adresse: document.getElementById('chA').value.trim(), lien: document.getElementById('chL').value.trim(), notes: document.getElementById('chN').value.trim() });
+    b.disabled = false; if (!r.ok) { document.getElementById('chEtat').textContent = r.message; return; } rechargerCh();
+  }
+  async function chArtisan(b, n) {
+    const v = id => document.getElementById(id).value.trim();
+    if (v('arN').length < 2) { document.getElementById('arErr').textContent = 'Indiquez le nom de l\'artisan ou de la société.'; return; }
+    b.disabled = true;
+    const r = await api('artisan_ajouter', { n, metier: v('arM'), nom: v('arN'), tel: v('arT'), email: v('arE'), remarque: v('arR') });
+    if (!r.ok) { b.disabled = false; document.getElementById('arErr').textContent = r.message; return; } rechargerCh();
+  }
+  async function chSuppr(b, n, ligne) { if (!confirm('Retirer cet artisan du chantier ?')) return; b.disabled = true; const r = await api('artisan_suppr', { n, ligne }); if (!r.ok) alert(r.message); rechargerCh(); }
+  function chEnvoyer(inp, n) {
+    const f = inp.files[0]; if (!f) return;
+    if (f.size > 15 * 1024 * 1024) { alert('15 Mo maximum.'); return; }
+    document.getElementById('chFic').textContent = 'Envoi de ' + f.name + '…';
+    const rd = new FileReader();
+    rd.onload = async () => { const r = await api('chantier_doc_ajouter', { n, nom: f.name, mime: f.type, base64: String(rd.result).split(',')[1] }); if (!r.ok) alert(r.message); rechargerCh(); };
+    rd.readAsDataURL(f);
+  }
+  async function chDoc(b, n, id) {
+    b.disabled = true; b.textContent = 'Téléchargement…';
+    const r = await api('chantier_doc_ouvrir', { n, id });
+    b.disabled = false; b.textContent = 'Télécharger';
+    if (!r.ok) { alert(r.message); return; }
+    const bin = Uint8Array.from(atob(r.base64), c => c.charCodeAt(0)), url = URL.createObjectURL(new Blob([bin], { type: r.mime }));
+    const a = document.createElement('a'); a.href = url; a.download = r.nom; document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  // ---------------- Clients (liste des cabinets) ----------------
+  let CL = null, clFiltre = '', clOuvert = '';
+  async function vueClients() {
+    const main = document.getElementById('main');
+    if (!CL) { main.innerHTML = '<h2>Clients</h2><p class="sub">Chargement…</p>'; const d = await api('clients'); if (!d.ok) { main.innerHTML = '<div class="vide">' + esc(d.message) + '</div>'; return; } CL = d.clients; }
+    const f = clFiltre.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''), n = x => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const l = CL.filter(c => !f || n([c.nom, c.ville, c.cp, c.id, c.contact, c.personnes.map(p => p.nom).join(' ')].join(' ')).includes(f));
+    const tel = t => t ? '<a class="btn-light" style="text-decoration:none;display:inline-block" href="tel:' + esc(String(t).replace(/\s/g, '')) + '">📞 ' + esc(t) + '</a>' : '';
+    let h = '<h2>Clients</h2><p class="sub">' + CL.length + ' cabinets. Touchez un cabinet pour voir l\'adresse, les praticiens, le matériel prêté et les installations.</p>' +
+      '<div class="toolbar"><input id="clQ" placeholder="Rechercher (cabinet, ville, praticien…)" style="flex:1;min-width:200px" value="' + esc(clFiltre) + '" oninput="clFiltre=this.value;window.__clF=true;clearTimeout(window.__cl);window.__cl=setTimeout(vueClients,250)"></div>';
+    h += l.slice(0, 150).map(c => {
+      const o = clOuvert === c.id, adr = [c.adresse, (c.cp + ' ' + c.ville).trim()].filter(Boolean).join(', ');
+      return '<div class="card"' + (c.prets.some(p => p.retard) ? ' style="border-color:#C0392B"' : '') + '><div class="row" style="cursor:pointer;align-items:flex-start" onclick="clOuvert=clOuvert===\'' + esc(c.id) + '\'?\'\':\'' + esc(c.id) + '\';vueClients()">' +
+        '<div style="flex:1"><div class="cli" style="font-size:17px;font-weight:800;color:#1F4FA8">' + esc(c.nom) + '</div><div class="meta">' + esc(c.ville) + ' · ' + esc(c.id) + (c.actif ? '' : ' · inactif') + '</div>' +
+        (c.prets.length ? '<span class="bdg ' + (c.prets.some(p => p.retard) ? 'r' : 'o') + '">' + c.prets.length + ' prêt' + (c.prets.length > 1 ? 's' : '') + ' en cours</span>' : '') + '</div><span style="color:var(--muted)">' + (o ? '▲' : '▼') + '</span></div>' +
+        (o ? '<div style="border-top:1px solid var(--line);margin-top:10px;padding-top:8px">' +
+          (adr ? '<div style="margin-bottom:6px">📍 ' + esc(adr) + ' · <a href="https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(adr) + '" target="_blank">Itinéraire</a></div>' : '') +
+          '<div class="toolbar">' + tel(c.tel) + (c.email ? '<a class="btn-light" style="text-decoration:none;display:inline-block" href="mailto:' + esc(c.email) + '">✉ E-mail</a>' : '') + '</div>' +
+          (c.personnes.length ? '<div class="sec" style="margin-top:10px">Praticiens et équipe</div>' + c.personnes.map(p => '<div class="row" style="padding:3px 0"><div style="flex:1"><b>' + esc(p.nom) + '</b>' + (p.fonction ? ' · <span class="meta">' + esc(p.fonction) + '</span>' : '') + '</div>' + (p.tel ? '<a href="tel:' + esc(String(p.tel).replace(/\s/g, '')) + '">' + esc(p.tel) + '</a>' : '') + '</div>').join('') : (c.contact ? '<div class="meta">Contact : ' + esc(c.contact) + '</div>' : '')) +
+          (c.prets.length ? '<div class="sec" style="margin-top:10px">Matériel prêté</div>' + c.prets.map(p => '<div class="meta" style="padding:2px 0">' + esc(p.materiel) + (p.serie ? ' · n° ' + esc(p.serie) : '') + (p.retour ? ' · retour ' + (p.retard ? '<b style="color:#C0392B">prévu le ' + esc(p.retour) + ' (en retard)</b>' : 'prévu le ' + esc(p.retour)) : '') + '</div>').join('') : '') +
+          (c.installs.length ? '<div class="sec" style="margin-top:10px">Installations</div>' + c.installs.map(i => '<div class="meta" style="padding:2px 0">' + esc(i.date || 'Date à fixer') + ' · ' + esc(i.materiel) + ' · ' + esc(i.statut) + '</div>').join('') : '') +
+          (c.notes ? '<div class="sec" style="margin-top:10px">Notes</div><div class="meta">' + esc(c.notes) + '</div>' : '') + '</div>' : '') + '</div>';
+    }).join('') + (l.length > 150 ? '<div class="vide">' + (l.length - 150) + ' autres : affinez la recherche.</div>' : '') + (!l.length ? '<div class="vide">Aucun cabinet trouvé.</div>' : '');
+    main.innerHTML = h;
+    if (window.__clF) { const q = document.getElementById('clQ'); q.focus(); q.setSelectionRange(q.value.length, q.value.length); window.__clF = false; }
+  }
+
+  // ---------------- Devis d'entretien (envoyé dans l'Assistance du cabinet) ----------------
+  let DV = null;
+  const eur = v => v == null ? 'sur devis' : v.toFixed(2).replace('.', ',') + ' €';
+  async function vueDevis() {
+    const main = document.getElementById('main');
+    if (!DV) { main.innerHTML = '<h2>Devis entretien</h2><p class="sub">Chargement…</p>'; const d = await api('devis_init'); if (!d.ok) { main.innerHTML = '<div class="vide">' + esc(d.message) + '</div>'; return; } DV = d; }
+    const cats = [...new Set(DV.catalogue.map(a => a.categorie))];
+    main.innerHTML = '<h2>Devis d\'entretien</h2><p class="sub">Comme le praticien dans son Assistance : cochez les appareils du cabinet. Le devis PDF (prix TTC par mois) arrive dans son Assistance, rubrique « Mes documents », avec une notification.</p>' +
+      '<div class="card"><div class="g2"><div><label>Cabinet</label><input id="dvC" list="dvCabs" placeholder="Tapez le nom du cabinet" oninput="dvTotal()">' +
+      '<datalist id="dvCabs">' + D.cabinets.map(c => '<option value="' + esc(c.nom + ' · ' + c.id) + '">' + esc(c.ville || '') + '</option>').join('') + '</datalist></div>' +
+      '<div><label>À l\'attention de (facultatif)</label><input id="dvP" placeholder="Dr …"></div></div>' +
+      cats.map(cat => '<div class="sec">' + esc(cat) + '</div>' + DV.catalogue.map((a, i) => a.categorie !== cat ? '' :
+        '<div class="row" style="padding:4px 0;border-bottom:1px solid var(--line)"><input type="checkbox" id="dvA' + i + '" style="width:18px;height:18px" onchange="dvTotal()">' +
+        '<label for="dvA' + i + '" style="flex:1;margin:0;font-weight:500;color:var(--text)">' + esc(a.article) + '</label>' +
+        '<input type="number" id="dvQ' + i + '" value="1" min="1" max="50" style="width:70px" oninput="dvTotal()"><span style="width:110px;text-align:right" class="meta">' + eur(a.mois) + ' / mois</span></div>').join('')).join('') +
+      '<label>Remarque sur le devis (facultatif)</label><input id="dvR">' +
+      '<div class="row" style="margin-top:12px"><div style="flex:1;font-size:16px">Total : <b id="dvT">0,00 €</b> TTC / mois</div><button class="btn" onclick="dvEnvoyer(this)">Envoyer le devis dans l\'Assistance du cabinet</button></div><p class="err" id="dvErr"></p></div>' +
+      '<div class="sec">Derniers devis</div>' + (DV.devis.length ? DV.devis.map(d => '<div class="card row"><div style="flex:1"><b style="color:var(--navy)">' + esc(d.cabinet) + '</b> · ' + esc(d.n) +
+        '<div class="meta">' + esc(d.date) + ' · ' + esc(d.par.indexOf('Agence') === 0 ? d.par : 'fait par le cabinet') + ' · ' + eur(d.mois) + ' TTC / mois</div></div><span class="bdg">' + esc(d.statut) + '</span></div>').join('') : '<div class="vide">Aucun devis pour le moment.</div>');
+  }
+  function dvChoix() { return DV.catalogue.map((a, i) => ({ a, i })).filter(x => document.getElementById('dvA' + x.i).checked).map(x => ({ code: x.a.code, article: x.a.article, quantite: Math.max(1, +document.getElementById('dvQ' + x.i).value || 1), mois: x.a.mois })); }
+  function dvTotal() { document.getElementById('dvT').textContent = eur(dvChoix().reduce((t, x) => t + (x.mois || 0) * x.quantite, 0)); }
+  async function dvEnvoyer(b) {
+    const err = document.getElementById('dvErr'), v = document.getElementById('dvC').value.trim();
+    const cab = D.cabinets.find(c => v === c.nom + ' · ' + c.id || v.toLowerCase() === c.nom.toLowerCase());
+    if (!cab) { err.textContent = 'Choisissez le cabinet dans la liste.'; return; }
+    const art = dvChoix(); if (!art.length) { err.textContent = 'Cochez au moins un appareil.'; return; }
+    if (!confirm('Envoyer ce devis dans l\'Assistance de « ' + cab.nom + ' » ?')) return;
+    b.disabled = true; b.textContent = 'Création du devis…';
+    const r = await api('devis_envoyer', { cabId: cab.id, contact: document.getElementById('dvP').value.trim(), remarque: document.getElementById('dvR').value.trim(), articles: art });
+    b.disabled = false; b.textContent = 'Envoyer le devis dans l\'Assistance du cabinet';
+    if (!r.ok) { err.textContent = r.message; return; }
+    alert('Devis ' + r.numero + ' (' + eur(r.mois) + ' TTC / mois) ' + (r.pdf ? 'envoyé dans l\'Assistance du cabinet.' : 'enregistré. ' + (r.message || '')));
+    DV = null; vueDevis();
+  }
+
+  // ---------------- Prêts de matériel ----------------
+  let PT = null, ptAjout = false, ptSortie = '', ptFiltre = '';
+  async function vuePrets() {
+    const main = document.getElementById('main');
+    if (!PT) { main.innerHTML = '<h2>Prêts</h2><p class="sub">Chargement…</p>'; const d = await api('prets'); if (!d.ok) { main.innerHTML = '<div class="vide">' + esc(d.message) + '</div>'; return; } PT = d; }
+    const f = ptFiltre.toLowerCase(), match = x => !f || [x.type, x.marque, x.modele, x.serie, x.pret && x.pret.cabinet, x.pret && x.pret.praticien].join(' ').toLowerCase().includes(f);
+    const pretes = PT.materiels.filter(x => x.pret && match(x)), dispo = PT.materiels.filter(x => !x.pret && match(x));
+    const retard = PT.materiels.filter(x => x.pret && x.pret.retard).length;
+    let h = '<h2>Prêts de matériel</h2><p class="sub">Le parc de prêt : qui a quoi, depuis quand, jusqu\'à quand. Un prêt non rendu à la date prévue est signalé chaque matin au responsable technique.</p>' +
+      '<div class="toolbar"><button class="btn" onclick="ptAjout=!ptAjout;vuePrets()">' + (ptAjout ? 'Fermer' : '+ Ajouter un matériel au parc') + '</button>' +
+      '<input id="ptQ" placeholder="Rechercher (type, marque, n° de série, cabinet…)" style="flex:1;min-width:200px" value="' + esc(ptFiltre) + '" oninput="ptFiltre=this.value;window.__pfFocus=true;clearTimeout(window.__pf);window.__pf=setTimeout(vuePrets,300)">' +
+      '<span class="bdg">' + PT.materiels.length + ' matériel(s)</span><span class="bdg o">' + PT.materiels.filter(x => x.pret).length + ' prêté(s)</span>' + (retard ? '<span class="bdg r">' + retard + ' en retard</span>' : '') + '</div>';
+    if (ptAjout) h += '<div class="card"><div class="g3"><div><label>Type</label><select id="ptT"><option value="">Choisir…</option>' + PT.types.map(t => '<option>' + esc(t) + '</option>').join('') + '</select></div>' +
+      '<div><label>Marque</label><input id="ptM" placeholder="Ex. : W&H, NSK, KaVo…"></div><div><label>N° de série</label><input id="ptS"></div></div>' +
+      '<div class="g2"><div><label>Modèle (facultatif)</label><input id="ptO"></div><div><label>Notes (facultatif)</label><input id="ptN"></div></div>' +
+      '<p class="err" id="ptErr"></p><button class="btn" onclick="ptAjouter(this)">Ajouter au parc de prêt</button></div>';
+    const carte = x => {
+      const p = x.pret, o = ptSortie === x.n;
+      return '<div class="card"' + (p && p.retard ? ' style="border-color:#C0392B"' : '') + '><div class="row" style="align-items:flex-start"><div style="flex:1"><b style="color:var(--navy)">' + esc(x.type) + ' ' + esc(x.marque) + (x.modele ? ' ' + esc(x.modele) : '') + '</b>' +
+        '<div class="meta">' + esc(x.n) + ' · N° de série ' + esc(x.serie) + (x.notes ? ' · ' + esc(x.notes) : '') + '</div>' +
+        (p ? '<div style="margin-top:6px"><span class="bdg ' + (p.retard ? 'r' : 'o') + '">Chez ' + esc(p.cabinet) + (p.praticien ? ' · ' + esc(p.praticien) : '') + '</span></div>' +
+          '<div class="meta">Prêté le ' + esc(p.le) + ' par ' + esc(p.par) + (p.retour ? ' · retour prévu le ' + esc(p.retour) + (p.retard ? ' (en retard)' : '') : '') + (p.notes ? ' · ' + esc(p.notes) : '') + '</div>'
+          : '<div style="margin-top:6px"><span class="bdg ' + (x.etat === 'Disponible' ? 'v' : 'r') + '">' + esc(x.etat) + '</span></div>') + '</div>' +
+        '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">' +
+        (p ? '<button class="btn" onclick="ptRetour(this,\'' + esc(p.n) + '\')">Récupéré ✓</button>'
+          : (x.etat === 'Disponible' ? '<button class="btn" onclick="ptSortie=ptSortie===\'' + esc(x.n) + '\'?\'\':\'' + esc(x.n) + '\';vuePrets()">Prêter</button>' : '') +
+            '<select style="width:auto" onchange="ptEtat(\'' + esc(x.n) + '\',this.value)">' + PT.etats.map(e => '<option' + (e === x.etat ? ' selected' : '') + '>' + esc(e) + '</option>').join('') + '</select>') + '</div></div>' +
+        (o ? '<div style="border-top:1px solid var(--line);margin-top:10px"><div class="g3"><div><label>Cabinet</label><input id="psC" list="cabs" placeholder="Nom du cabinet"></div><div><label>Praticien</label><input id="psP" placeholder="Dr …"></div>' +
+          '<div><label>Retour prévu</label><input id="psR" type="date"></div></div><label>Notes (facultatif)</label><input id="psN" placeholder="Ex. : prêté pendant la réparation de sa turbine">' +
+          '<p class="err" id="psErr"></p><button class="btn" onclick="ptSortir(this,\'' + esc(x.n) + '\')">Valider le prêt</button></div>' : '') + '</div>';
+    };
+    h += '<div class="sec">Prêtés (' + pretes.length + ')</div>' + (pretes.length ? pretes.sort((a, b) => (b.pret.retard - a.pret.retard)).map(carte).join('') : '<div class="vide">Aucun matériel prêté.</div>');
+    h += '<div class="sec">Au dépôt (' + dispo.length + ')</div>' + (dispo.length ? dispo.map(carte).join('') : '<div class="vide">' + (PT.materiels.length ? 'Rien au dépôt.' : 'Le parc de prêt est vide : « + Ajouter un matériel au parc ».') + '</div>');
+    if (PT.historique.length) h += '<div class="sec">Derniers retours</div>' + PT.historique.map(r => '<div class="meta" style="padding:3px 0">✓ ' + esc(r.materiel) + ' · ' + esc(r.cabinet) + (r.praticien ? ' (' + esc(r.praticien) + ')' : '') + ' · du ' + esc(r.le) + ' au ' + esc(r.rendu) + ' · récupéré par ' + esc(r.par) + '</div>').join('');
+    main.innerHTML = h + datalistCabs();
+    if (window.__pfFocus) { window.__pfFocus = false; const q = document.getElementById('ptQ'); q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+  }
+  async function ptRecharger() { PT = null; await vuePrets(); }
+  async function ptAjouter(b) {
+    const v = id => document.getElementById(id).value.trim(), err = document.getElementById('ptErr');
+    if (!v('ptT')) { err.textContent = 'Choisissez le type.'; return; }
+    if (!v('ptM')) { err.textContent = 'Indiquez la marque.'; return; }
+    if (!v('ptS')) { err.textContent = 'Indiquez le numéro de série.'; return; }
+    b.disabled = true;
+    const r = await api('pret_materiel', { type: v('ptT'), marque: v('ptM'), serie: v('ptS'), modele: v('ptO'), notes: v('ptN') });
+    if (!r.ok) { b.disabled = false; err.textContent = r.message; return; }
+    ptRecharger();
+  }
+  async function ptSortir(b, n) {
+    const v = id => document.getElementById(id).value.trim(), err = document.getElementById('psErr');
+    const nom = v('psC'); if (nom.length < 3) { err.textContent = 'Indiquez le cabinet.'; return; }
+    const cab = D.cabinets.find(c => c.nom.toLowerCase() === nom.toLowerCase());
+    b.disabled = true;
+    const r = await api('pret_sortir', { n, cabinet: nom, cabId: cab ? cab.id : '', praticien: v('psP'), retour: v('psR'), notes: v('psN') });
+    if (!r.ok) { b.disabled = false; err.textContent = r.message; return; }
+    ptSortie = ''; ptRecharger();
+  }
+  async function ptRetour(b, n) { if (!confirm('Le matériel est bien revenu au dépôt ?')) return; b.disabled = true; const r = await api('pret_retour', { n }); if (!r.ok) { b.disabled = false; alert(r.message); return; } ptRecharger(); }
+  async function ptEtat(n, etat) { const r = await api('pret_etat', { n, etat }); if (!r.ok) alert(r.message); ptRecharger(); }
+
+  // ---------------- Publier pour tous les cabinets ----------------
+  let PB = null, pbType = 'actu', pbFic = null;
+  async function vuePublier() {
+    const main = document.getElementById('main');
+    if (!PB) { main.innerHTML = '<h2>Publier pour les cabinets</h2><p class="sub">Chargement…</p>'; const d = await api('publications'); if (!d.ok) { main.innerHTML = '<div class="vide">' + esc(d.message) + '</div>'; return; } PB = d; }
+    const opt = (l, v) => l.map(x => '<option' + (x === v ? ' selected' : '') + '>' + esc(x) + '</option>').join('');
+    const types = [['actu', '📰 Actualité', 'Une nouvelle, une offre, un document à faire connaître'], ['evenement', '🎉 Événement', 'Soirée, formation, atelier, portes ouvertes…'], ['info', '📄 Fiche ou document', 'Fiche pratique, réglementation, procédure (PDF)']];
+    let f = '';
+    if (pbType === 'evenement') f = '<div class="g3"><div><label>Type</label><select id="pbG">' + opt(PB.genres, 'Soirée') + '</select></div><div><label>Date</label><input id="pbD" type="date"></div><div><label>Horaires</label><input id="pbH" placeholder="19 h - 22 h"></div></div>' +
+      '<div class="g3"><div><label>Lieu</label><input id="pbL" value="Alternative Dentaire, Lavérune"></div><div><label>Places (vide = illimité)</label><input id="pbP" type="number" min="0"></div><div><label>Prix TTC par personne (vide = gratuit)</label><input id="pbX"></div></div>' +
+      '<div class="g3"><div><label>Pour qui</label><select id="pbU">' + opt(PB.publics, 'Tous') + '</select></div><div><label>Thème</label><select id="pbT">' + opt(PB.themes, 'Autre') + '</select></div><div><label>Lien Instagram (photos, vidéos)</label><input id="pbI" placeholder="https://www.instagram.com/…"></div></div>';
+    else if (pbType === 'info') f = '<div class="g2"><div><label>Thème</label><select id="pbT">' + opt(PB.themes, 'Stérilisation et hygiène') + '</select></div><div><label>Source officielle (lien, facultatif)</label><input id="pbS" placeholder="https://…"></div></div>';
+    else f = '<div class="g3"><div><label>Pour quels cabinets</label><select id="pbC">' + opt(PB.cibles, 'Tous') + '</select></div><div><label>Du</label><input id="pbDe" type="date" value="' + new Date().toISOString().slice(0, 10) + '"></div><div><label>Au (facultatif)</label><input id="pbFi" type="date"></div></div>' +
+      '<div class="g2"><div><label>Lien (facultatif, si pas de document)</label><input id="pbK" placeholder="https://…"></div><div><label>Texte du bouton</label><input id="pbB" placeholder="En savoir plus"></div></div>';
+    main.innerHTML = '<h2>Publier pour les cabinets</h2><p class="sub">Tout le monde à l\'agence peut publier. C\'est en ligne tout de suite dans l\'Assistance de tous les cabinets (actualités, encadré du bureau, « Infos et formations »), avec une notification sur les PC.</p>' +
+      '<div class="chips" style="margin-bottom:10px">' + types.map(t => '<label style="padding:10px 14px"><input type="radio" name="pbty"' + (pbType === t[0] ? ' checked' : '') + ' onchange="pbType=\'' + t[0] + '\';vuePublier()"><span><b>' + t[1] + '</b><br><span class="meta">' + t[2] + '</span></span></label>').join('') + '</div>' +
+      '<div class="card"><label style="margin-top:0">Titre</label><input id="pbTi" maxlength="120" placeholder="' + (pbType === 'evenement' ? 'Ex. : Soirée nouveautés fauteuils et imagerie' : pbType === 'info' ? 'Ex. : Traçabilité de la stérilisation : ce qui change' : 'Ex. : Le cabinet est fermé du 24 au 26 décembre') + '">' +
+      '<label>Texte (2-3 phrases)</label><textarea id="pbTx" rows="3" maxlength="600"></textarea>' + f +
+      '<label>Document PDF ou image ' + (pbType === 'info' ? '(obligatoire sans lien)' : '(facultatif)') + '</label><input type="file" id="pbF" accept=".pdf,image/*" onchange="pbFic=this.files[0]||null">' +
+      '<label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" id="pbN" checked style="width:18px;height:18px"> ' + (pbType === 'actu' ? 'Notification sur les PC des cabinets' : 'Annoncer aussi dans les actualités (notification sur les PC)') + '</label>' +
+      '<p class="err" id="pbErr"></p><button class="btn" onclick="pbEnvoyer(this)">Publier dans tous les cabinets</button></div>' +
+      '<div class="sec">En ligne actuellement (' + PB.publications.length + ')</div>' + (PB.publications.length ? PB.publications.map(x => '<div class="card row"><div style="flex:1"><span class="bdg">' + esc(x.genre) + '</span> <b style="color:var(--navy)">' + esc(x.titre) + '</b><div class="meta">' + esc(x.detail) + '</div></div>' +
+        '<button class="btn-light" onclick="pbRetirer(this,\'' + x.onglet + '\',' + (x.ligne || 0) + ',\'' + esc(x.id || '') + '\')">Retirer</button></div>').join('') : '<div class="vide">Rien en ligne pour le moment.</div>');
+  }
+  async function pbEnvoyer(b) {
+    const v = id => (document.getElementById(id) || { value: '' }).value.trim(), err = document.getElementById('pbErr');
+    if (v('pbTi').length < 4) { err.textContent = 'Indiquez un titre.'; return; }
+    if (pbType === 'evenement' && !v('pbD')) { err.textContent = 'Indiquez la date.'; return; }
+    if (pbFic && pbFic.size > 15 * 1024 * 1024) { err.textContent = '15 Mo maximum.'; return; }
+    const data = { type: pbType, titre: v('pbTi'), texte: v('pbTx'), annoncer: document.getElementById('pbN').checked, notifier: document.getElementById('pbN').checked,
+      genre: v('pbG'), date: v('pbD'), horaires: v('pbH'), lieu: v('pbL'), places: v('pbP'), prix: v('pbX'), public: v('pbU'), theme: v('pbT'), instagram: v('pbI'),
+      lien: v('pbK') || v('pbS'), bouton: v('pbB'), cible: v('pbC'), debut: v('pbDe'), fin: v('pbFi') };
+    b.disabled = true; b.textContent = 'Publication…';
+    if (pbFic) { data.nomFichier = pbFic.name; data.mime = pbFic.type; data.base64 = await new Promise(r => { const rd = new FileReader(); rd.onload = () => r(String(rd.result).split(',')[1]); rd.readAsDataURL(pbFic); }); }
+    const r = await api('publier', data);
+    b.disabled = false; b.textContent = 'Publier dans tous les cabinets';
+    if (!r.ok) { err.textContent = r.message; return; }
+    pbFic = null; PB = null; await vuePublier(); alert(r.message);
+  }
+  async function pbRetirer(b, onglet, ligne, id) { if (!confirm('Retirer cette publication de l\'Assistance des cabinets ?')) return; b.disabled = true; const r = await api('depublier', { onglet, ligne, id }); if (!r.ok) alert(r.message); PB = null; vuePublier(); }
+
+  // ---------------- Tableaux génériques ----------------
+  function tableau(t, colonnes, action) {
+    if (!t || !t.lignes || !t.lignes.length) return '<div class="vide">Rien pour le moment.</div>';
+    const idx = colonnes ? colonnes.map(c => t.entetes.indexOf(c)).filter(i => i >= 0) : t.entetes.map((_, i) => i).slice(0, 8);
+    return '<div class="tw"><table><tr>' + idx.map(i => '<th>' + esc(t.entetes[i]) + '</th>').join('') + (action ? '<th></th>' : '') + '</tr>' +
+      t.lignes.map(l => '<tr>' + idx.map(i => '<td>' + esc(l[i]).replace(/\n/g, '<br>') + '</td>').join('') + (action ? '<td>' + action(l, t.entetes) + '</td>' : '') + '</tr>').join('') + '</table></div>';
+  }
+  async function vueConso() {
+    document.getElementById('main').innerHTML = '<h2>Consommables (AD Stock)</h2><p class="sub">Chargement…</p>';
+    const c = await api('conso');
+    if (!c.ok) { document.getElementById('main').innerHTML = '<div class="vide">' + esc(c.message) + '</div>'; return; }
+    const iS = c.recommander.entetes.indexOf('Statut');
+    document.getElementById('main').innerHTML = '<h2>Consommables (AD Stock)</h2><p class="sub">Les commandes et les demandes des cabinets dans l\'application AD Stock. L\'équipe consommables reçoit une notification sur son téléphone à chaque nouvelle ligne (vérification toutes les 10 minutes).</p>' +
+      '<div class="sec">Commandes</div>' + tableau(c.commandes, ['N°', 'Praticien', 'Envoyée le', 'Envoyée par', 'Statut', 'Préparée par', 'Livrée le', 'Remarques']) +
+      '<div class="sec">Produits à recommander</div>' + tableau(c.recommander, ['Signalé le', 'Code article', 'Désignation', 'Emplacement', 'Signalé par', 'Remarque', 'Statut', 'Traité par'],
+        (l) => (iS >= 0 && /trait/i.test(l[iS])) ? '' : '<button class="btn-light" onclick="traiter(this,\'' + esc(l[0]) + '\',\'' + esc(l[1]) + '\')">Traité</button>') +
+      '<div class="sec">Alertes stock</div>' + tableau(c.alertes);
+  }
+  async function traiter(b, signale, code) { b.disabled = true; const r = await api('conso_traiter', { signale, code }); if (r.ok) vueConso(); else { b.disabled = false; alert(r.message); } }
+  async function vueDemandes() {
+    document.getElementById('main').innerHTML = '<h2>Demandes des cabinets</h2><p class="sub">Chargement…</p>';
+    const d = await api('demandes'); DM = d;
+    const bt = k => (l, e) => '<button class="btn-light" style="white-space:nowrap" onclick="demandeEnTache(\'' + k + '\',' + d[k].lignes.indexOf(l) + ')">➕ Tâche</button>';
+    document.getElementById('main').innerHTML = '<h2>Demandes des cabinets</h2><p class="sub">Les dernières demandes reçues depuis l\'Assistance et la page étudiants. « ➕ Tâche » transforme une demande en tâche (à qui, quand, techniciens et temps à prévoir). Le suivi (statut, notes) se fait dans le tableau Google.</p>' +
+      '<div class="sec">Pannes et demandes d\'intervention</div>' + tableau(d.interventions, ['N°', 'Date', 'Cabinet', 'Contact', 'Téléphone', 'Problème décrit', 'Statut', 'Technicien'], bt('interventions')) +
+      '<div class="sec">Devis et opportunités</div>' + tableau(d.opportunites, ['N°', 'Date', 'Cabinet', 'Contact', 'Téléphone', 'Service', 'Détail', 'Statut'], bt('opportunites')) +
+      '<div class="sec">Devis d\'entretien</div>' + tableau(d.devis, null, bt('devis')) +
+      '<div class="sec">Étudiants</div>' + tableau(d.etudiants, ['Inscrit le', 'Prénom', 'Nom', 'Portable', 'Année', 'Installation envisagée', 'Projet', 'Statut'], bt('etudiants'));
+  }
+  let DM = null;
+  // Transforme une demande reçue en tâche : ouvre le formulaire « Nouvelle tâche » déjà rempli
+  function demandeEnTache(k, i) {
+    const t = DM[k], l = t.lignes[i], g = c => { const j = t.entetes.indexOf(c); return j >= 0 ? String(l[j] || '').trim() : ''; }, court = x => x.length > 90 ? x.slice(0, 88) + '…' : x;
+    let cab = g('Cabinet'), titre = '', det = [];
+    if (k === 'interventions') { titre = 'Intervention : ' + court(g('Problème décrit') || 'demande d\'intervention'); det = ['Demande ' + g('N°') + ' du ' + g('Date'), g('Contact'), g('Téléphone'), g('Problème décrit')]; }
+    else if (k === 'opportunites') { titre = 'Devis : ' + court(g('Service') || 'demande de devis'); det = ['Demande ' + g('N°') + ' du ' + g('Date'), g('Contact'), g('Téléphone'), g('Détail')]; }
+    else if (k === 'devis') { titre = 'Suivre le devis d\'entretien ' + (l[0] || ''); det = t.entetes.map((e, j) => l[j] ? e + ' : ' + l[j] : '').slice(0, 8); }
+    else { cab = (g('Prénom') + ' ' + g('Nom')).trim() + ' (étudiant)'; titre = 'Rappeler : ' + court(g('Projet') || g('Installation envisagée') || 'projet d\'installation'); det = [g('Portable'), g('Année'), g('Installation envisagée'), g('Projet')]; }
+    onglet = 'taches'; filtreTaches = 'moi'; afficher();
+    const f = document.getElementById('nt'); f.style.display = 'block';
+    document.getElementById('ntC').value = cab; document.getElementById('ntT').value = titre; document.getElementById('ntD').value = det.filter(Boolean).join(' · ').slice(0, 900);
+    f.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ---------------- Révisions annuelles ----------------
+  let filtreRev = 'proches';
+  async function vueRevs() {
+    const main = document.getElementById('main');
+    main.innerHTML = '<h2>Révisions annuelles</h2><p class="sub">Chargement…</p>';
+    const d = await api('revisions');
+    if (!d.ok) { main.innerHTML = '<div class="vide">' + esc(d.message) + '</div>'; return; }
+    const l = d.revisions.filter(r => filtreRev === 'tout' || r.jours <= 60);
+    main.innerHTML = '<h2>Révisions annuelles</h2><p class="sub">Les appareils sous contrat d\'entretien. Après l\'entretien, cochez « Révision faite » : le compteur repart pour un an et le praticien voit sa nouvelle date dans son Assistance.</p>' +
+      '<div class="toolbar"><select onchange="filtreRev=this.value;vueRevs()"><option value="proches">En retard et dans les 60 jours</option><option value="tout"' + (filtreRev === 'tout' ? ' selected' : '') + '>Tous les appareils sous contrat</option></select></div>' +
+      (l.length ? l.map(r => '<div class="card row"><div style="flex:1"><b style="color:var(--navy)">' + esc(r.cabinet) + '</b> · ' + esc(r.appareil) + (r.modele ? ' · ' + esc(r.modele) : '') +
+        '<div class="meta">' + (r.serie ? 'N° de série ' + esc(r.serie) + ' · ' : '') + 'Dernière révision : ' + esc(r.derniere || 'jamais') + '</div>' +
+        '<div style="margin-top:5px"><span class="bdg ' + (r.jours < 0 ? 'r' : r.jours <= 30 ? 'o' : 'v') + '">' + (r.jours < 0 ? 'En retard de ' + (-r.jours) + ' j' : 'Prochaine : ' + esc(r.prochaine) + ' (dans ' + r.jours + ' j)') + '</span></div></div>' +
+        '<label style="margin:0;display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer;border:1.5px solid var(--line);border-radius:10px;padding:9px 12px">' +
+        '<input type="checkbox" style="width:20px;height:20px;accent-color:var(--navy)" onchange="revFaite(this,' + r.ligne + ',\'' + esc(r.cabId) + '\')"> Révision faite</label></div>').join('')
+        : '<div class="vide">Aucune révision à prévoir dans les 60 jours.</div>');
+  }
+  async function revFaite(cb, ligne, cabId) {
+    if (!cb.checked) return;
+    if (!confirm('Confirmer : révision faite aujourd\'hui ? Le compteur repart pour un an.')) { cb.checked = false; return; }
+    cb.disabled = true;
+    const r = await api('revision_faite', { ligne, cabId });
+    if (!r.ok) { alert(r.message); cb.checked = false; cb.disabled = false; return; }
+    cb.parentNode.innerHTML = '✅ Fait · prochaine le ' + esc(r.prochaine);
+  }
+
+  // ---------------- Documents de la société ----------------
+  async function vueDocs() {
+    const main = document.getElementById('main');
+    main.innerHTML = '<h2>Documents</h2><p class="sub">Chargement…</p>';
+    const d = await api('docs_societe');
+    if (!d.ok) { main.innerHTML = '<div class="vide">' + esc(d.message) + '</div>'; return; }
+    main.innerHTML = '<h2>Documents de ' + esc(D.moi.societe) + '</h2><p class="sub">Vos documents (procédures, fiches, tarifs…), rangés dans le Google Drive de la société. Ajoutez un fichier ou créez un modèle à vos couleurs.</p>' +
+      '<div class="toolbar"><label class="btn" style="margin:0;color:#fff">+ Ajouter un fichier<input type="file" id="fic" style="display:none" onchange="envoyerFichier(this)"></label><span class="meta" id="ficEtat"></span></div>' +
+      '<div class="sec">Modèles à vos couleurs</div>' + d.modeles.map(x => '<div class="card row"><div style="flex:1"><b style="color:var(--navy)">' + esc(x.titre) + '</b><div class="meta">' + esc(x.texte) + '</div></div>' +
+        '<button class="btn" onclick="creerModele(this,\'' + esc(x.cle) + '\')">Créer à mes couleurs</button></div>').join('') +
+      '<div class="sec">Fichiers (' + d.documents.length + ')</div>' + (d.documents.length ? d.documents.map(x => '<div class="card row"><div style="flex:1"><b style="color:var(--navy)">' + esc(x.nom) + '</b>' +
+        '<div class="meta">Ajouté le ' + esc(x.date) + ' · ' + Math.max(1, Math.round(x.taille / 1024)) + ' Ko</div></div><button class="btn-light" onclick="telecharger(this,\'' + esc(x.id) + '\')">Télécharger</button></div>').join('')
+        : '<div class="vide">Aucun document pour le moment.</div>');
+  }
+  function envoyerFichier(inp) {
+    const f = inp.files[0]; if (!f) return;
+    if (f.size > 15 * 1024 * 1024) { alert('15 Mo maximum.'); return; }
+    document.getElementById('ficEtat').textContent = 'Envoi de ' + f.name + '…';
+    const rd = new FileReader();
+    rd.onload = async () => { const r = await api('doc_ajouter', { nom: f.name, mime: f.type, base64: String(rd.result).split(',')[1] }); if (!r.ok) alert(r.message); vueDocs(); };
+    rd.readAsDataURL(f);
+  }
+  async function telecharger(b, id) {
+    b.disabled = true; b.textContent = 'Téléchargement…';
+    const r = await api('doc_ouvrir', { id });
+    b.disabled = false; b.textContent = 'Télécharger';
+    if (!r.ok) { alert(r.message); return; }
+    const bin = Uint8Array.from(atob(r.base64), c => c.charCodeAt(0)), url = URL.createObjectURL(new Blob([bin], { type: r.mime }));
+    const a = document.createElement('a'); a.href = url; a.download = r.nom; document.body.appendChild(a); a.click(); a.remove();
+  }
+  async function creerModele(b, cle) {
+    b.disabled = true; b.textContent = 'Création…';
+    const r = await api('modele_creer', { modele: cle });
+    if (!r.ok) { b.disabled = false; b.textContent = 'Créer à mes couleurs'; alert(r.message); return; }
+    vueDocs();
+  }
+
+  // ---------------- Organigramme ----------------
+  function vueOrga() {
+    const parSoc = {};
+    D.equipe.forEach(e => (parSoc[e.societe] = parSoc[e.societe] || []).push(e));
+    const carte = e => '<div class="card" style="display:inline-block;min-width:230px;max-width:300px;margin:4px;vertical-align:top;border-top:3px solid ' + (e.responsable ? 'var(--line)' : 'var(--gold)') + '">' +
+      '<b style="color:var(--navy);font-size:15px">' + esc(e.prenom + ' ' + e.nom) + '</b><div class="meta">' + esc(e.poste || e.role) + '</div>' +
+      '<div style="margin-top:6px"><span class="bdg">' + esc(e.role) + '</span></div>' +
+      '<div class="meta" style="margin-top:6px">' + (e.portable ? '📞 ' + esc(e.portable) + '<br>' : '') + (e.email ? '✉ ' + esc(e.email) : '<span style="color:#C0392B">Compte Google à renseigner</span>') + '</div></div>';
+    const niveau = (liste, chef, prof) => {
+      const enfants = liste.filter(e => (e.responsable || '') === chef || (!chef && !liste.some(x => x.prenom === e.responsable)));
+      return enfants.map(e => '<div style="margin-left:' + (prof * 28) + 'px">' + (prof ? '<span style="color:var(--line);font-size:20px;vertical-align:top">└ </span>' : '') + carte(e) + '</div>' +
+        (prof < 5 ? niveau(liste.filter(x => x !== e), e.prenom, prof + 1) : '')).join('');
+    };
+    let h = '<h2>Organigramme</h2><p class="sub">Qui fait quoi dans chaque société. Pour ajouter ou modifier une personne : onglet « Équipe agence » du tableau (société, responsable, poste, compte Google).</p>';
+    Object.keys(parSoc).sort((a, b) => (a !== 'Alternative Dentaire') - (b !== 'Alternative Dentaire') || a.localeCompare(b)).forEach(s => {
+      h += '<div class="sec">' + esc(s) + ' · ' + parSoc[s].length + ' personne(s)</div>' + niveau(parSoc[s], '', 0);
+    });
+    document.getElementById('main').innerHTML = h;
+  }
+
+  // ---------------- Mode d'emploi ----------------
+  function vueAide() {
+    document.getElementById('main').innerHTML = '<div class="card aide"><h2>Mode d\'emploi</h2>' +
+      '<p><b>Mes tâches</b> : vos tâches du jour, en retard et à venir. Cochez quand c\'est fait. « + Nouvelle tâche » pour vous, un collègue ou plusieurs (chacun reçoit une notification ; la première personne qui la fait la coche). « 👥 Attribuer » confie une tâche existante à d\'autres personnes. Chaque matin vers 7 h, vos tâches du jour arrivent sur votre téléphone (agenda Google).</p>' +
+      '<p><b>Installations</b> : « + Nouvelle installation », choisissez le cabinet, le praticien, la date et cochez le matériel. Les tâches sont créées et réparties toutes seules : vérification du financement (assistante de direction), réunion de chantier (responsable technique), classeur d\'installation, fiche d\'identification du générateur et PV pour la radio, panoramique et cône beam, révision annuelle, proposition de contrat… ' +
+      'Tant que le financement n\'est pas « Validé », une alerte part chaque matin dans les 30 jours avant l\'installation (et au gérant à 7 jours). Changez le financement et le statut directement sur la fiche.</p>' +
+      '<p><b>Documents du cabinet</b> : déposez les PDF (PV, fiche d\'identification, contrôle qualité…) dans le dossier Google Drive du cabinet (onglet « Documents cabinets » du tableau). Le praticien les retrouve dans son Assistance, rubrique « Mes documents », et reçoit une notification.</p>' +
+      '<p><b>Chantiers</b> (responsable technique, techniciens, direction) : chaque installation à venir avec la date, le financement (⚠ si pas validé), l\'adresse et l\'itinéraire, le dossier technique (documents déposés ici + lien), les artisans du chantier avec leurs coordonnées (touchez le numéro pour appeler) et les tâches qui restent. Ces documents ne sont jamais visibles par le praticien.</p>' +
+      '<p><b>Rendez-vous</b> : sur une tâche, ⏱ indique le nombre de techniciens et le temps à prévoir pour l\'intervention (visible par la secrétaire et Bruno pour caler le rendez-vous). 👥 l\'attribue à une ou plusieurs personnes.</p>' +
+      '<p><b>Clients</b> : tous les cabinets, avec recherche. Touchez un cabinet : adresse et itinéraire, téléphone (appel direct), praticiens, matériel prêté chez lui et installations.</p>' +
+      '<p><b>Prêts</b> : « + Ajouter un matériel au parc » (type, marque, n° de série). « Prêter » l\'attribue à un cabinet et un praticien avec une date de retour ; « Récupéré ✓ » quand il revient au dépôt. Un prêt en retard est signalé chaque matin au responsable technique.</p>' +
+      '<p><b>Publier pour les cabinets</b> (tout le monde) : une actualité, un événement (soirée, formation, atelier…) ou une fiche PDF. Remplissez, joignez le document si besoin, cliquez « Publier » : c\'est en ligne tout de suite dans l\'Assistance de tous les cabinets, avec une notification. « Retirer » l\'enlève.</p>' +
+      '<p><b>Devis entretien</b> : choisissez le cabinet, cochez ses appareils et les quantités, puis envoyez. Le praticien reçoit le devis PDF (prix TTC par mois) dans son Assistance, rubrique « Mes documents », avec une notification. Le devis est aussi noté dans l\'onglet « Devis entretien » du tableau.</p>' +
+      '<p><b>Consommables</b> : les commandes et produits à recommander d\'AD Stock. Bouton « Traité » quand c\'est fait.</p>' +
+      '<p><b>Demandes des cabinets</b> : « ➕ Tâche » transforme une demande en tâche, déjà remplie (cabinet, demande, contact) : choisissez à qui, la date, les techniciens et le temps à prévoir. Pannes (notifiées au responsable technique), devis, opportunités et étudiants.</p>' +
+      '<p style="color:var(--muted)">Les modèles de tâches (quoi, pour quel rôle, combien de jours avant ou après l\'installation) se modifient dans l\'onglet « Modèles de tâches » du tableau. L\'accès à cette page se gère dans l\'onglet « Équipe agence ».</p></div>';
+  }
+  charger().catch(e => { if (e.message !== 'expire') document.getElementById('main').innerHTML = '<div class="vide">Connexion impossible. Rechargez la page.</div>'; });
+</script>
+</body>
+</html>
