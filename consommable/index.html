@@ -714,6 +714,8 @@
       '<div class="chips" style="margin-bottom:10px">' + types.map(t => '<label style="padding:10px 14px"><input type="radio" name="pbty"' + (pbType === t[0] ? ' checked' : '') + ' onchange="pbType=\'' + t[0] + '\';vuePublier()"><span><b>' + t[1] + '</b><br><span class="meta">' + t[2] + '</span></span></label>').join('') + '</div>' +
       '<div class="card"><label style="margin-top:0">Titre</label><input id="pbTi" maxlength="120" placeholder="' + (pbType === 'evenement' ? 'Ex. : Soirée nouveautés fauteuils et imagerie' : pbType === 'info' ? 'Ex. : Traçabilité de la stérilisation : ce qui change' : 'Ex. : Le cabinet est fermé du 24 au 26 décembre') + '">' +
       '<label>Texte (2-3 phrases)</label><textarea id="pbTx" rows="3" maxlength="600"></textarea>' + f +
+      '<label>Qui est concerné ? <span class="meta">(rien de coché = tous les cabinets ; sinon seuls les cabinets concernés le voient, d\'après les spécialités de leurs praticiens)</span></label><div class="chips">' +
+        (PB.specialites || []).map(x => '<label><input type="checkbox" name="pbQ" value="' + esc(x) + '">' + esc(x) + '</label>').join('') + '</div>' +
       '<label>Document PDF ou image ' + (pbType === 'info' ? '(obligatoire sans lien)' : '(facultatif)') + '</label><input type="file" id="pbF" accept=".pdf,image/*" onchange="pbFic=this.files[0]||null">' +
       '<label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" id="pbN" checked style="width:18px;height:18px"> ' + (pbType === 'actu' ? 'Notification sur les PC des cabinets' : 'Annoncer aussi dans les actualités (notification sur les PC)') + '</label>' +
       '<p class="err" id="pbErr"></p><button class="btn" onclick="pbEnvoyer(this)">Publier dans tous les cabinets</button></div>' +
@@ -727,7 +729,8 @@
     if (pbFic && pbFic.size > 15 * 1024 * 1024) { err.textContent = '15 Mo maximum.'; return; }
     const data = { type: pbType, titre: v('pbTi'), texte: v('pbTx'), annoncer: document.getElementById('pbN').checked, notifier: document.getElementById('pbN').checked,
       genre: v('pbG'), date: v('pbD'), horaires: v('pbH'), lieu: v('pbL'), places: v('pbP'), prix: v('pbX'), public: v('pbU'), theme: v('pbT'), instagram: v('pbI'),
-      lien: v('pbK') || v('pbS'), bouton: v('pbB'), cible: v('pbC'), debut: v('pbDe'), fin: v('pbFi') };
+      lien: v('pbK') || v('pbS'), bouton: v('pbB'), cible: v('pbC'), debut: v('pbDe'), fin: v('pbFi'),
+      publics: [...document.querySelectorAll('input[name=pbQ]:checked')].map(x => x.value) };
     b.disabled = true; b.textContent = 'Publication…';
     if (pbFic) { data.nomFichier = pbFic.name; data.mime = pbFic.type; data.base64 = await new Promise(r => { const rd = new FileReader(); rd.onload = () => r(String(rd.result).split(',')[1]); rd.readAsDataURL(pbFic); }); }
     const r = await api('publier', data);
