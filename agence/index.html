@@ -83,6 +83,17 @@
   const jour = s => { const m = String(s || '').match(/^(\d{2})\/(\d{2})\/(\d{4})/); return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null; };
   const auj = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })();
   let QUI = ''; try { QUI = localStorage.getItem('ag_qui') || ''; } catch (e) {}
+  // Session gardée 5 h sur l'appareil (évite une connexion à chaque ouverture)
+  if (!TOKEN || TOKEN.indexOf('{{') === 0) { TOKEN = ''; try { const k = JSON.parse(localStorage.getItem('ag_tok') || 'null'); if (k && Date.now() - k.ts < 5 * 3600000) TOKEN = k.t; } catch (e) {} }
+  // Dernières données affichées tout de suite à l'ouverture, puis mises à jour en arrière-plan
+  const cleCache = () => 'ag_d_' + APP + '_' + (QUI || '');
+  function lireCache() { try { const c = JSON.parse(localStorage.getItem(cleCache()) || 'null'); return c && c.ok && c.moi ? c : null; } catch (e) { return null; } }
+  function ecrireCache(d) { try { localStorage.setItem(cleCache(), JSON.stringify(d)); } catch (e) {} }
+  function bandeauMaj(on) {
+    let b = document.getElementById('majBand');
+    if (!b) { b = document.createElement('div'); b.id = 'majBand'; b.style.cssText = 'position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:6px 14px;border-radius:20px;font-size:12px;z-index:50;box-shadow:0 2px 8px rgba(0,0,0,.25)'; b.textContent = 'Mise à jour…'; document.body.appendChild(b); }
+    b.style.display = on ? 'block' : 'none';
+  }
   async function api(op, data) {
     const r = await fetch(EXEC, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ action: 'agence', token: TOKEN, op, qui: QUI }, data || {})) });
     const j = await r.json();
@@ -98,7 +109,7 @@
     const r = await fetch(EXEC, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'agence', op: 'login', code }) });
     const j = await r.json();
     if (!j.ok) { try { localStorage.removeItem('ag_code'); } catch (e) {} return false; }
-    TOKEN = j.token; try { localStorage.setItem('ag_code', code); } catch (e) {} return true;
+    TOKEN = j.token; try { localStorage.setItem('ag_code', code); localStorage.setItem('ag_tok', JSON.stringify({ t: j.token, ts: Date.now() })); } catch (e) {} return true;
   }
   function ecranCode(msg) {
     document.getElementById('nav').innerHTML = ''; document.getElementById('moi').innerHTML = '';
@@ -118,8 +129,17 @@
       let code = ''; try { code = localStorage.getItem('ag_code') || ''; } catch (e) {}
       if (!code || !(await connecter(code))) { ecranCode(); return; }
     }
-    D = await api('init'); if (!D.ok) { document.getElementById('main').innerHTML = '<div class="vide">' + esc(D.message) + '</div>'; return; }
+    const c = lireCache(), dejaAffiche = !!c && !D;
+    if (dejaAffiche) { D = c; try { afficher(); } catch (e) {} bandeauMaj(true); }
+    let N;
+    try { N = await api('init'); } catch (e) { bandeauMaj(false); return; }
+    bandeauMaj(false);
+    if (!N.ok) { if (!dejaAffiche) document.getElementById('main').innerHTML = '<div class="vide">' + esc(N.message) + '</div>'; return; }
+    D = N; ecrireCache(N);
     if (D.partage && D.partage.indexOf(QUI) < 0) { choisirQui(); return; }
+    // Ne pas effacer une saisie en cours : on rafraîchit seulement si rien n'est en train d'être tapé
+    const a = document.activeElement;
+    if (dejaAffiche && a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return;
     afficher();
   }
   // Compte partagé (ex. : consommable@) : chacun choisit son prénom une fois sur son ordinateur
@@ -519,7 +539,7 @@
       '<div class="card"><label style="display:flex;gap:8px;align-items:center;font-weight:700;cursor:pointer"><input type="checkbox" style="width:18px;height:18px"' + (FAC.visible ? ' checked' : '') + ' onchange="facVisible(this)">Afficher aux praticiens (« Mes documents » de leur Assistance : relevé PDF de leurs factures en attente)</label>' +
       '<div class="toolbar" style="margin-top:8px"><button class="btn-light" onclick="facImport(this)">↻ Mettre à jour maintenant</button>' + (FAC.dossier ? '<a class="btn-light" style="text-decoration:none" href="' + esc(FAC.dossier) + '" target="_blank">📁 Dossier de l\'export</a>' : '') + '<span class="meta" id="facEtat"></span></div></div>' +
       '<div class="toolbar"><button class="' + (facFiltre === 'aassocier' ? 'btn' : 'btn-light') + '" onclick="facFiltre=\'aassocier\';vueFactures()">À associer (' + Object.keys(parCli).length + ' clients)</button><button class="' + (facFiltre === 'ok' ? 'btn' : 'btn-light') + '" onclick="facFiltre=\'ok\';vueFactures()">Associées (' + l.filter(f => f.cab).length + ')</button></div>' +
-      (liste ? (liste.length ? liste.map(f => '<div class="card" style="padding:8px 12px"><div class="row"><div style="flex:1"><b>' + esc(f.cabNom || f.cab) + '</b> <span class="meta">← ' + esc(f.client) + ' · ' + esc(f.how) + '</span><div class="meta">' + esc(f.code) + ' du ' + esc(f.date) + ' · ' + esc(f.titre) + '</div></div><b>' + eurF(f.reste) + '</b></div></div>').join('') : '<div class="vide">Aucune.</div>')
+      (liste ? (liste.length ? liste.map(f => '<div class="card" style="padding:8px 12px"><div class="row"><div style="flex:1"><b>' + esc(f.cabNom || f.cab) + '</b> <span class="meta">← ' + esc(f.client) + ' · ' + esc(f.how) + '</span><div class="meta">' + esc(f.code) + ' du ' + esc(f.date) + ' · ' + esc(f.titre) + '</div></div><b>' + eurF(f.reste) + '</b></div><details style="margin-top:4px"><summary class="meta" style="cursor:pointer">Pas le bon cabinet ? Changer (toutes les factures de ce client Extrabat)</summary><select style="width:100%;margin-top:4px" onchange="facAssocier(this,\'' + esc(f.codeCli) + '\')">' + opts + '</select></details></div>').join('') : '<div class="vide">Aucune.</div>')
       : (Object.keys(parCli).length ? Object.keys(parCli).map(k => { const fs = parCli[k]; return '<div class="card" style="padding:8px 12px"><b>' + esc(fs[0].client) + '</b> <span class="meta">' + esc(k) + ' · ' + fs.length + ' facture(s) · ' + eurF(fs.reduce((a, f) => a + f.reste, 0)) + (fs[0].how && fs[0].how !== 'À associer' ? ' · ' + esc(fs[0].how) : '') + '</span>' +
           '<div class="toolbar" style="margin-top:6px"><select style="flex:1;min-width:200px" onchange="facAssocier(this,\'' + esc(k) + '\')">' + opts + '</select></div></div>'; }).join('') : '<div class="vide">Toutes les factures sont associées à un cabinet. ✓</div>'));
   }
