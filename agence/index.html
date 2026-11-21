@@ -360,20 +360,29 @@
     const main = document.getElementById('main');
     if (!DV) { main.innerHTML = '<h2>Devis entretien</h2><p class="sub">Chargement…</p>'; const d = await api('devis_init'); if (!d.ok) { main.innerHTML = '<div class="vide">' + esc(d.message) + '</div>'; return; } DV = d; }
     const cats = [...new Set(DV.catalogue.map(a => a.categorie))];
-    main.innerHTML = '<h2>Devis d\'entretien</h2><p class="sub">Comme le praticien dans son Assistance : cochez les appareils du cabinet. Le devis PDF (prix TTC par mois) arrive dans son Assistance, rubrique « Mes documents », avec une notification.</p>' +
+    main.innerHTML = '<h2>Devis d\'entretien</h2><p class="sub">Comme le praticien dans son Assistance : cochez les appareils du cabinet, la quantité, et si besoin un repère par appareil (couleur, n° de série, salle) pour les reconnaître. Le devis PDF (prix TTC par mois) arrive dans son Assistance, rubrique « Mes documents », avec une notification.</p>' +
       '<div class="card"><div class="g2"><div><label>Cabinet</label><input id="dvC" list="dvCabs" placeholder="Tapez le nom du cabinet" oninput="dvTotal()">' +
       '<datalist id="dvCabs">' + D.cabinets.map(c => '<option value="' + esc(c.nom + ' · ' + c.id) + '">' + esc(c.ville || '') + '</option>').join('') + '</datalist></div>' +
       '<div><label>À l\'attention de (facultatif)</label><input id="dvP" placeholder="Dr …"></div></div>' +
       cats.map(cat => '<div class="sec">' + esc(cat) + '</div>' + DV.catalogue.map((a, i) => a.categorie !== cat ? '' :
-        '<div class="row" style="padding:4px 0;border-bottom:1px solid var(--line)"><input type="checkbox" id="dvA' + i + '" style="width:18px;height:18px" onchange="dvTotal()">' +
+        '<div style="padding:4px 0;border-bottom:1px solid var(--line)"><div class="row"><input type="checkbox" id="dvA' + i + '" style="width:18px;height:18px" onchange="dvReperes(' + i + ');dvTotal()">' +
         '<label for="dvA' + i + '" style="flex:1;margin:0;font-weight:500;color:var(--text)">' + esc(a.article) + '</label>' +
-        '<input type="number" id="dvQ' + i + '" value="1" min="1" max="50" style="width:70px" oninput="dvTotal()"><span style="width:110px;text-align:right" class="meta">' + eur(a.mois) + ' / mois</span></div>').join('')).join('') +
+        '<span class="meta">Qté</span><input type="number" id="dvQ' + i + '" value="1" min="1" max="50" style="width:64px" oninput="dvReperes(' + i + ');dvTotal()"><span style="width:110px;text-align:right" class="meta">' + eur(a.mois) + ' / mois</span></div>' +
+        '<div id="dvRp' + i + '" style="display:none;padding:4px 0 6px 28px"></div></div>').join('')).join('') +
       '<label>Remarque sur le devis (facultatif)</label><input id="dvR">' +
       '<div class="row" style="margin-top:12px"><div style="flex:1;font-size:16px">Total : <b id="dvT">0,00 €</b> TTC / mois</div><button class="btn" onclick="dvEnvoyer(this)">Envoyer le devis dans l\'Assistance du cabinet</button></div><p class="err" id="dvErr"></p></div>' +
       '<div class="sec">Derniers devis</div>' + (DV.devis.length ? DV.devis.map(d => '<div class="card row"><div style="flex:1"><b style="color:var(--navy)">' + esc(d.cabinet) + '</b> · ' + esc(d.n) +
         '<div class="meta">' + esc(d.date) + ' · ' + esc(d.par.indexOf('Agence') === 0 ? d.par : 'fait par le cabinet') + ' · ' + eur(d.mois) + ' TTC / mois</div></div><span class="bdg">' + esc(d.statut) + '</span></div>').join('') : '<div class="vide">Aucun devis pour le moment.</div>');
   }
-  function dvChoix() { return DV.catalogue.map((a, i) => ({ a, i })).filter(x => document.getElementById('dvA' + x.i).checked).map(x => ({ code: x.a.code, article: x.a.article, quantite: Math.max(1, +document.getElementById('dvQ' + x.i).value || 1), mois: x.a.mois })); }
+  // Un repère par exemplaire (couleur, n° de série, salle) pour reconnaître les appareils identiques
+  function dvReperes(i) {
+    const box = document.getElementById('dvRp' + i), on = document.getElementById('dvA' + i).checked, n = Math.max(1, Math.min(50, +document.getElementById('dvQ' + i).value || 1));
+    const avant = [...box.querySelectorAll('input')].map(x => x.value);
+    box.style.display = on ? 'grid' : 'none'; box.style.gridTemplateColumns = 'repeat(auto-fill,minmax(210px,1fr))'; box.style.gap = '6px';
+    box.innerHTML = on ? Array.from({ length: n }, (_, k) => '<input placeholder="' + (n > 1 ? 'N° ' + (k + 1) + ' : ' : '') + 'couleur, n° de série, salle (facultatif)" value="' + esc(avant[k] || '') + '" style="font-size:13px;padding:7px 9px">').join('') : '';
+  }
+  function dvChoix() { return DV.catalogue.map((a, i) => ({ a, i })).filter(x => document.getElementById('dvA' + x.i).checked).map(x => ({ code: x.a.code, article: x.a.article, quantite: Math.max(1, +document.getElementById('dvQ' + x.i).value || 1), mois: x.a.mois,
+    reperes: [...document.querySelectorAll('#dvRp' + x.i + ' input')].map(e => e.value.trim()) })); }
   function dvTotal() { document.getElementById('dvT').textContent = eur(dvChoix().reduce((t, x) => t + (x.mois || 0) * x.quantite, 0)); }
   async function dvEnvoyer(b) {
     const err = document.getElementById('dvErr'), v = document.getElementById('dvC').value.trim();
@@ -547,11 +556,23 @@
     main.innerHTML = '<h2>Révisions annuelles</h2><p class="sub">Les appareils sous contrat d\'entretien. Après l\'entretien, cochez « Révision faite » : le compteur repart pour un an et le praticien voit sa nouvelle date dans son Assistance.</p>' +
       '<div class="toolbar"><select onchange="filtreRev=this.value;vueRevs()"><option value="proches">En retard et dans les 60 jours</option><option value="tout"' + (filtreRev === 'tout' ? ' selected' : '') + '>Tous les appareils sous contrat</option></select></div>' +
       (l.length ? l.map(r => '<div class="card row"><div style="flex:1"><b style="color:var(--navy)">' + esc(r.cabinet) + '</b> · ' + esc(r.appareil) + (r.modele ? ' · ' + esc(r.modele) : '') +
-        '<div class="meta">' + (r.serie ? 'N° de série ' + esc(r.serie) + ' · ' : '') + 'Dernière révision : ' + esc(r.derniere || 'jamais') + '</div>' +
+        '<div class="meta">' + (r.repere ? '<b style="color:var(--text)">' + esc(r.repere) + '</b> · ' : '') + (r.serie ? 'N° de série ' + esc(r.serie) + ' · ' : '') + 'Dernière révision : ' + esc(r.derniere || 'jamais') +
+        ' · <a href="#" onclick="revRep(this,' + r.ligne + ',\'' + esc(r.cabId) + '\',\'' + esc(r.serie || '').replace(/'/g, '') + '\',\'' + esc(r.repere || '').replace(/'/g, '') + '\');return false">✎ n° de série / repère</a></div>' +
         '<div style="margin-top:5px"><span class="bdg ' + (r.jours < 0 ? 'r' : r.jours <= 30 ? 'o' : 'v') + '">' + (r.jours < 0 ? 'En retard de ' + (-r.jours) + ' j' : 'Prochaine : ' + esc(r.prochaine) + ' (dans ' + r.jours + ' j)') + '</span></div></div>' +
         '<label style="margin:0;display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer;border:1.5px solid var(--line);border-radius:10px;padding:9px 12px">' +
         '<input type="checkbox" style="width:20px;height:20px;accent-color:var(--navy)" onchange="revFaite(this,' + r.ligne + ',\'' + esc(r.cabId) + '\')"> Révision faite</label></div>').join('')
         : '<div class="vide">Aucune révision à prévoir dans les 60 jours.</div>');
+  }
+  function revRep(a, ligne, cabId, serie, repere) {
+    const d = a.parentNode;
+    d.innerHTML = '<div class="g2" style="margin-top:6px"><div><label>N° de série</label><input id="rvS' + ligne + '" value="' + serie + '"></div><div><label>Repère (couleur, salle…)</label><input id="rvR' + ligne + '" value="' + repere + '" placeholder="Ex. : blanc, salle 2"></div></div>' +
+      '<div class="toolbar" style="margin-top:6px"><button class="btn" onclick="revRepOk(this,' + ligne + ',\'' + cabId + '\')">Enregistrer</button><button class="btn-light" onclick="vueRevs()">Annuler</button></div>';
+  }
+  async function revRepOk(b, ligne, cabId) {
+    b.disabled = true;
+    const r = await api('revision_repere', { ligne, cabId, serie: document.getElementById('rvS' + ligne).value, repere: document.getElementById('rvR' + ligne).value });
+    if (!r.ok) { b.disabled = false; alert(r.message); return; }
+    vueRevs();
   }
   async function revFaite(cb, ligne, cabId) {
     if (!cb.checked) return;
