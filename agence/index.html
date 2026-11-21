@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Alternative Dentaire · Agence</title>
+<title>Alternative Dentaire – Agence</title>
 <style>
   :root { --navy: #0F2347; --gold: #E3A72F; --text: #1F2937; --muted: #5A6880; --line: #DCE3EE; --bg: #F4F6FA; --ok: #1E8449; --ko: #C0392B; }
   /*CHARTE*/
@@ -61,8 +61,8 @@
 </style>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0F2347">
-<link rel="icon" href="icone-192.png">
-<link rel="apple-touch-icon" href="icone-192.png">
+<link rel="icon" href="icone-192.png?v=2">
+<link rel="apple-touch-icon" href="icone-192.png?v=2">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 </head>
@@ -76,6 +76,8 @@
 <main id="main"><div class="vide">Chargement…</div></main>
 <script>
   const EXEC = 'https://script.google.com/macros/s/AKfycbylyfquDSMq2V5u_fq6L0a8N-MNIRzZhmXa1vGSX_h-k6lBg0w4P-QcrAjZzz_y7pw2hQ/exec'; let TOKEN = '';
+  // Appli « AD Consommable » : mêmes données, sans installations ni SAV
+  const APP = 'agence' === 'conso' ? 'conso' : 'agence';
   let D = null, onglet = 'taches', filtreTaches = 'moi', formInstall = false;
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const jour = s => { const m = String(s || '').match(/^(\d{2})\/(\d{2})\/(\d{4})/); return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null; };
@@ -143,8 +145,10 @@
     document.getElementById('moi').innerHTML = esc(D.moi.prenom + ' ' + D.moi.nom) + '<small>' + esc(D.moi.poste || D.moi.role) + ' · ' + esc(D.moi.societe) +
       (D.partage ? ' · <a href="#" onclick="changerQui();return false" style="color:inherit">changer</a>' : '') + '</small>';
     const retard = mesTaches().filter(t => t.statut !== 'Fait' && jour(t.echeance) && jour(t.echeance) <= auj).length;
-    const tabs = [['taches', 'Mes tâches', retard]].concat(D.estAD ? [['clients', 'Clients'], ['installs', 'Installations']] : [], D.chantiers ? [['chantiers', 'Chantiers']] : [], D.prets ? [['prets', 'Prêts']] : [], D.devis ? [['devis', 'Devis entretien']] : [], [['publier', 'Publier']], D.revisions ? [['revs', 'Révisions']] : [], D.conso ? [['conso', 'Consommables']] : [],
+    let tabs = [['taches', 'Mes tâches', retard]].concat(D.estAD ? [['clients', 'Clients'], ['installs', 'Installations']] : [], D.prets ? [['prets', 'Prêts']] : [], D.devis ? [['devis', 'Devis entretien']] : [], [['publier', 'Publier']], D.revisions ? [['revs', 'Révisions']] : [], D.conso ? [['conso', 'Consommables']] : [],
       D.estAD ? [['demandes', 'Demandes des cabinets']] : [], [['docs', 'Documents'], ['orga', 'Organigramme'], ['aide', 'Mode d\'emploi']]);
+    if (APP === 'conso') tabs = tabs.filter(t => ['taches', 'conso', 'publier', 'docs', 'orga', 'aide'].includes(t[0]));
+    if (!tabs.some(t => t[0] === onglet)) onglet = 'taches';
     document.getElementById('nav').innerHTML = tabs.map(t => '<button class="' + (onglet === t[0] ? 'on' : '') + '" onclick="aller(\'' + t[0] + '\')">' + t[1] + (t[2] ? '<span class="nb">' + t[2] + '</span>' : '') + '</button>').join('');
     ({ taches: vueTaches, clients: vueClients, installs: vueInstalls, conso: vueConso, demandes: vueDemandes, orga: vueOrga, docs: vueDocs, revs: vueRevs, chantiers: vueChantiers, devis: vueDevis, prets: vuePrets, publier: vuePublier, aide: vueAide })[onglet]();
   }
@@ -210,8 +214,10 @@
 
   // ---------------- Installations ----------------
   function badgeFin(f) { return '<span class="bdg ' + (f === 'Validé' || f === 'Non nécessaire' ? 'v' : f === 'Refusé' ? 'r' : 'o') + '">Financement : ' + esc(f) + '</span>'; }
-  function vueInstalls() {
-    let h = '<h2>Installations</h2><p class="sub">Notez chaque installation : le matériel coché crée automatiquement les tâches de chacun (financement, réunion de chantier, classeur, fiches d\'identification, PV, révision annuelle…).</p>' +
+  async function vueInstalls() {
+    const main = document.getElementById('main');
+    if (D.chantiers && !CH) { main.innerHTML = '<h2>Installations</h2><p class="sub">Chargement des chantiers et des dossiers praticiens…</p>'; try { const d = await api('chantiers'); if (d.ok) CH = d; } catch (e) {} }
+    let h = '<h2>Installations</h2><p class="sub">En haut, les installations en cours avec leur chantier (dossier technique, artisans, tâches). En bas, tous les praticiens déjà installés. Le matériel coché à la création crée automatiquement les tâches de chacun.</p>' +
       '<div class="toolbar"><button class="btn" onclick="formInstall=!formInstall;afficher()">' + (formInstall ? 'Fermer' : '+ Nouvelle installation') + '</button></div>';
     if (formInstall) {
       h += '<div class="card"><div class="g3"><div><label>Cabinet</label><input id="niC" list="cabs" placeholder="Nom du cabinet"></div><div><label>Praticien</label><input id="niP" placeholder="Dr …"></div>' +
@@ -221,8 +227,48 @@
         '<div><label>Organisme de financement</label><input id="niO" placeholder="Ex. : banque, leasing…"></div></div>' +
         '<label>Notes</label><textarea id="niN" rows="2"></textarea><p class="err" id="niErr"></p><button class="btn" onclick="creerInstall(this)">Créer l\'installation et les tâches</button></div>' + datalistCabs();
     }
-    if (!D.installations.length) h += '<div class="vide">Aucune installation enregistrée.</div>';
-    D.installations.forEach(i => {
+    const enCours = D.installations.filter(i => i.statut === 'Planifiée'), faites = D.installations.filter(i => i.statut === 'Réalisée');
+    h += '<div class="sec grp">En cours et à venir <em>' + enCours.length + '</em></div>' + (enCours.length ? enCours.map(carteInstall).join('') : '<div class="vide">Aucune installation en cours.</div>');
+    h += '<div class="sec grp">Praticiens installés <em id="nbFaites"></em></div>' +
+      '<div class="toolbar"><input id="ifQ" placeholder="Rechercher un praticien, un cabinet, une ville…" style="flex:1;min-width:200px" value="' + esc(ifFiltre) + '" oninput="ifFiltre=this.value;listeFaites()"></div><div id="lFaites"></div>';
+    main.innerHTML = h;
+    listeFaites();
+  }
+  let ifFiltre = '', instOuverte = '';
+  // Installations faites : celles de l'appli + les dossiers « Praticiens » d'avant l'appli
+  function listeFaites() {
+    const P = CH && CH.praticiens && CH.praticiens.ok ? CH.praticiens : null, chByN = {};
+    (CH ? CH.chantiers : []).forEach(c => chByN[c.n] = c);
+    const L = D.installations.filter(i => i.statut === 'Réalisée').map(i => { const c = chByN[i.n] || {}; const p = c.prat || (c.pratId ? { id: c.pratId, nom: c.pratNom } : null);
+      return { nom: i.cabinet + (i.praticien ? ' · ' + i.praticien : ''), info: 'Installé le ' + i.date + ' · ' + i.materiel, dossier: p ? p.id : '', n: i.n }; })
+      .concat(P ? P.libres.map(d => ({ nom: d.nom, info: 'Dossier praticien · modifié le ' + d.maj, dossier: d.id })) : []);
+    L.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
+    const nrm = x => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''), f = nrm(ifFiltre).split(/\s+/).filter(Boolean);
+    const l = L.filter(x => f.every(w => nrm(x.nom + ' ' + x.info).includes(w)));
+    document.getElementById('nbFaites').textContent = L.length;
+    document.getElementById('lFaites').innerHTML = l.length ? l.map(x => '<div class="card" style="padding:9px 12px"><div class="row" style="flex-wrap:wrap"><div style="flex:1;min-width:180px"><b style="color:var(--navy)">' + esc(x.nom) + '</b><div class="meta">' + esc(x.info) + '</div></div>' +
+      (x.dossier ? '<button class="btn-light" onclick="pratDoc(this,\'' + esc(x.dossier) + '\',\'dt\')">📄 Dossier technique</button><a class="btn-light" style="text-decoration:none" target="_blank" href="https://drive.google.com/drive/folders/' + esc(x.dossier) + '">Drive</a>' : '<span class="meta">pas de dossier praticien</span>') + '</div></div>').join('')
+      : '<div class="vide">' + (L.length ? 'Aucun résultat.' : (D.chantiers && !CH ? 'Chargement…' : 'Aucune installation effectuée.')) + '</div>';
+  }
+  // Partie « chantier » d'une installation en cours (équipe technique)
+  function blocChantierInstall(i) {
+    const c = CH && CH.chantiers.find(x => x.n === i.n);
+    if (!c) return '';
+    const o = instOuverte === i.n;
+    return '<div class="toolbar" style="margin-top:8px"><button class="btn-light" onclick="instOuverte=instOuverte===\'' + esc(i.n) + '\'?\'\':\'' + esc(i.n) + '\';vueInstalls()">' + (o ? '▴ Fermer le chantier' : '▾ Chantier') + '</button>' +
+      (c.prat ? '<span class="bdg v">📁 ' + esc(c.prat.nom) + '</span>' : '<span class="bdg o">📁 dossier praticien à associer</span>') + '<span class="bdg">' + c.artisans.length + ' artisan(s)</span><span class="bdg">' + c.docs.length + ' document(s)</span>' +
+      (c.reste.length ? '<span class="bdg o">' + c.reste.length + ' tâche(s) à faire</span>' : '') + '</div>' + (o ? ficheChantier(c) : '');
+  }
+  async function pratDoc(b, dossier, type) {
+    const t = b.innerHTML; b.disabled = true; b.textContent = 'Téléchargement…';
+    let r; try { r = await api('chantier_prat_doc', { dossier, type }); } catch (e) { r = { ok: false, message: 'Connexion impossible.' }; }
+    b.disabled = false; b.innerHTML = t;
+    if (!r.ok) { alert(r.message); return; }
+    const bin = Uint8Array.from(atob(r.base64), c => c.charCodeAt(0)), url = URL.createObjectURL(new Blob([bin], { type: r.mime }));
+    const a = document.createElement('a'); a.href = url; a.download = r.nom; document.body.appendChild(a); a.click(); a.remove();
+  }
+  function carteInstall(i) {
+      let h = '';
       const ts = D.taches.filter(t => t.install === i.n), faites = ts.filter(t => t.statut === 'Fait').length;
       const d = jour(i.date), j = d ? Math.round((d - auj) / 86400000) : null;
       const alerte = i.statut === 'Planifiée' && i.financement !== 'Validé' && i.financement !== 'Non nécessaire' && j !== null && j <= 30;
@@ -233,9 +279,8 @@
         (alerte ? '<div class="meta" style="color:#8A5A00;font-weight:700;margin-top:6px">⚠ Financement non validé : ne pas installer avant validation.</div>' : '') +
         (ts.length ? '<div class="meta">' + faites + ' / ' + ts.length + ' tâches faites</div><div class="prog"><i style="width:' + Math.round(100 * faites / ts.length) + '%"></i></div>' : '') + '</div>' +
         '<div style="width:180px"><label style="margin-top:0">Financement</label><select onchange="majInstall(\'' + esc(i.n) + '\',{financement:this.value})">' + D.financements.map(f => '<option' + (f === i.financement ? ' selected' : '') + '>' + esc(f) + '</option>').join('') + '</select>' +
-        '<label>Statut</label><select onchange="majInstall(\'' + esc(i.n) + '\',{statut:this.value})">' + D.statuts.map(s => '<option' + (s === i.statut ? ' selected' : '') + '>' + esc(s) + '</option>').join('') + '</select></div></div></div>';
-    });
-    document.getElementById('main').innerHTML = h;
+        '<label>Statut</label><select onchange="majInstall(\'' + esc(i.n) + '\',{statut:this.value})">' + D.statuts.map(s => '<option' + (s === i.statut ? ' selected' : '') + '>' + esc(s) + '</option>').join('') + '</select></div></div>' + blocChantierInstall(i) + '</div>';
+      return h;
   }
   async function creerInstall(b) {
     const v = id => document.getElementById(id).value.trim(), err = document.getElementById('niErr');
@@ -247,13 +292,14 @@
     b.disabled = true; b.textContent = 'Création…';
     const r = await api('installation_creer', { cabinet: nom, cabId: cab ? cab.id : '', praticien: v('niP'), date: v('niD'), materiel: mat, financement: v('niF'), organisme: v('niO'), notes: v('niN') });
     if (!r.ok) { b.disabled = false; b.textContent = 'Créer l\'installation et les tâches'; err.textContent = r.message; return; }
-    formInstall = false; await charger(); alert('Installation ' + r.n + ' créée avec ' + r.taches + ' tâche(s).');
+    formInstall = false; CH = null; await charger(); alert('Installation ' + r.n + ' créée avec ' + r.taches + ' tâche(s).');
   }
-  async function majInstall(n, data) { const r = await api('installation_maj', Object.assign({ n }, data)); if (r.ok) await charger(); }
+  async function majInstall(n, data) { const r = await api('installation_maj', Object.assign({ n }, data)); if (r.ok) { CH = null; await charger(); } }
 
   // ---------------- Chantiers (Bruno, techniciens) ----------------
   let CH = null, chOuvert = '';
-  async function vueChantiers() {
+  async function vueChantiers() { onglet = 'installs'; return vueInstalls(); }
+  async function vueChantiersAncien() {
     const main = document.getElementById('main');
     if (!CH) { main.innerHTML = '<h2>Chantiers</h2><p class="sub">Chargement…</p>'; const d = await api('chantiers'); if (!d.ok) { main.innerHTML = '<div class="vide">' + esc(d.message) + '</div>'; return; } CH = d; }
     let h = '<h2>Chantiers</h2><p class="sub">Les installations à venir et celles du dernier mois : date prévue, financement, dossier technique, artisans et tâches restantes. Touchez un chantier pour l\'ouvrir.</p>';
@@ -688,7 +734,7 @@
       '<p><b>Installations</b> : « + Nouvelle installation », choisissez le cabinet, le praticien, la date et cochez le matériel. Les tâches sont créées et réparties toutes seules : vérification du financement (assistante de direction), réunion de chantier (responsable technique), classeur d\'installation, fiche d\'identification du générateur et PV pour la radio, panoramique et cône beam, révision annuelle, proposition de contrat… ' +
       'Tant que le financement n\'est pas « Validé », une alerte part chaque matin dans les 30 jours avant l\'installation (et au gérant à 7 jours). Changez le financement et le statut directement sur la fiche.</p>' +
       '<p><b>Documents du cabinet</b> : déposez les PDF (PV, fiche d\'identification, contrôle qualité…) dans le dossier Google Drive du cabinet (onglet « Documents cabinets » du tableau). Le praticien les retrouve dans son Assistance, rubrique « Mes documents », et reçoit une notification.</p>' +
-      '<p><b>Chantiers</b> (responsable technique, techniciens, direction) : chaque installation à venir avec la date, le financement (⚠ si pas validé), l\'adresse et l\'itinéraire, le dossier technique (documents déposés ici + lien), les artisans du chantier avec leurs coordonnées (touchez le numéro pour appeler) et les tâches qui restent. Le dossier du praticien dans le Drive « Praticiens » est retrouvé tout seul par le nom : bouton 📄 Dossier technique (le PDF le plus récent), plans APS et derniers fichiers. S\'il n\'est pas trouvé, choisissez-le dans la liste « Associer un dossier ». Ces documents ne sont jamais visibles par le praticien.</p>' +
+      '<p><b>Installations</b> : en haut, les installations en cours ; en bas, tous les praticiens déjà installés (avec recherche et dossier technique). Le bouton ▾ Chantier d\'une installation en cours (responsable technique, techniciens, direction) montre chaque installation à venir avec la date, le financement (⚠ si pas validé), l\'adresse et l\'itinéraire, le dossier technique (documents déposés ici + lien), les artisans du chantier avec leurs coordonnées (touchez le numéro pour appeler) et les tâches qui restent. Le dossier du praticien dans le Drive « Praticiens » est retrouvé tout seul par le nom : bouton 📄 Dossier technique (le PDF le plus récent), plans APS et derniers fichiers. S\'il n\'est pas trouvé, choisissez-le dans la liste « Associer un dossier ». Ces documents ne sont jamais visibles par le praticien.</p>' +
       '<p><b>Rendez-vous</b> : sur une tâche, ⏱ indique le nombre de techniciens et le temps à prévoir pour l\'intervention (visible par la secrétaire et Bruno pour caler le rendez-vous). 👥 l\'attribue à une ou plusieurs personnes.</p>' +
       '<p><b>Clients</b> : tous les cabinets, avec recherche. Touchez un cabinet : adresse et itinéraire, téléphone (appel direct), praticiens, matériel prêté chez lui et installations.</p>' +
       '<p><b>Prêts</b> : « + Ajouter un matériel au parc » (type, marque, n° de série). « Prêter » l\'attribue à un cabinet et un praticien avec une date de retour ; « Récupéré ✓ » quand il revient au dépôt. Un prêt en retard est signalé chaque matin au responsable technique.</p>' +
