@@ -153,7 +153,7 @@
     document.getElementById('nav').innerHTML = tabs.map(t => '<button class="' + (onglet === t[0] ? 'on' : '') + '" onclick="aller(\'' + t[0] + '\')">' + t[1] + (t[2] ? '<span class="nb">' + t[2] + '</span>' : '') + '</button>').join('');
     ({ taches: vueTaches, clients: vueClients, installs: vueInstalls, conso: vueConso, demandes: vueDemandes, orga: vueOrga, docs: vueDocs, revs: vueRevs, chantiers: vueChantiers, devis: vueDevis, prets: vuePrets, publier: vuePublier, aide: vueAide })[onglet]();
   }
-  function aller(o) { onglet = o; afficher(); }
+  function aller(o) { onglet = o; PD = []; afficher(); }
 
   // ---------------- Tâches ----------------
   function vueTaches() {
@@ -248,7 +248,7 @@
     const l = L.filter(x => f.every(w => nrm(x.nom + ' ' + x.info).includes(w)));
     document.getElementById('nbFaites').textContent = L.length;
     document.getElementById('lFaites').innerHTML = l.length ? l.map(x => '<div class="card" style="padding:9px 12px"><div class="row" style="flex-wrap:wrap"><div style="flex:1;min-width:180px"><b style="color:var(--navy)">' + esc(x.nom) + '</b><div class="meta">' + esc(x.info) + '</div></div>' +
-      (x.dossier ? '<button class="btn-light" onclick="pratDoc(this,\'' + esc(x.dossier) + '\',\'dt\')">📄 Dossier technique</button><a class="btn-light" style="text-decoration:none" target="_blank" href="https://drive.google.com/drive/folders/' + esc(x.dossier) + '">Drive</a>' : '<span class="meta">pas de dossier praticien</span>') + '</div></div>').join('')
+      (x.dossier ? '<button class="btn-light" onclick="pratDoc(this,\'' + esc(x.dossier) + '\',\'dt\')">📄 Dossier technique</button><button class="btn-light" onclick="pratDossier(\'' + esc(x.dossier) + '\')">📁 Dossier</button>' : '<span class="meta">pas de dossier praticien</span>') + '</div></div>').join('')
       : '<div class="vide">' + (L.length ? 'Aucun résultat.' : (D.chantiers && !CH ? 'Chargement…' : 'Aucune installation effectuée.')) + '</div>';
   }
   // Partie « chantier » d'une installation en cours (équipe technique)
@@ -268,6 +268,21 @@
     if (!r.ok) { cb.checked = !cb.checked; cb.disabled = false; alert(r.message); return; }
     CH = null; vueInstalls();
   }
+  // Dossier praticien parcouru dans l'appli : pas de connexion Google à confirmer sur le téléphone
+  let PD = [];
+  async function pratDossier(id, retour) {
+    if (!retour) PD.push(id);
+    const main = document.getElementById('main'); main.innerHTML = '<h2>📁 Dossier</h2><p class="sub">Chargement…</p>'; window.scrollTo(0, 0);
+    let r; try { r = await api('chantier_prat_liste', { dossier: id }); } catch (e) { r = { ok: false, message: 'Connexion impossible.' }; }
+    const haut = '<div class="toolbar"><button class="btn-light" onclick="pratRetour()">← Retour</button></div>';
+    if (!r.ok) { main.innerHTML = haut + '<div class="vide">' + esc(r.message) + '</div>'; return; }
+    const mo2 = t => t ? (t > 1048576 ? (Math.round(t / 104857.6) / 10) + ' Mo' : Math.max(1, Math.round(t / 1024)) + ' Ko') : '';
+    main.innerHTML = haut + '<h2>📁 ' + esc(r.nom) + '</h2><p class="sub">' + r.dossiers.length + ' dossier(s) · ' + r.fichiers.length + ' fichier(s). Touchez « Ouvrir » pour télécharger un fichier.</p>' +
+      r.dossiers.map(d => '<div class="card" style="padding:10px 12px;cursor:pointer" onclick="pratDossier(\'' + esc(d.id) + '\')"><b style="color:var(--navy)">📁 ' + esc(d.nom) + '</b></div>').join('') +
+      r.fichiers.map(f => '<div class="card" style="padding:9px 12px"><div class="row"><div style="flex:1;min-width:0"><div style="word-break:break-word">📄 ' + esc(f.nom) + '</div><div class="meta">' + esc(f.date) + ' · ' + mo2(f.taille) + '</div></div><button class="btn-light" onclick="pratOuvrir(this,\'' + esc(f.id) + '\')">Ouvrir</button></div></div>').join('') +
+      (!r.dossiers.length && !r.fichiers.length ? '<div class="vide">Dossier vide.</div>' : '');
+  }
+  function pratRetour() { PD.pop(); if (PD.length) pratDossier(PD[PD.length - 1], true); else afficher(); }
   async function pratDoc(b, dossier, type) {
     const t = b.innerHTML; b.disabled = true; b.textContent = 'Téléchargement…';
     let r; try { r = await api('chantier_prat_doc', { dossier, type }); } catch (e) { r = { ok: false, message: 'Connexion impossible.' }; }
@@ -383,7 +398,7 @@
   function pratBoutons(p) {
     return (p.dt ? '<button class="btn" onclick="pratOuvrir(this,\'' + esc(p.dt.id) + '\')">📄 Dossier technique' + mo(p.dt.taille) + '</button>' : '') +
       (p.aps ? '<button class="btn-light" onclick="pratOuvrir(this,\'' + esc(p.aps.id) + '\')">📐 ' + esc(p.aps.nom.replace(/\.pdf$/i, '')) + '</button>' : '') +
-      (p.url ? '<a class="btn-light" style="text-decoration:none" target="_blank" href="' + esc(p.url) + '">Ouvrir dans Drive</a>' : '');
+      (p.id ? '<button class="btn-light" onclick="pratDossier(\'' + esc(p.id) + '\')">📁 Tout le dossier</button>' : '');
   }
   function blocPraticien(c) {
     const P = CH.praticiens || {}, n = esc(c.n);
