@@ -134,7 +134,6 @@
       </div>
       <label id="lInt">Ce qui vous intéresse</label>
       <div class="chips" id="interets"></div>
-      <label class="check blocPro" style="background:#EEF2FA;border:1px solid var(--line);border-radius:12px;padding:10px 12px"><input type="checkbox" id="assist" checked> <span><b>💻 Recevoir le lien d'installation de l'Assistance Alternative Dentaire</b> pour l'ordinateur du cabinet : infos et formations de votre spécialité, vos documents et factures, « J'ai un problème » en un clic, dépannage en moins de 3 h. Gratuit.</span></label>
       <label class="check"><input type="checkbox" id="accord"> <span id="tAccord"></span></label>
       <div class="photo"><label class="check"><input type="checkbox" id="photo"> <span id="tPhoto"></span></label></div>
       <p class="err" id="err"></p>
@@ -333,8 +332,6 @@
     else Object.assign(p, { cabinet: v('cabinet'), ville: v('ville') });
     if (p.portable.replace(/\D/g, '').length < 9) { err.textContent = T('Indique ton numéro de portable.', 'Indiquez votre numéro de portable.'); return; }
     if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(p.email)) { err.textContent = T('Vérifie ton adresse e-mail.', 'Vérifiez votre adresse e-mail.'); return; }
-    const veutAssist = !etu && $('assist') && $('assist').checked;
-    if (veutAssist && p.cabinet.length < 3) { err.textContent = 'Indiquez le nom de votre cabinet (pour l\'Assistance).'; $('cabinet').focus(); return; }
     if (!$('accord').checked) { err.textContent = T('Coche la case d\'accord pour qu\'on puisse te recontacter.', 'Cochez la case d\'accord pour que nous puissions vous recontacter.'); return; }
     err.textContent = '';
     const b = $('send'); b.disabled = true; b.textContent = 'Envoi…';
@@ -342,16 +339,10 @@
     try { r = await appel(Object.assign({ action: 'etudiant', accord: true, evenement: choix >= 0 ? evs[choix].id : '' }, p)); } catch (e) {}
     if (!r || !r.ok) { b.disabled = false; b.textContent = 'Envoyer'; err.textContent = (r && r.message) || T('Envoi impossible pour le moment. Réessaie dans un instant ou appelle-nous au 04 69 96 03 60.', 'Envoi impossible pour le moment. Réessayez dans un instant ou appelez-nous au 04 69 96 03 60.'); return; }
     try { localStorage.setItem('ad_etudiant', JSON.stringify(p)); } catch (e) {}
-    let act = null;
-    if (veutAssist) {
-      const PROF_ACT = { omni: 'Omnipraticien', implanto: 'Implantologue', ortho: 'Orthodontiste', assistante: 'Assistante' };
-      try { act = await appel({ action: 'activation_demande', profil: PROF_ACT[profil] || 'Omnipraticien', prenom: p.prenom, nom: p.nom, portable: p.portable, email: p.email, cabinet: p.cabinet, ville: p.ville }); } catch (e) {}
-    }
     const e = choix >= 0 ? evs[choix] : null;
     $('f').innerHTML = '<div class="ok"><div class="big">' + (e ? '🎉' : '🙌') + '</div><h3>' + (e ? (r.attente ? T('Tu es sur la liste d\'attente', 'Vous êtes sur la liste d\'attente') : T('C\'est noté, à très vite !', 'C\'est noté, à très bientôt !')) : 'Merci ' + esc(p.prenom) + ' !') + '</h3>' +
       '<p class="sub">' + (e ? esc(e.intitule) + ' · ' + esc(e.date) + (e.horaires ? ', ' + esc(e.horaires) : '') + '<br>' + esc(e.lieu) : T('Tu seras prévenu(e) en premier de nos prochains événements.', 'Vous serez prévenu(e) en premier de nos prochains événements.')) + '</p>' +
       '<p class="sub">' + T('Suis-nous', 'Suivez-nous') + ' pour voir les photos et vidéos' + (p.photo ? T(' (et te retrouver dessus 😉)', ' (et vous y retrouver)') : '') + '.</p>' +
-      (act && act.ok ? '<p class="sub" style="background:#EEF2FA;border-radius:12px;padding:10px 12px">💻 <b>Assistance Alternative Dentaire :</b> votre demande est enregistrée. Après validation, vous recevrez par e-mail votre lien d\'installation.</p>' : (act && act.message ? '<p class="sub">💻 ' + esc(act.message) + '</p>' : '')) +
       '<a class="btn btn-ig" href="https://www.instagram.com/alternative_dentaire/" target="_blank" rel="noopener">📸 Suivre @alternative_dentaire</a></div>';
   }
 </script>
