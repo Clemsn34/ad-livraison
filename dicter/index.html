@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dicter une tâche</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0F2347">
+<link rel="icon" href="icone-192.png">
+<link rel="apple-touch-icon" href="icone-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+  :root { --navy: #0F2347; --gold: #E3A72F; --text: #1F2937; --muted: #5A6880; --line: #DCE3EE; --bg: #F4F6FA; --ok: #1E8449; --ko: #C0392B; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+  header { background: var(--navy); color: #fff; padding: 14px 18px 12px; border-bottom: 3px solid var(--gold); display: flex; align-items: center; gap: 10px; }
+  header b { font-size: 17px; } header small { display: block; color: #AFC0DA; font-size: 12px; }
+  header a { margin-left: auto; color: #AFC0DA; font-size: 13px; text-decoration: none; border: 1px solid #3A4D73; border-radius: 16px; padding: 4px 10px; }
+  main { flex: 1; padding: 18px; display: flex; flex-direction: column; gap: 12px; max-width: 560px; width: 100%; margin: 0 auto; }
+  .mic { align-self: center; width: 132px; height: 132px; border-radius: 50%; border: 0; background: var(--navy); box-shadow: 0 0 0 5px var(--gold), 0 8px 24px rgba(15,35,71,.25); display: grid; place-items: center; margin: 10px 0 4px; cursor: pointer; }
+  .mic.on { background: var(--ko); box-shadow: 0 0 0 5px #F5B7B1, 0 8px 24px rgba(192,57,43,.35); animation: pulse 1.2s infinite; }
+  @keyframes pulse { 50% { transform: scale(1.06); } }
+  .etat { text-align: center; color: var(--muted); font-size: 15px; min-height: 22px; }
+  label { font-size: 12.5px; font-weight: 700; color: var(--navy); margin-bottom: -6px; }
+  input, textarea { width: 100%; font: inherit; font-size: 17px; padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; color: var(--text); }
+  textarea { min-height: 92px; resize: vertical; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips button { font: inherit; font-size: 14px; border: 1.5px solid var(--line); background: #fff; color: var(--text); border-radius: 18px; padding: 6px 12px; }
+  .chips button.on { border-color: var(--gold); background: #FFF8E8; font-weight: 700; }
+  .btn { font: inherit; font-size: 18px; font-weight: 700; padding: 15px; border-radius: 12px; border: 2px solid var(--gold); background: var(--navy); color: #fff; width: 100%; }
+  .btn:disabled { opacity: .55; }
+  .ok { background: #E7F5EC; color: var(--ok); border-radius: 10px; padding: 10px 12px; font-weight: 600; }
+  .err { color: var(--ko); min-height: 18px; text-align: center; }
+  .dern { font-size: 13.5px; color: var(--muted); }
+  .dern div { padding: 6px 0; border-top: 1px solid var(--line); }
+  .dern b { color: #1F4FA8; }
+</style>
+</head>
+<body>
+<header>
+  <div><b>Dicter une tâche</b><small>Alternative Dentaire · Agence</small></div>
+  <a href="../agence/">Mes tâches</a>
+</header>
+<main id="main"></main>
+<script>
+const EXEC = 'https://script.google.com/macros/s/AKfycbylyfquDSMq2V5u_fq6L0a8N-MNIRzZhmXa1vGSX_h-k6lBg0w4P-QcrAjZzz_y7pw2hQ/exec';
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const ls = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} }, del: k => { try { localStorage.removeItem(k); } catch (e) {} } };
+// Même connexion que l'appli AD Agence (même site : le code déjà saisi est réutilisé)
+let TOKEN = ''; try { const k = JSON.parse(ls.get('ag_tok') || 'null'); if (k && Date.now() - k.ts < 5 * 3600000) TOKEN = k.t; } catch (e) {}
+function donneesAgence() { try { for (const k of Object.keys(localStorage)) if (k.indexOf('ag_d_agence_') === 0) { const d = JSON.parse(localStorage.getItem(k)); if (d && d.moi) return d; } } catch (e) {} return null; }
+const D = donneesAgence();
+const MOI = D ? D.moi.prenom : 'Clément';
+const EQUIPE = D && D.equipe ? D.equipe.map(e => e.prenom) : [MOI];
+const CABS = D && D.cabinets ? D.cabinets.map(c => c.nom) : [];
+async function post(body) { const r = await fetch(EXEC, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) }); return r.json(); }
+async function connecter(code) {
+  const j = await post({ action: 'agence', op: 'login', code });
+  if (!j.ok) { ls.del('ag_code'); return false; }
+  TOKEN = j.token; ls.set('ag_code', code); ls.set('ag_tok', JSON.stringify({ t: j.token, ts: Date.now() })); return true;
+}
+async function api(op, data) {
+  if (!TOKEN) { const c = ls.get('ag_code'); if (!c || !(await connecter(c))) throw new Error('code'); }
+  let j = await post(Object.assign({ action: 'agence', token: TOKEN, op }, data));
+  if (j.expire) { const c = ls.get('ag_code'); if (c && await connecter(c)) j = await post(Object.assign({ action: 'agence', token: TOKEN, op }, data)); else throw new Error('code'); }
+  return j;
+}
+function ecranCode(msg) {
+  $('main').innerHTML = '<p style="color:var(--muted)">Entrez votre code personnel de l\'Agence (une seule fois sur ce téléphone).</p>' +
+    '<input id="cd" autocomplete="off" autocapitalize="characters" placeholder="Code personnel" style="text-transform:uppercase;letter-spacing:2px">' +
+    '<p class="err" id="cdE">' + (msg || '') + '</p><button class="btn" id="cdB">Valider</button>';
+  $('cdB').onclick = async () => { const c = $('cd').value.trim().toUpperCase().replace(/\s/g, ''); if (c.length < 6) { $('cdE').textContent = 'Code incomplet.'; return; } $('cdE').textContent = 'Connexion…'; if (await connecter(c)) ecranDictee(true); else $('cdE').textContent = 'Code incorrect.'; };
+}
+
+// ----- Découpage de la phrase dictée : cabinet, tâche, pour qui -----
+const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+const maj = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+function decouper(txt) {
+  let t = String(txt || '').trim().replace(/\s+/g, ' '), pour = [];
+  // « pour Bruno », « pour Séverine et Bruno »
+  EQUIPE.forEach(p => { const re = new RegExp('\\b(pour|à|a)\\s+' + p.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/e/gi, '[eéèê]') + '\\b', 'i'); if (re.test(t.normalize('NFC'))) { pour.push(p); t = t.replace(re, '').trim(); } });
+  t = t.replace(/\s+(et)\s*$/i, '').replace(/^[,;:.\s]+|[,;:\s]+$/g, '');
+  let cab = '', reste = t;
+  // 1) « Cabinet : tâche » ou « Cabinet, tâche » dicté avec une ponctuation
+  const m1 = /^(.{2,50}?)\s*[:;]\s*(.+)$/.exec(t);
+  // 2) Un cabinet connu au début de la phrase (le plus long qui correspond)
+  const nt = norm(t); let best = '';
+  CABS.forEach(c => { const nc = norm(c); if (nc.length >= 3 && (nt === nc || nt.indexOf(nc + ' ') === 0) && nc.length > norm(best).length) best = c; });
+  if (best) { const mots = norm(best).split(' ').length; cab = best; reste = t.split(' ').slice(mots).join(' '); }
+  else if (m1) { cab = m1[1].trim(); reste = m1[2].trim(); }
+  else {
+    // 3) « Docteur Dupont, … » / « Dr Dupont … » / « cabinet Machin … »
+    const m3 = /^((?:docteur|dr\.?|cabinet|centre dentaire|chez(?: le)?(?: docteur| dr\.?)?)\s+[A-ZÀ-Ü][\wÀ-ÿ'-]*(?:\s+[A-ZÀ-Ü][\wÀ-ÿ'-]*)?)[\s,.-]+(.+)$/i.exec(t);
+    if (m3) { cab = m3[1].replace(/^chez(?: le)?\s+/i, '').replace(/^docteur\s+/i, 'Dr ').replace(/^dr\.?\s+/i, 'Dr '); reste = m3[2]; }
+  }
+  reste = reste.replace(/^[,;:.\-\s]+/, '');
+  return { cabinet: cab, titre: maj(reste || t), pour: pour.length ? pour : [MOI] };
+}
+
+// ----- Dictée -----
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let reco = null, ecoute = false, texteBase = '';
+function ecranDictee(auto) {
+  $('main').innerHTML =
+    '<button class="mic" id="mic" aria-label="Dicter"><svg width="58" height="58" viewBox="0 0 24 24" fill="none" stroke="#E3A72F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg></button>' +
+    '<div class="etat" id="etat">' + (SR ? 'Touchez le micro et dictez la tâche' : 'Dictez avec le micro du clavier') + '</div>' +
+    '<label>Tâche</label><textarea id="tx" placeholder="Ex. : Dr Marty, changer le ressort du bras de la seringue"></textarea>' +
+    '<label>Client / cabinet (vide = interne)</label><input id="cab" list="cabs" placeholder="Reconnu automatiquement">' +
+    '<datalist id="cabs">' + CABS.slice(0, 4000).map(c => '<option value="' + esc(c) + '">').join('') + '</datalist>' +
+    '<label>Pour</label><div class="chips" id="pour">' + EQUIPE.map(p => '<button data-p="' + esc(p) + '" class="' + (p === MOI ? 'on' : '') + '">' + esc(p) + '</button>').join('') + '</div>' +
+    '<p class="err" id="err"></p><button class="btn" id="go">Ajouter la tâche</button><div id="ok"></div><div class="dern" id="dern"></div>';
+  $('pour').onclick = e => { const b = e.target.closest('button'); if (b) b.classList.toggle('on'); };
+  $('tx').oninput = () => appliquer(false);
+  $('go').onclick = ajouter;
+  $('mic').onclick = () => ecoute ? arreter() : demarrer();
+  derniers();
+  if (auto && SR) demarrer(); else if (!SR) $('tx').focus();
+}
+let cabManuel = false;
+function appliquer(depuisDictee) {
+  const d = decouper($('tx').value);
+  if (!cabManuel) $('cab').value = d.cabinet;
+  if (depuisDictee || !cabManuel) document.querySelectorAll('#pour button').forEach(b => b.classList.toggle('on', d.pour.includes(b.dataset.p)));
+}
+function demarrer() {
+  if (!SR) return;
+  reco = new SR(); reco.lang = 'fr-FR'; reco.interimResults = true; reco.continuous = false; reco.maxAlternatives = 1;
+  texteBase = $('tx').value ? $('tx').value.trim() + ' ' : '';
+  reco.onresult = e => { let s = ''; for (let i = 0; i < e.results.length; i++) s += e.results[i][0].transcript; $('tx').value = texteBase + s; appliquer(true); };
+  reco.onerror = e => { $('etat').textContent = e.error === 'not-allowed' ? 'Micro refusé : autorisez-le dans les réglages du navigateur.' : e.error === 'no-speech' ? 'Rien entendu. Touchez le micro pour réessayer.' : 'Dictée interrompue. Touchez le micro.'; };
+  reco.onend = () => { ecoute = false; $('mic').classList.remove('on'); if ($('tx').value.trim() && !/Micro refusé|Rien entendu|interrompue/.test($('etat').textContent)) $('etat').textContent = 'Vérifiez puis « Ajouter la tâche »'; };
+  try { reco.start(); ecoute = true; $('mic').classList.add('on'); $('etat').textContent = 'Je vous écoute…'; } catch (e) {}
+}
+function arreter() { try { reco && reco.stop(); } catch (e) {} }
+async function ajouter() {
+  const d = decouper($('tx').value), cab = $('cab').value.trim(), titre = cab && !cabManuel && cab === d.cabinet ? d.titre : (cab && norm($('tx').value).indexOf(norm(cab)) === 0 ? d.titre : maj($('tx').value.trim()));
+  const pour = [...document.querySelectorAll('#pour button.on')].map(b => b.dataset.p);
+  if (titre.length < 3) { $('err').textContent = 'Dictez ou tapez la tâche.'; return; }
+  if (!pour.length) { $('err').textContent = 'Choisissez au moins une personne.'; return; }
+  arreter(); $('go').disabled = true; $('err').textContent = ''; $('go').textContent = 'Envoi…';
+  try {
+    const r = await api('tache_ajouter', { titre, cabinet: cab, pour });
+    if (!r.ok) throw new Error(r.message || 'Erreur');
+    const l = JSON.parse(ls.get('dict_dern') || '[]'); l.unshift({ n: r.n, c: cab, t: titre, p: pour.join(', '), d: new Date().toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) }); ls.set('dict_dern', JSON.stringify(l.slice(0, 8)));
+    if (navigator.vibrate) navigator.vibrate(60);
+    $('tx').value = ''; $('cab').value = ''; cabManuel = false; appliquer(false);
+    $('ok').innerHTML = '<div class="ok">✓ ' + esc(r.n) + ' ajoutée' + (cab ? ' · ' + esc(cab) : '') + '</div>';
+    $('etat').textContent = 'Touchez le micro pour une autre tâche'; derniers();
+  } catch (e) {
+    if (e.message === 'code') { ecranCode('Session expirée : entrez à nouveau votre code.'); return; }
+    $('err').textContent = navigator.onLine === false ? 'Pas de réseau : réessayez dans un instant.' : 'Envoi impossible : ' + e.message;
+  }
+  $('go').disabled = false; $('go').textContent = 'Ajouter la tâche';
+}
+function derniers() {
+  const l = JSON.parse(ls.get('dict_dern') || '[]');
+  $('dern').innerHTML = l.length ? '<div style="border:0;font-weight:700;color:var(--navy)">Dernières tâches dictées</div>' + l.map(x => '<div>' + esc(x.d) + ' · ' + (x.c ? '<b>' + esc(x.c) + '</b> : ' : '') + esc(x.t) + (x.p !== MOI ? ' <i>(' + esc(x.p) + ')</i>' : '') + '</div>').join('') : '';
+}
+document.addEventListener('input', e => { if (e.target && e.target.id === 'cab') cabManuel = !!e.target.value.trim(); });
+if (!TOKEN && !ls.get('ag_code')) ecranCode(); else ecranDictee(true);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
