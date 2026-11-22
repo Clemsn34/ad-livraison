@@ -138,6 +138,23 @@
       <div class="photo"><label class="check"><input type="checkbox" id="photo"> <span id="tPhoto"></span></label></div>
       <p class="err" id="err"></p>
       <button class="btn btn-navy" id="send" style="width:100%;justify-content:center">Envoyer</button>
+    <div id="simulateur" style="display:none;margin-top:12px">
+    <button type="button" class="btn btn-light" id="simuOnglet" style="width:100%;justify-content:space-between" onclick="const c=document.getElementById('simuCorps'),o=c.style.display==='none';c.style.display=o?'block':'none';this.querySelector('em').textContent=o?'▲':'▼';if(o)simuler();">
+      <span>🏗️ Vous avez un projet d'installation ou de changement de matériel ?</span><em style="font-style:normal">▼</em></button>
+    <div class="card" id="simuCorps" style="display:none;margin-top:8px;box-shadow:none;background:#F7F9FC">
+      <p class="sub" style="margin-top:0">Une première idée du budget en 30 secondes. Fourchettes indicatives : chaque projet est différent, on affine ensemble, sans engagement.</p>
+      <div class="row">
+        <div><label for="sSalles">Salles de soins</label><select id="sSalles" onchange="simuler()"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></div>
+        <div><label for="sImg">Imagerie</label><select id="sImg" onchange="simuler()"><option value="">Pas de panoramique</option><option value="pano" selected>Panoramique</option><option value="conebeam">Cône beam</option></select></div>
+      </div>
+      <div class="row">
+        <div><label for="sSurf">Travaux d'aménagement (m², 0 si aucun)</label><input id="sSurf" type="number" min="0" step="10" value="80" oninput="simuler()"></div>
+        <div><label for="sSter">Salle de stérilisation</label><select id="sSter" onchange="simuler()"><option value="1">Oui, complète</option><option value="0">Non, déjà équipée</option></select></div>
+      </div>
+      <div id="sRes" style="margin-top:14px;background:#F4F6FA;border-radius:12px;padding:14px"></div>
+      <a class="btn btn-gold" style="margin-top:12px;justify-content:center;width:100%" href="https://script.google.com/macros/s/AKfycbylyfquDSMq2V5u_fq6L0a8N-MNIRzZhmXa1vGSX_h-k6lBg0w4P-QcrAjZzz_y7pw2hQ/exec?page=projet&src=simulateur">🔒 Parler de mon projet, en toute discrétion</a>
+    </div>
+    </div>
     </form>
     <div style="margin-top:16px">
     <div class="args" id="args">
@@ -161,23 +178,6 @@
     <div style="display:flex;flex-direction:column;gap:8px" id="pass"></div>
   </section>
 
-  <section id="simulateur" style="display:none">
-    <button type="button" class="btn btn-light" id="simuOnglet" style="width:100%;justify-content:space-between" onclick="const c=document.getElementById('simuCorps'),o=c.style.display==='none';c.style.display=o?'block':'none';this.querySelector('em').textContent=o?'▲':'▼';if(o)simuler();">
-      <span>🏗️ Vous avez un projet d'installation ou de changement de matériel ?</span><em style="font-style:normal">▼</em></button>
-    <div class="card" id="simuCorps" style="display:none;margin-top:8px">
-      <p class="sub" style="margin-top:0">Une première idée du budget en 30 secondes. Fourchettes indicatives : chaque projet est différent, on affine ensemble, sans engagement.</p>
-      <div class="row">
-        <div><label for="sSalles">Salles de soins</label><select id="sSalles" onchange="simuler()"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></div>
-        <div><label for="sImg">Imagerie</label><select id="sImg" onchange="simuler()"><option value="">Pas de panoramique</option><option value="pano" selected>Panoramique</option><option value="conebeam">Cône beam</option></select></div>
-      </div>
-      <div class="row">
-        <div><label for="sSurf">Travaux d'aménagement (m², 0 si aucun)</label><input id="sSurf" type="number" min="0" step="10" value="80" oninput="simuler()"></div>
-        <div><label for="sSter">Salle de stérilisation</label><select id="sSter" onchange="simuler()"><option value="1">Oui, complète</option><option value="0">Non, déjà équipée</option></select></div>
-      </div>
-      <div id="sRes" style="margin-top:14px;background:#F4F6FA;border-radius:12px;padding:14px"></div>
-      <a class="btn btn-gold" style="margin-top:12px;justify-content:center;width:100%" href="https://script.google.com/macros/s/AKfycbylyfquDSMq2V5u_fq6L0a8N-MNIRzZhmXa1vGSX_h-k6lBg0w4P-QcrAjZzz_y7pw2hQ/exec?page=projet&src=simulateur">🔒 Parler de mon projet, en toute discrétion</a>
-    </div>
-  </section>
 
 </main>
 
