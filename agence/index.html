@@ -307,14 +307,15 @@
     const P = CH && CH.praticiens && CH.praticiens.ok ? CH.praticiens : null, chByN = {};
     (CH ? CH.chantiers : []).forEach(c => chByN[c.n] = c);
     const L = D.installations.filter(i => i.statut === 'Réalisée').map(i => { const c = chByN[i.n] || {}; const p = c.prat || (c.pratId ? { id: c.pratId, nom: c.pratNom } : null);
-      return { nom: i.cabinet + (i.praticien ? ' · ' + i.praticien : ''), info: 'Installé le ' + i.date + ' · ' + i.materiel, dossier: p ? p.id : '', dt: (c.prat && c.prat.dt) || c.pratDt || null, n: i.n, cle: i.n }; })
-      .concat(P ? P.libres.filter(d => !d.enCours).map(d => ({ nom: d.nom, info: 'Dossier praticien · modifié le ' + d.maj, dossier: d.id, cle: d.id })) : []);
+      return { nom: i.cabinet + (i.praticien ? ' · ' + i.praticien : ''), cab: i.cabinet, cabId: i.cabId, info: 'Installé le ' + i.date + ' · ' + i.materiel, dossier: p ? p.id : '', dt: (c.prat && c.prat.dt) || c.pratDt || null, n: i.n, cle: i.n }; })
+      .concat(P ? P.libres.filter(d => !d.enCours).map(d => ({ nom: d.nom, cab: (D.cabinets.find(c => c.nom.toLowerCase() === d.nom.toLowerCase()) || {}).nom || d.nom, cabId: (D.cabinets.find(c => c.nom.toLowerCase() === d.nom.toLowerCase()) || {}).id || '', info: 'Dossier praticien · modifié le ' + d.maj, dossier: d.id, cle: d.id })) : []);
     L.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
     const nrm = x => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''), f = nrm(ifFiltre).split(/\s+/).filter(Boolean);
     const l = L.filter(x => f.every(w => nrm(x.nom + ' ' + x.info).includes(w)));
     document.getElementById('nbFaites').textContent = L.length;
     document.getElementById('lFaites').innerHTML = l.length ? l.map(x => '<div class="card" style="padding:9px 12px"><div class="row" style="flex-wrap:wrap"><div style="flex:1;min-width:180px"><b style="color:var(--navy)">' + esc(x.nom) + '</b><div class="meta">' + esc(x.info) + '</div></div>' +
-      '<button class="btn-light" onclick="parcOuvert=parcOuvert===\'' + esc(x.cle) + '\'?\'\':\'' + esc(x.cle) + '\';listeFaites()">🔧 Matériel (' + ((CH && CH.parc && CH.parc[x.cle]) || []).length + ')</button>' +
+      '<button class="btn-light" onclick="ouvrirParc({ cabId: \'' + esc(x.cabId || '') + '\', cabinet: \'' + esc(x.cab || x.nom).replace(/'/g, '') + '\' })">🧰 Matériel installé</button>' +
+      (((CH && CH.parc && CH.parc[x.cle]) || []).length ? '<button class="btn-light" onclick="parcOuvert=parcOuvert===\'' + esc(x.cle) + '\'?\'\':\'' + esc(x.cle) + '\';listeFaites()">🔧 Anciennes saisies (' + ((CH && CH.parc && CH.parc[x.cle]) || []).length + ')</button>' : '') +
       (x.dossier ? (x.dt ? '<button class="btn-light" onclick="pratOuvrir(this,\'' + esc(x.dt.id) + '\')">📄 Dossier technique</button>' : '') + '<button class="btn-light" onclick="pratDossier(\'' + esc(x.dossier) + '\')">📁 Dossier</button>' : '<span class="meta">pas de dossier praticien</span>') + '</div>' + (parcOuvert === x.cle ? blocParc(x) : '') + '</div>').join('')
       : '<div class="vide">' + (L.length ? 'Aucun résultat.' : (D.chantiers && !CH ? 'Chargement…' : 'Aucune installation effectuée.')) + '</div>';
   }
@@ -358,6 +359,150 @@
     const bin = Uint8Array.from(atob(r.base64), c => c.charCodeAt(0)), url = URL.createObjectURL(new Blob([bin], { type: r.mime }));
     const a = document.createElement('a'); a.href = url; a.download = r.nom; document.body.appendChild(a); a.click(); a.remove();
   }
+  // Lecture d'une facture Extrabat (texte) → lignes de matériel
+  function lireFactureMateriel(txt) {
+    const MARQUES = ['AIREL QUETIN', 'AIREL', 'BELMONT', 'XO CARE', 'XO', 'MIGLIONICO', 'MELAG', 'OUDIN', 'FARO', 'ZENIUM', 'INTERCONTINENTAL', 'INTERCONTIDENTAL', 'BIEN AIR', 'BIEN-AIR', 'NSK', 'ACTEON', 'SATELEC',
+      'DURR DENTAL', 'DÜRR DENTAL', 'DURR', 'VATECH', 'DEXIS', 'CATTANI', 'EMS', 'EURONDA', 'OWANDY', 'DENTALART', 'DEGRE K', 'DEGRÉ K', 'SUPPORT DESIGN', 'CARESTREAM', 'MEUNIER CARUS', 'MEUNIER', 'FERLAIN',
+      'GAMASONIC', 'TECNODENT', 'TECNOGAZ', 'W&H', 'KAVO', 'SIRONA', 'DENTSPLY SIRONA', 'PLANMECA', 'MGF', 'EKOM', 'CEFLA', 'ANTHOS', 'CASTELLINI', 'STERN WEBER', 'MOCOM', 'NEWTOM', 'MYRAY', 'SOREDEX', 'KERR', 'IVOCLAR', 'MEDIT', 'TRIOS', '3SHAPE', 'SHINING 3D', 'LUZZANI', 'MIELE', 'CARUS'];
+    const t = String(txt || '').replace(/\r/g, '').replace(/[ \t]+/g, ' ');
+    const esc = s => s.replace(/[.*+?^${}()|[\]\\&]/g, '\\$&');
+    const reM = new RegExp('(^|[\\s>])(' + MARQUES.map(esc).join('|') + ')(?=\\s)', 'g');
+    // Repères de salle (« Salle de soins 1 », « Salle de consultations », « Stérilisation »…)
+    const salles = []; let ms; const reS = /(^|\n)\s*(Salle[^\n]{0,40}|Stérilisation|Local technique|Laboratoire|Bureau)\s*(?=\n)/gi;
+    while ((ms = reS.exec(t))) salles.push({ p: ms.index, s: ms[2].trim().replace(/\s+/g, ' ') });
+    const salleA = p => { let s = ''; salles.forEach(x => { if (x.p <= p) s = x.s; }); return s; };
+    // Débuts d'articles : une marque qui n'est pas dans une liste « - 1 … » de composants
+    const debuts = []; let m;
+    while ((m = reM.exec(t))) {
+      const p = m.index + m[1].length, avant = t.slice(Math.max(0, p - 70), p);
+      if (/-\s*\d?\s*[^-\n]{0,55}$/.test(avant) && !/\n\s*$/.test(avant)) continue; // composant d'un appareil
+      if (/(compatible|pour|avec|type|selon)\s*$/i.test(avant)) continue;
+      if (debuts.length && p - debuts[debuts.length - 1].p < 40 && !/\n/.test(t.slice(debuts[debuts.length - 1].p, p))) continue; // « MIGLIONICO scialytique FARO … » : même article
+      debuts.push({ p, marque: m[2] });
+    }
+    const CAT = [[/scialytique|éclairage|eclairage|plafonnier|lampe op|maia/i, 'Éclairage / scialytique'], [/fauteuil|unit\b|table dentaire|linda|eurus|flex/i, 'Fauteuil / unit'],
+      [/cône|cone beam|panoramique|pano\b|cbct/i, 'Panoramique / cône beam'], [/capteur|rvg|radio|rétro|retro|générateur|phot/i, 'Radio intra-orale / capteur'],
+      [/scanner|empreinte|cfao|fraiseuse|imprimante 3d/i, 'Scanner intra-oral / CFAO'], [/autoclave|thermo|stérilis|sterilis|soudeuse|déminéral|deminéral|lavage/i, 'Stérilisation (autoclave, thermodésinfecteur)'],
+      [/compresseur|aspiration|séparateur|amalgame/i, 'Compresseur / aspiration'], [/turbine|contre-angle|micromoteur|moteur|pièce à main|détartreur|detartreur/i, 'Instruments rotatifs (turbine, contre-angle, moteur)'],
+      [/selle|tabouret|meuble|mobilier|colonne|chariot|placard/i, 'Mobilier'], [/ordinateur|écran|ecran|pc\b|serveur|logiciel/i, 'Informatique']];
+    const out = [], vus = {};
+    debuts.forEach((d, i) => {
+      let seg = t.slice(d.p, i + 1 < debuts.length ? debuts[i + 1].p : t.length);
+      seg = seg.replace(/Description Qté PU TTC[\s\S]*?(Facture N° FA\d+[^\n]*\n)/g, ' ').replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+      if (/^(Remise|Total|Mode de règlement)/i.test(seg)) return;
+      const serials = [...seg.matchAll(/N\s*[°º]\s*(?!de\b)(?:\d{1,3}(?: \d{3})*,\d{2}\s+){0,2}([@A-Za-z0-9][A-Za-z0-9@\-\/\.]{3,}(?:\s\d{2}(?=\s|$))?)/g)].filter(x => !/^(contrat|de)$/i.test(x[1]));
+      const serie = serials.length ? serials[0][1].replace(/[.,]$/, '') : '';
+      const fin = seg.search(/\s(N\s*[°º]|Couleur|couleur\s|Cart\b|composé|Durée de garantie|\d{1,3}(?: \d{3})*,\d{2}\s|\(|Lumière|Capteur filaire|Traçabilité|Commandé par|Nouveau modèle)/);
+      let design = (fin > 0 ? seg.slice(0, fin) : seg.slice(0, 90)).replace(/\s+\d+,\d{2}$/, '').trim();
+      if (design.length > 110) design = design.slice(0, 110).replace(/\s\S*$/, '') + '…';
+      const coul = (seg.match(/couleur\s*:?\s*((?:(?!N\s*[°º]|Cart\b|Tablette|Base\b|Lumière|Durée|Montée|Sans\b)[^\s])+(?:\s+(?:(?!N\s*[°º]|Cart\b|Tablette|Base\b|Lumière|Durée|Montée|Sans\b|OFFERT)[^\s]+)){0,3})/i) || [])[1] || '';
+      const gar = (seg.match(/Durée de garantie\s*:\s*(\d+)\s*mois/i) || [])[1] || '';
+      const compo = serials.slice(1).map(x => { const av = seg.slice(Math.max(0, x.index - 60), x.index).split(/\s-\s|composé de :/).pop().trim(); return (av ? av + ' ' : '') + 'N° ' + x[1]; }).join(' ; ');
+      const offert = /\bOFFERT\b|offerte?\b/i.test(seg) && !serie;
+      let cat = 'Autre'; for (const [re, c] of CAT) if (re.test(design)) { cat = c; break; }
+      if (offert && (cat !== 'Mobilier' || /sellerie|option|bouteille|housse/i.test(design))) return;
+      design = design.replace(/\s*OFFERTE?\b/gi, '');
+      if (!serie && cat === 'Autre') return;
+      if (/^(option|bouteille)/i.test(design.replace(d.marque, '').trim())) return;
+      const k = (serie || (design + salleA(d.p))).toUpperCase(); if (vus[k]) return; vus[k] = 1;
+      out.push({ marque: d.marque, designation: design, serie, couleur: coul.trim(), salle: salleA(d.p), categorie: cat, garantie: gar, composants: compo });
+    });
+    return out;
+  }
+
+  // ---------------- Matériel installé (parc) : saisie, lecture des factures ----------------
+  let PDFJS = null;
+  async function pdfJs() {
+    if (PDFJS) return PDFJS;
+    await new Promise((ok, ko) => { const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'; sc.onload = ok; sc.onerror = () => ko(new Error('Lecteur PDF indisponible (connexion).')); document.head.appendChild(sc); });
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    return (PDFJS = window.pdfjsLib);
+  }
+  // Texte d'un PDF, ligne par ligne (dans l'ordre de lecture)
+  async function textePdf(base64) {
+    const lib = await pdfJs(), bin = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    const doc = await lib.getDocument({ data: bin }).promise; let out = '';
+    for (let p = 1; p <= doc.numPages; p++) {
+      const items = (await (await doc.getPage(p)).getTextContent()).items.filter(i => i.str.trim());
+      const lignes = [];
+      items.forEach(i => { const y = Math.round(i.transform[5]); let l = lignes.find(x => Math.abs(x.y - y) <= 3); if (!l) { l = { y, it: [] }; lignes.push(l); } l.it.push(i); });
+      lignes.sort((a, b) => b.y - a.y).forEach((l, k, a) => { if (k && a[k - 1].y - l.y > 18) out += '\n'; out += l.it.sort((x, y) => x.transform[4] - y.transform[4]).map(i => i.str).join(' ') + '\n'; });
+      out += '\n';
+    }
+    return out;
+  }
+  let PE = null; // { cabId, cabinet, install, terminer, lignes: [], parc: [] }
+  async function ouvrirParc(o) {
+    PE = Object.assign({ lignes: [], parc: [], factures: null }, o);
+    let box = document.getElementById('peBox'); if (!box) { box = document.createElement('div'); box.id = 'peBox'; box.style.cssText = 'position:fixed;inset:0;background:rgba(15,35,71,.45);z-index:60;overflow:auto;padding:16px 10px'; document.body.appendChild(box); }
+    box.innerHTML = '<div class="card" style="max-width:1100px;margin:0 auto"><p class="sub">Chargement du matériel…</p></div>';
+    const r = await api('parc_cabinet', { cabId: PE.cabId || '', cabinet: PE.cabinet });
+    PE.parc = r.ok ? r.parc : []; PE.cats = r.categories || [];
+    peAfficher();
+  }
+  function peFermer() { const b = document.getElementById('peBox'); if (b) b.remove(); PE = null; }
+  function peAfficher() {
+    const box = document.getElementById('peBox'); if (!box || !PE) return;
+    const opt = (l, v) => l.map(x => '<option' + (x === v ? ' selected' : '') + '>' + esc(x) + '</option>').join('');
+    const parSalle = {}; PE.parc.forEach(a => (parSalle[a.salle || 'Sans salle précisée'] = parSalle[a.salle || 'Sans salle précisée'] || []).push(a));
+    let h = '<div class="card" style="max-width:1100px;margin:0 auto"><div class="row"><h2 style="margin:0;flex:1">' + (PE.terminer ? '✓ Installation effectuée · ' : '🧰 Matériel installé · ') + esc(PE.cabinet) + '</h2><button class="btn-light" onclick="peFermer()">Fermer</button></div>' +
+      '<p class="sub">Lisez la facture Extrabat : le matériel, les n° de série, les couleurs et les salles (« Salle de soins 1 »…) sont repris tout seuls. Vérifiez puis enregistrez. Plusieurs praticiens sur le site : choisissez le cabinet de chaque ligne.</p>';
+    if (PE.terminer) h += '<div class="g3"><div><label>Installée le</label><input id="peD" type="date" value="' + new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10) + '"></div><div></div><div></div></div>';
+    h += '<div class="toolbar" style="flex-wrap:wrap"><input id="peF" placeholder="N° de facture, ex. FA0005719" style="width:220px"><button class="btn" onclick="peLireFacture(this)">📄 Lire la facture</button>' +
+      '<button class="btn-light" onclick="peChercher(this)">🔎 Ses factures envoyées</button><button class="btn-light" onclick="peLigne()">+ Ligne à la main</button></div><p class="err" id="peErr"></p>';
+    if (PE.factures) h += '<div class="card" style="background:#F7F9FC">' + (PE.factures.length ? '<div class="meta">Factures envoyées à ce cabinet : cochez celles du matériel installé.</div><div class="chips">' + PE.factures.map(f => '<label><input type="checkbox" name="peFc" value="' + esc(f.code) + '">' + esc(f.code) + ' · ' + esc(f.date) + '</label>').join('') + '</div><button class="btn" style="margin-top:6px" onclick="peLireCochees(this)">Lire les factures cochées</button>' : '<div class="meta">Aucune facture trouvée dans les e-mails envoyés.</div>') + '</div>';
+    if (PE.lignes.length) {
+      h += '<div class="sec">À enregistrer (' + PE.lignes.length + ')</div><div class="tw"><table><tr><th>Cabinet</th><th>Salle</th><th>Couleur</th><th>Catégorie</th><th>Désignation</th><th>N° de série</th><th>Facture</th><th></th></tr>' +
+        PE.lignes.map((l, i) => '<tr><td><input list="cabs" value="' + esc(l.cabinet) + '" onchange="PE.lignes[' + i + '].cabinet=this.value" style="min-width:150px"></td><td><input value="' + esc(l.salle) + '" onchange="PE.lignes[' + i + '].salle=this.value" style="width:120px" placeholder="Salle de soins 1"></td>' +
+          '<td><input value="' + esc(l.couleur) + '" onchange="PE.lignes[' + i + '].couleur=this.value" style="width:110px"></td><td><select onchange="PE.lignes[' + i + '].categorie=this.value">' + opt(PE.cats, l.categorie) + '</select></td>' +
+          '<td><input value="' + esc(l.designation) + '" onchange="PE.lignes[' + i + '].designation=this.value" style="min-width:220px">' + (l.composants ? '<div class="meta" title="Composants">' + esc(l.composants) + '</div>' : '') + '</td>' +
+          '<td><input value="' + esc(l.serie) + '" onchange="PE.lignes[' + i + '].serie=this.value" style="width:120px"></td><td class="meta">' + esc(l.facture || '') + '</td><td><button class="btn-light" onclick="PE.lignes.splice(' + i + ',1);peAfficher()">🗑</button></td></tr>').join('') + '</table></div>' +
+        '<div class="toolbar" style="margin-top:8px"><button class="btn" onclick="peEnregistrer(this)">' + (PE.terminer ? 'Enregistrer le matériel et passer l\'installation en « Réalisée »' : 'Enregistrer le matériel') + '</button></div>';
+    } else if (PE.terminer) h += '<div class="toolbar"><button class="btn-light" onclick="peEnregistrer(this)">Passer l\'installation en « Réalisée » sans matériel</button></div>';
+    h += '<div class="sec">Déjà enregistré (' + PE.parc.length + ')</div>' + (PE.parc.length ? Object.keys(parSalle).sort().map(sa => '<div style="margin:6px 0"><b style="color:var(--navy)">' + esc(sa) + '</b>' +
+      parSalle[sa].map(a => '<div class="row" style="padding:3px 0;border-bottom:1px solid var(--line)"><div style="flex:1">🔧 <b>' + esc(a.designation) + '</b>' + (a.couleur ? ' · ' + esc(a.couleur) : '') + (a.serie ? ' · n° ' + esc(a.serie) : '') +
+        '<span class="meta"> · ' + esc(a.categorie) + (a.cabinet !== PE.cabinet ? ' · ' + esc(a.cabinet) : '') + (a.facture ? ' · ' + esc(a.facture) : '') + (a.installeLe ? ' · ' + esc(a.installeLe) : '') + '</span>' + (a.composants ? '<div class="meta">' + esc(a.composants) + '</div>' : '') + '</div>' +
+        '<button class="btn-light" title="Retirer" onclick="peSuppr(this,\'' + esc(a.n) + '\')">🗑</button></div>').join('') + '</div>').join('') : '<div class="vide">Rien d\'enregistré pour l\'instant.</div>');
+    box.innerHTML = h + '</div>' + datalistCabs();
+  }
+  function peLigne() { PE.lignes.push({ cabinet: PE.cabinet, cabId: PE.cabId, salle: '', couleur: '', categorie: 'Autre', designation: '', serie: '', composants: '', facture: '' }); peAfficher(); }
+  async function peLire(code) {
+    const r = await api('facture_pdf', { code }); if (!r.ok) throw new Error(r.message);
+    const l = lireFactureMateriel(await textePdf(r.base64));
+    l.forEach(x => PE.lignes.push(Object.assign({ cabinet: PE.cabinet, cabId: PE.cabId, facture: r.code }, x)));
+    return l.length;
+  }
+  async function peLireFacture(b) {
+    const code = document.getElementById('peF').value.trim(); const err = document.getElementById('peErr');
+    b.disabled = true; b.textContent = 'Lecture…'; err.textContent = '';
+    try { const n = await peLire(code); peAfficher(); if (!n) document.getElementById('peErr').textContent = 'Aucun appareil reconnu dans cette facture : ajoutez les lignes à la main.'; }
+    catch (e) { err.textContent = e.message; b.disabled = false; b.textContent = '📄 Lire la facture'; }
+  }
+  async function peChercher(b) {
+    b.disabled = true; b.textContent = 'Recherche…';
+    let r = await api('factures_envoyees', { cabId: PE.cabId || '' });
+    if (!r.ok) { const m = prompt(r.message + '\nAdresse e-mail du cabinet :'); if (!m) { b.disabled = false; b.textContent = '🔎 Ses factures envoyées'; return; } r = await api('factures_envoyees', { cabId: PE.cabId || '', emails: m }); }
+    if (!r.ok) { alert(r.message); b.disabled = false; b.textContent = '🔎 Ses factures envoyées'; return; }
+    PE.factures = r.factures; peAfficher();
+  }
+  async function peLireCochees(b) {
+    const l = [...document.querySelectorAll('input[name=peFc]:checked')].map(i => i.value); if (!l.length) return;
+    b.disabled = true; const ko = [];
+    for (const c of l) { b.textContent = 'Lecture de ' + c + '…'; try { await peLire(c); } catch (e) { ko.push(c + ' : ' + e.message); } }
+    PE.factures = null; peAfficher(); if (ko.length) document.getElementById('peErr').textContent = ko.join(' · ');
+  }
+  async function peEnregistrer(b) {
+    b.disabled = true; b.textContent = 'Enregistrement…';
+    const lignes = PE.lignes.map(l => { const c = D.cabinets.find(x => x.nom.toLowerCase() === String(l.cabinet || '').toLowerCase()); return Object.assign({}, l, { cabId: c ? c.id : (l.cabinet === PE.cabinet ? PE.cabId : '') }); });
+    const d = document.getElementById('peD');
+    const r = await api('parc_enregistrer', { lignes, cabId: PE.cabId || '', cabinet: PE.cabinet, install: PE.install || '', terminer: !!PE.terminer, installeLe: d ? d.value : '' });
+    if (!r.ok) { b.disabled = false; alert(r.message); return; }
+    if (r.doublons) alert(r.doublons + ' appareil(s) déjà enregistré(s) avec le même n° de série : ignoré(s).');
+    if (PE.terminer) { const i = D.installations.find(x => x.n === PE.install); if (i) i.statut = 'Réalisée'; peFermer(); afficher(); return; }
+    const o = { cabId: PE.cabId, cabinet: PE.cabinet }; await ouvrirParc(o);
+  }
+  async function peSuppr(b, n) { if (!confirm('Retirer cet appareil du matériel installé ?')) return; b.disabled = true; const r = await api('parc_maj', { n, supprimer: true }); if (!r.ok) { b.disabled = false; alert(r.message); return; } PE.parc = PE.parc.filter(a => a.n !== n); peAfficher(); }
+
   function carteInstall(i) {
       let h = '';
       const ts = D.taches.filter(t => t.install === i.n), faites = ts.filter(t => t.statut === 'Fait').length;
@@ -367,6 +512,7 @@
         '<b style="color:var(--navy);font-size:15px">' + esc(i.cabinet) + '</b>' + (i.praticien ? ' · ' + esc(i.praticien) : '') +
         '<div class="meta">' + esc(i.n) + ' · le ' + esc(i.date) + (j !== null && i.statut === 'Planifiée' ? (j >= 0 ? ' (dans ' + j + ' j)' : ' (date passée)') : '') + ' · ' + esc(i.materiel) + '</div>' +
         '<div style="margin-top:6px">' + badgeFin(i.financement) + (i.organisme ? '<span class="bdg">' + esc(i.organisme) + '</span>' : '') + '<span class="bdg">' + esc(i.statut) + '</span></div>' +
+        (i.statut === 'Planifiée' ? '<div class="toolbar" style="margin-top:8px"><button class="btn" onclick="ouvrirParc({ cabId: \'' + esc(i.cabId || '') + '\', cabinet: \'' + esc(i.cabinet).replace(/'/g, '') + '\', install: \'' + esc(i.n) + '\', terminer: true })">✓ Installation effectuée</button></div>' : '') +
         (alerte ? '<div class="meta" style="color:#8A5A00;font-weight:700;margin-top:6px">⚠ Financement non validé : ne pas installer avant validation.</div>' : '') +
         (ts.length ? '<div class="meta">' + faites + ' / ' + ts.length + ' tâches faites</div><div class="prog"><i style="width:' + Math.round(100 * faites / ts.length) + '%"></i></div>' : '') + '</div>' +
         '<div style="width:180px"><label style="margin-top:0">Financement</label><select onchange="majInstall(\'' + esc(i.n) + '\',{financement:this.value})">' + D.financements.map(f => '<option' + (f === i.financement ? ' selected' : '') + '>' + esc(f) + '</option>').join('') + '</select>' +
@@ -592,7 +738,7 @@
         (c.prets.length ? '<span class="bdg ' + (c.prets.some(p => p.retard) ? 'r' : 'o') + '">' + c.prets.length + ' prêt' + (c.prets.length > 1 ? 's' : '') + ' en cours</span>' : '') + '</div><span style="color:var(--muted)">' + (o ? '▲' : '▼') + '</span></div>' +
         (o ? '<div style="border-top:1px solid var(--line);margin-top:10px;padding-top:8px">' +
           (adr ? '<div style="margin-bottom:6px">📍 ' + esc(adr) + ' · <a href="https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(adr) + '" target="_blank">Itinéraire</a></div>' : '') +
-          '<div class="toolbar">' + tel(c.tel) + (c.email ? '<a class="btn-light" style="text-decoration:none;display:inline-block" href="mailto:' + esc(c.email) + '">✉ E-mail</a>' : '') + '</div>' +
+          '<div class="toolbar">' + tel(c.tel) + (c.email ? '<a class="btn-light" style="text-decoration:none;display:inline-block" href="mailto:' + esc(c.email) + '">✉ E-mail</a>' : '') + (D.estAD ? '<button class="btn-light" onclick="event.stopPropagation();ouvrirParc({ cabId: \'' + esc(c.id) + '\', cabinet: \'' + esc(c.nom).replace(/'/g, '') + '\' })">🧰 Matériel installé</button>' : '') + '</div>' +
           (c.personnes.length ? '<div class="sec" style="margin-top:10px">Praticiens et équipe</div>' + c.personnes.map(p => '<div class="row" style="padding:3px 0"><div style="flex:1"><b>' + esc(p.nom) + '</b>' + (p.fonction ? ' · <span class="meta">' + esc(p.fonction) + '</span>' : '') + '</div>' + (p.tel ? '<a href="tel:' + esc(String(p.tel).replace(/\s/g, '')) + '">' + esc(p.tel) + '</a>' : '') + '</div>').join('') : (c.contact ? '<div class="meta">Contact : ' + esc(c.contact) + '</div>' : '')) +
           (c.prets.length ? '<div class="sec" style="margin-top:10px">Matériel prêté</div>' + c.prets.map(p => '<div class="meta" style="padding:2px 0">' + esc(p.materiel) + (p.serie ? ' · n° ' + esc(p.serie) : '') + (p.retour ? ' · retour ' + (p.retard ? '<b style="color:#C0392B">prévu le ' + esc(p.retour) + ' (en retard)</b>' : 'prévu le ' + esc(p.retour)) : '') + '</div>').join('') : '') +
           (c.installs.length ? '<div class="sec" style="margin-top:10px">Installations</div>' + c.installs.map(i => '<div class="meta" style="padding:2px 0">' + esc(i.date || 'Date à fixer') + ' · ' + esc(i.materiel) + ' · ' + esc(i.statut) + '</div>').join('') : '') +
@@ -735,7 +881,7 @@
     let h = '<h2>Atelier</h2><p class="sub">Le matériel des cabinets (et du parc de prêt) en réparation : à qui c\'est, n° de série, panne, dates. Quand c\'est réparé, passez-le à « Prêt à relivrer » : une tâche est créée pour le relivrer et récupérer le prêt.</p>' +
       '<div class="toolbar"><button class="btn" onclick="atAjout=!atAjout;vueAtelier()">' + (atAjout ? 'Fermer' : '+ Nouveau matériel à réparer') + '</button><span class="bdg">' + AT.enCours.length + ' en cours</span></div>';
     if (atAjout) h += '<div class="card"><div class="g3"><div><label>Cabinet (propriétaire)</label><input id="atC" list="cabs"></div><div><label>Matériel</label><input id="atM" placeholder="Ex. : turbine, autoclave"></div><div><label>Marque / modèle</label><input id="atO"></div></div>' +
-      '<div class="g3"><div><label>N° de série</label><input id="atS"></div><div><label>Récupéré le</label><input id="atR" type="date" value="' + new Date().toISOString().slice(0, 10) + '"></div><div><label>Où est-il ?</label><select id="atSt"><option>À déposer à l\'agence</option><option>À l\'atelier</option></select></div></div>' +
+      '<div class="g3"><div><label>N° de série</label><input id="atS"></div><div><label>Récupéré le</label><input id="atR" type="date" value="' + new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10) + '"></div><div><label>Où est-il ?</label><select id="atSt"><option>À déposer à l\'agence</option><option>À l\'atelier</option></select></div></div>' +
       '<label>Panne</label><textarea id="atP" rows="2"></textarea><p class="err" id="atErr"></p><button class="btn" onclick="atAjouter(this)">Enregistrer</button></div>';
     const carte = o => '<div class="card"><div class="row" style="align-items:flex-start"><div style="flex:1"><b style="color:var(--navy)">' + esc(o.materiel) + (o.modele ? ' · ' + esc(o.modele) : '') + '</b> <span class="bdg ' + coul(o.statut) + '">' + esc(o.statut) + '</span>' +
       '<div class="meta"><b style="color:var(--text)">' + esc(o.proprio || o.cabinet) + '</b>' + (o.serie ? ' · N° de série ' + esc(o.serie) : '') + ' · ' + esc(o.n) + (o.pret ? ' · prêt ' + esc(o.pret) + ' chez le client' : '') + '</div>' +
@@ -772,7 +918,7 @@
       '<div class="g3"><div><label>Lieu</label><input id="pbL" value="Alternative Dentaire, Lavérune"></div><div><label>Places (vide = illimité)</label><input id="pbP" type="number" min="0"></div><div><label>Prix TTC par personne (vide = gratuit)</label><input id="pbX"></div></div>' +
       '<div class="g3"><div><label>Pour qui</label><select id="pbU">' + opt(PB.publics, 'Tous') + '</select></div><div><label>Thème</label><select id="pbT">' + opt(PB.themes, 'Autre') + '</select></div><div><label>Lien Instagram (photos, vidéos)</label><input id="pbI" placeholder="https://www.instagram.com/…"></div></div>';
     else if (pbType === 'info') f = '<div class="g2"><div><label>Thème</label><select id="pbT">' + opt(PB.themes, 'Stérilisation et hygiène') + '</select></div><div><label>Source officielle (lien, facultatif)</label><input id="pbS" placeholder="https://…"></div></div>';
-    else f = '<div class="g3"><div><label>Pour quels cabinets</label><select id="pbC">' + opt(PB.cibles, 'Tous') + '</select></div><div><label>Du</label><input id="pbDe" type="date" value="' + new Date().toISOString().slice(0, 10) + '"></div><div><label>Au (facultatif)</label><input id="pbFi" type="date"></div></div>' +
+    else f = '<div class="g3"><div><label>Pour quels cabinets</label><select id="pbC">' + opt(PB.cibles, 'Tous') + '</select></div><div><label>Du</label><input id="pbDe" type="date" value="' + new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10) + '"></div><div><label>Au (facultatif)</label><input id="pbFi" type="date"></div></div>' +
       '<div class="g2"><div><label>Lien (facultatif, si pas de document)</label><input id="pbK" placeholder="https://…"></div><div><label>Texte du bouton</label><input id="pbB" placeholder="En savoir plus"></div></div>';
     main.innerHTML = '<h2>Publier pour les cabinets</h2><p class="sub">Tout le monde à l\'agence peut publier, sauf les techniciens, Mathylda et Sabrina. C\'est en ligne tout de suite dans Mon Cabinet AD de tous les cabinets (actualités, encadré du bureau, « Infos et formations »), avec une notification sur les PC.</p>' +
       '<div class="chips" style="margin-bottom:10px">' + types.map(t => '<label style="padding:10px 14px"><input type="radio" name="pbty"' + (pbType === t[0] ? ' checked' : '') + ' onchange="pbType=\'' + t[0] + '\';vuePublier()"><span><b>' + t[1] + '</b><br><span class="meta">' + t[2] + '</span></span></label>').join('') + '</div>' +
