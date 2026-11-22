@@ -82,7 +82,7 @@ function ecranCode(msg) {
   $('main').innerHTML = '<p style="color:var(--muted)">Entrez votre code personnel de l\'Agence (une seule fois sur ce téléphone).</p>' +
     '<input id="cd" autocomplete="off" autocapitalize="characters" placeholder="Code personnel" style="text-transform:uppercase;letter-spacing:2px">' +
     '<p class="err" id="cdE">' + (msg || '') + '</p><button class="btn" id="cdB">Valider</button>';
-  $('cdB').onclick = async () => { const c = $('cd').value.trim().toUpperCase().replace(/\s/g, ''); if (c.length < 6) { $('cdE').textContent = 'Code incomplet.'; return; } $('cdE').textContent = 'Connexion…'; if (await connecter(c)) ecranDictee(true); else $('cdE').textContent = 'Code incorrect.'; };
+  $('cdB').onclick = async () => { const c = $('cd').value.trim().toUpperCase().replace(/\s/g, ''); if (c.length < 6) { $('cdE').textContent = 'Code incomplet.'; return; } $('cdE').textContent = 'Connexion…'; if (await connecter(c)) ecranDictee(false); else $('cdE').textContent = 'Code incorrect.'; };
 }
 
 // ----- Découpage de la phrase dictée : cabinet, tâche, pour qui -----
@@ -126,14 +126,14 @@ function ecranDictee(auto) {
   $('mP').onclick = () => { MODE = 'pret'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
   $('mF').onclick = () => { MODE = 'fiche'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
   $('mic').onclick = () => ecoute ? arreter() : demarrer();
-  if (MODE === 'pret') { initPret(); if (PRE_CAB) { $('pcab').value = PRE_CAB; cabManuel = true; PRE_CAB = ''; listePret(); } if (auto && SR) demarrer(); return; }
-  if (MODE === 'fiche') { initFiche(); if (auto && SR) demarrer(); return; }
+  if (MODE === 'pret') { initPret(); if (PRE_CAB) { $('pcab').value = PRE_CAB; cabManuel = true; PRE_CAB = ''; listePret(); } return; }
+  if (MODE === 'fiche') { initFiche(); return; }
   if (PRE_CAB) { setTimeout(() => { $('cab').value = PRE_CAB; cabManuel = true; PRE_CAB = ''; }, 0); }
   $('pour').onclick = e => { const b = e.target.closest('button'); if (b) b.classList.toggle('on'); };
   $('tx').oninput = () => appliquer(false);
   $('go').onclick = ajouter;
   derniers();
-  if (auto && SR) demarrer(); else if (!SR) $('tx').focus();
+  if (!SR) $('tx').focus();
 }
 let cabManuel = false;
 function appliquer(depuisDictee) {
@@ -347,7 +347,7 @@ function afficherFiche(f, ancienne) {
   $('fT').onclick = () => { PRE_CAB = f.nom; MODE = 'tache'; ls.set('dict_mode', MODE); ecranDictee(false); };
   $('fP').onclick = () => { PRE_CAB = f.nom; MODE = 'pret'; ls.set('dict_mode', MODE); ecranDictee(false); };
 }
-if (!TOKEN && !ls.get('ag_code')) ecranCode(); else ecranDictee(true);
+if (!TOKEN && !ls.get('ag_code')) ecranCode(); else ecranDictee(false);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
