@@ -168,7 +168,7 @@
     document.getElementById('moi').innerHTML = esc(D.moi.prenom + ' ' + D.moi.nom) + '<small>' + esc(D.moi.poste || D.moi.role) + ' · ' + esc(D.moi.societe) +
       (D.partage ? ' · <a href="#" onclick="changerQui();return false" style="color:inherit">changer</a>' : '') + '</small>';
     const retard = mesTaches().filter(t => t.statut !== 'Fait' && jour(t.echeance) && jour(t.echeance) <= auj).length;
-    let tabs = [['taches', 'Mes tâches', retard]].concat(D.estAD ? [['clients', 'Clients'], ['installs', 'Installations']] : [], D.prets ? [['prets', 'Prêts']] : [], D.devis ? [['devis', 'Devis entretien']] : [], D.publier !== false ? [['publier', 'Publier']] : [], D.revisions ? [['revs', 'Révisions']] : [], D.conso ? [['conso', 'Consommables']] : [],
+    let tabs = [['taches', 'Mes tâches', retard]].concat(D.estAD ? [['clients', 'Clients'], ['installs', 'Installations']] : [], D.prets ? [['prets', 'Prêts'], ['atelier', 'Atelier']] : [], D.devis ? [['devis', 'Devis entretien']] : [], D.publier !== false ? [['publier', 'Publier']] : [], D.revisions ? [['revs', 'Révisions']] : [], D.conso ? [['conso', 'Consommables']] : [],
       D.estAD ? [['demandes', 'Demandes des cabinets']] : [], [['docs', 'Documents'], ['orga', 'Organigramme'], ['aide', 'Mode d\'emploi']]);
     // Le gérant voit tout, dans les deux applis
     if (D.voitTout) { /* tous les onglets */ }
@@ -176,7 +176,7 @@
     else if (D.estAD) tabs = tabs.filter(t => t[0] !== 'conso');
     if (!tabs.some(t => t[0] === onglet)) onglet = 'taches';
     document.getElementById('nav').innerHTML = tabs.map(t => '<button class="' + (onglet === t[0] ? 'on' : '') + '" onclick="aller(\'' + t[0] + '\')">' + t[1] + (t[2] ? '<span class="nb">' + t[2] + '</span>' : '') + '</button>').join('');
-    ({ taches: vueTaches, clients: vueClients, installs: vueInstalls, conso: vueConso, demandes: vueDemandes, orga: vueOrga, docs: vueDocs, revs: vueRevs, chantiers: vueChantiers, devis: vueDevis, prets: vuePrets, publier: vuePublier, aide: vueAide })[onglet]();
+    ({ taches: vueTaches, clients: vueClients, installs: vueInstalls, conso: vueConso, demandes: vueDemandes, orga: vueOrga, docs: vueDocs, revs: vueRevs, chantiers: vueChantiers, devis: vueDevis, prets: vuePrets, atelier: vueAtelier, publier: vuePublier, aide: vueAide })[onglet]();
   }
   function aller(o) { onglet = o; PD = []; facVue = false; afficher(); }
 
@@ -190,7 +190,7 @@
       '<div class="card" id="nt" style="display:none"><div class="g2"><div><label>Client / cabinet (vide = tâche interne)</label><input id="ntC" list="cabs" placeholder="Ex. : Dr Marty"></div><div><label>Tâche</label><input id="ntT" placeholder="Ex. : rappeler le Dr Martin pour le devis"></div>' +
       '</div>' +
       '<label>Pour (une ou plusieurs personnes : la première qui la fait la coche)</label>' + chipsPour('ntP', [D.moi.prenom]) +
-      '<div class="g3"><div><label>Techniciens à prévoir</label><select id="ntN">' + optTechs('') + '</select></div><div><label>Temps à prévoir</label><select id="ntDu">' + optDuree('') + '</select></div><div><label>Détail (facultatif)</label><input id="ntD"></div></div>' +
+      '<div class="g3"><div><label>Techniciens à prévoir</label><select id="ntN">' + optTechs('') + '</select></div><div><label>Temps à prévoir</label><select id="ntDu">' + optDuree('') + '</select></div><div><label>Pièces</label><select id="ntPc"><option value="">Pas de pièce</option><option>À commander</option><option>Commandée</option></select></div></div><label>Détail (facultatif)</label><input id="ntD">' +
       '<p class="err" id="ntErr"></p><button class="btn" onclick="ajouterTache(this)">Ajouter</button></div>' + datalistCabs();
     const cli = t => { if (t.cabinet) return { c: t.cabinet, t: t.titre }; const m = /^([^:]{2,60})\s*:\s*(.+)$/.exec(t.titre || ''); return m ? { c: m[1].trim(), t: m[2].trim().charAt(0).toUpperCase() + m[2].trim().slice(1) } : (t.install ? { c: 'Installation ' + t.install, t: t.titre } : null); };
     const ordre = (a, b) => (jour(a.echeance) || 9e15) - (jour(b.echeance) || 9e15);
@@ -199,13 +199,14 @@
       const bd = fait ? '' : !j ? '' : j < auj ? '<span class="bdg r">En retard · ' + esc(t.echeance) + '</span>' : +j === +auj ? '<span class="bdg o">Aujourd\'hui</span>' : '<span class="bdg">' + esc(t.echeance) + '</span>';
       return '<div class="card tache' + (fait ? ' fait' : '') + '"><div class="row" style="align-items:flex-start">' +
         '<input type="checkbox"' + (fait ? ' checked' : '') + ' onchange="cocher(\'' + esc(t.n) + '\', this.checked)" style="margin-top:3px">' +
-        '<div class="t">' + (k ? '<div class="cli">' + esc(k.c) + '</div><div class="tt">' + esc(k.t) + '</div>' : '<div class="tt">' + esc(t.titre) + '</div>') +
+        '<div class="t"><div' + (fait || infosEdit === t.n ? '' : ' style="cursor:pointer" title="Toucher pour modifier" onclick="infosEdit=\'' + esc(t.n) + '\';afficher()"') + '>' + (k ? '<div class="cli">' + esc(k.c) + '</div><div class="tt">' + esc(k.t) + '</div>' : '<div class="tt">' + esc(t.titre) + '</div>') + '</div>' +
+        (t.pieces ? '<div style="margin-top:4px"><button class="bdg ' + (t.pieces === 'À commander' ? 'r' : t.pieces === 'Commandée' ? 'o' : 'v') + '" style="border:0;cursor:pointer;font:inherit;font-size:12px" title="Passer à l\'étape suivante" onclick="piecesSuivant(\'' + esc(t.n) + '\')">🔩 Pièces : ' + esc(t.pieces) + (t.pieces === 'Reçue – RDV à prendre' ? '' : ' ›') + '</button></div>' : '') +
         (t.techs || t.duree ? '<div style="margin-top:4px">' + (t.techs ? '<span class="bdg t">👷 ' + esc(t.techs) + ' technicien' + (t.techs > 1 ? 's' : '') + '</span>' : '') + (t.duree ? '<span class="bdg t">⏱ ' + esc(t.duree) + '</span>' : '') + '</div>' : '') +
         '<div class="meta">' + bd + (t.install && t.cabinet ? 'Installation ' + esc(t.install) + ' · ' : '') + (filtreTaches !== 'moi' || pourDe(t).length > 1 ? 'pour ' + esc(t.pour) : '') + (fait ? ' · fait par ' + esc(t.faitPar) + ' le ' + esc(t.faitLe) : '') + '</div>' +
         (t.detail ? '<div class="meta">' + esc(t.detail) + '</div>' : '') +
         (infosEdit === t.n ? '<div style="margin-top:8px"><div class="g2"><div><label>Client / cabinet (vide = interne)</label><input id="ie_c" list="cabs" value="' + esc(k && t.cabinet ? t.cabinet : (k && !t.install ? k.c : '')) + '"></div><div><label>Tâche</label><textarea id="ie_t" rows="2">' + esc(t.cabinet || !k || t.install ? t.titre : k.t) + '</textarea></div></div>' +
           '<label>Détail</label><input id="ie_dt" value="' + esc(t.detail || '') + '">' +
-          '<div class="g2"><div><label>Techniciens à prévoir</label><select id="ie_n">' + optTechs(t.techs) + '</select></div><div><label>Temps à prévoir</label><select id="ie_d">' + optDuree(t.duree) + '</select></div></div>' + datalistCabs() +
+          '<div class="g3"><div><label>Techniciens à prévoir</label><select id="ie_n">' + optTechs(t.techs) + '</select></div><div><label>Temps à prévoir</label><select id="ie_d">' + optDuree(t.duree) + '</select></div><div><label>Pièces</label><select id="ie_p">' + ['', 'À commander', 'Commandée', 'Reçue – RDV à prendre'].map(x => '<option value="' + esc(x) + '"' + ((t.pieces || '') === x ? ' selected' : '') + '>' + (x || 'Pas de pièce') + '</option>').join('') + '</select></div></div>' + datalistCabs() +
           '<div class="toolbar" style="margin-top:6px"><button class="btn" onclick="enregInfos(this,\'' + esc(t.n) + '\')">Enregistrer</button><button class="btn-light" onclick="infosEdit=\'\';afficher()">Annuler</button></div></div>' : '') +
         (attribuant === t.n ? '<div style="margin-top:8px">' + chipsPour('at_' + t.n, pourDe(t)) + '<div class="toolbar" style="margin-top:6px"><button class="btn" onclick="attribuer(this,\'' + esc(t.n) + '\')">Attribuer</button><button class="btn-light" onclick="attribuant=\'\';afficher()">Annuler</button></div></div>' : '') + '</div>' +
         (!fait && attribuant !== t.n && infosEdit !== t.n ? '<div style="display:flex;flex-direction:column;gap:6px"><button class="btn-light" title="Attribuer à une ou plusieurs personnes" onclick="attribuant=\'' + esc(t.n) + '\';afficher()">👥</button><button class="btn-light" title="Modifier la tâche (texte, cabinet, techniciens, temps)" onclick="infosEdit=\'' + esc(t.n) + '\';afficher()">✎</button></div>' : '') + '</div></div>';
@@ -224,9 +225,16 @@
   async function enregInfos(b, n) {
     const v = id => document.getElementById(id).value.trim();
     if (v('ie_t').length < 3) { alert('Indiquez la tâche.'); return; }
-    b.disabled = true; const r = await api('tache_modifier', { n, titre: v('ie_t'), cabinet: v('ie_c'), detail: v('ie_dt'), techs: v('ie_n'), duree: v('ie_d') });
+    b.disabled = true; const r = await api('tache_modifier', { n, titre: v('ie_t'), cabinet: v('ie_c'), detail: v('ie_dt'), techs: v('ie_n'), duree: v('ie_d'), pieces: v('ie_p') });
     if (!r.ok) { b.disabled = false; alert(r.message); return; }
-    const t = D.taches.find(x => x.n === n); if (t) { t.titre = r.titre; t.cabinet = r.cabinet; t.detail = r.detail; t.techs = r.techs; t.duree = r.duree; } infosEdit = ''; ecrireCache(D); afficher();
+    const t = D.taches.find(x => x.n === n); if (t) { t.titre = r.titre; t.cabinet = r.cabinet; t.detail = r.detail; t.techs = r.techs; t.duree = r.duree; t.pieces = r.pieces; } infosEdit = ''; ecrireCache(D); afficher();
+  }
+  async function piecesSuivant(n) {
+    const t = D.taches.find(x => x.n === n); if (!t) return;
+    const E = ['À commander', 'Commandée', 'Reçue – RDV à prendre'], i = E.indexOf(t.pieces);
+    if (i >= E.length - 1) return;
+    const av = t.pieces; t.pieces = E[i + 1]; afficher();
+    const r = await api('tache_pieces', { n, pieces: t.pieces }); if (!r.ok) { t.pieces = av; afficher(); alert(r.message); } else ecrireCache(D);
   }
   async function cocher(n, fait) {
     const t = D.taches.find(x => x.n === n); if (t) { t.statut = fait ? 'Fait' : 'À faire'; t.faitPar = D.moi.prenom; t.faitLe = new Date().toLocaleDateString('fr-FR'); }
@@ -237,7 +245,7 @@
     if (v('ntT').length < 3) { document.getElementById('ntErr').textContent = 'Indiquez la tâche.'; return; }
     b.disabled = true;
     const pour = cochés('ntP'); if (!pour.length) { document.getElementById('ntErr').textContent = 'Choisissez au moins une personne.'; return; }
-    const r = await api('tache_ajouter', { titre: v('ntT'), pour, cabinet: v('ntC'), detail: v('ntD'), techs: v('ntN'), duree: v('ntDu') });
+    const r = await api('tache_ajouter', { titre: v('ntT'), pour, cabinet: v('ntC'), detail: v('ntD'), techs: v('ntN'), duree: v('ntDu'), pieces: v('ntPc') });
     if (!r.ok) { b.disabled = false; document.getElementById('ntErr').textContent = r.message; return; }
     await charger();
   }
@@ -670,11 +678,12 @@
             '<select style="width:auto" onchange="ptEtat(\'' + esc(x.n) + '\',this.value)">' + PT.etats.map(e => '<option' + (e === x.etat ? ' selected' : '') + '>' + esc(e) + '</option>').join('') + '</select>') + '</div></div>' +
         (o ? '<div style="border-top:1px solid var(--line);margin-top:10px"><div class="g3"><div><label>Cabinet</label><input id="psC" list="cabs" placeholder="Nom du cabinet"></div><div><label>Praticien</label><input id="psP" placeholder="Dr …"></div>' +
           '<div><label>Retour prévu</label><input id="psR" type="date"></div></div><label>Notes (facultatif)</label><input id="psN" placeholder="Ex. : prêté pendant la réparation de sa turbine">' +
+          '<details style="margin-top:8px"><summary style="font-weight:700;color:var(--navy);cursor:pointer">🔧 On récupère du matériel du cabinet pour réparation</summary><div class="g3"><div><label>Matériel récupéré</label><input id="prM" placeholder="Ex. : turbine"></div><div><label>Marque / modèle</label><input id="prO"></div><div><label>N° de série</label><input id="prS"></div></div><label>Panne</label><input id="prP" placeholder="Ex. : bruit, perte de puissance"><p class="meta">Une fiche est créée dans l\'onglet Atelier, liée à ce prêt.</p></div></details>' +
           '<p class="err" id="psErr"></p><button class="btn" onclick="ptSortir(this,\'' + esc(x.n) + '\')">Valider le prêt</button></div>' : '') + '</div>';
     };
     h += '<div class="sec">Prêtés (' + pretes.length + ')</div>' + (pretes.length ? pretes.sort((a, b) => (b.pret.retard - a.pret.retard)).map(carte).join('') : '<div class="vide">Aucun matériel prêté.</div>');
     h += '<div class="sec">Au dépôt (' + dispo.length + ')</div>' + (dispo.length ? dispo.map(carte).join('') : '<div class="vide">' + (PT.materiels.length ? 'Rien au dépôt.' : 'Le parc de prêt est vide : « + Ajouter un matériel au parc ».') + '</div>');
-    if (PT.historique.length) h += '<div class="sec">Derniers retours</div>' + PT.historique.map(r => '<div class="meta" style="padding:3px 0">✓ ' + esc(r.materiel) + ' · ' + esc(r.cabinet) + (r.praticien ? ' (' + esc(r.praticien) + ')' : '') + ' · du ' + esc(r.le) + ' au ' + esc(r.rendu) + ' · récupéré par ' + esc(r.par) + '</div>').join('');
+    if (PT.historique.length) h += '<div class="sec">Derniers retours</div>' + PT.historique.map(r => '<div class="meta" style="padding:3px 0">✓ ' + esc(r.materiel) + ' · ' + esc(r.cabinet) + (r.praticien ? ' (' + esc(r.praticien) + ')' : '') + ' · du ' + esc(r.le) + ' au ' + esc(r.rendu) + ' · récupéré par ' + esc(r.par) + (r.etat && r.etat !== 'OK' ? ' · <b style="color:var(--ko,#C0392B)">' + esc(r.etat) + (r.fiche ? ' (' + esc(r.fiche) + ')' : '') + '</b>' : r.etat ? ' · bon état' : '') + '</div>').join('');
     main.innerHTML = h + datalistCabs();
     if (window.__pfFocus) { window.__pfFocus = false; const q = document.getElementById('ptQ'); q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
   }
@@ -694,12 +703,62 @@
     const nom = v('psC'); if (nom.length < 3) { err.textContent = 'Indiquez le cabinet.'; return; }
     const cab = D.cabinets.find(c => c.nom.toLowerCase() === nom.toLowerCase());
     b.disabled = true;
-    const r = await api('pret_sortir', { n, cabinet: nom, cabId: cab ? cab.id : '', praticien: v('psP'), retour: v('psR'), notes: v('psN') });
+    const r = await api('pret_sortir', { n, cabinet: nom, cabId: cab ? cab.id : '', praticien: v('psP'), retour: v('psR'), notes: v('psN'), recup: v('prM') ? { materiel: v('prM'), modele: v('prO'), serie: v('prS'), panne: v('prP') } : null });
     if (!r.ok) { b.disabled = false; err.textContent = r.message; return; }
     ptSortie = ''; ptRecharger();
   }
-  async function ptRetour(b, n) { if (!confirm('Le matériel est bien revenu au dépôt ?')) return; b.disabled = true; const r = await api('pret_retour', { n }); if (!r.ok) { b.disabled = false; alert(r.message); return; } ptRecharger(); }
+  // Modale de choix (état au retour, etc.) : renvoie { choix, note } ou null
+  function choisirDans(titre, choix, avecNote) {
+    return new Promise(res => {
+      const box = document.createElement('div'); box.style.cssText = 'position:fixed;inset:0;background:rgba(15,35,71,.45);z-index:70;display:flex;align-items:center;justify-content:center;padding:16px';
+      box.innerHTML = '<div class="card" style="max-width:420px;width:100%;margin:0"><h2 style="margin-top:0">' + esc(titre) + '</h2>' + choix.map((c, i) => '<button class="' + (i ? 'btn-light' : 'btn') + '" style="width:100%;margin:4px 0;text-align:left" data-c="' + esc(c[0]) + '">' + c[1] + '</button>').join('') +
+        (avecNote ? '<label>Remarque (facultatif)</label><input id="chN" placeholder="' + esc(avecNote) + '">' : '') + '<div class="toolbar" style="margin-top:8px"><button class="btn-light" data-c="">Annuler</button></div></div>';
+      document.body.appendChild(box);
+      box.onclick = e => { const b = e.target.closest('[data-c]'); if (!b) return; const n = document.getElementById('chN'); const v = b.dataset.c; box.remove(); res(v ? { choix: v, note: n ? n.value.trim() : '' } : null); };
+    });
+  }
+  async function ptRetour(b, n) {
+    const c = await choisirDans('Dans quel état revient le matériel ?', [['OK', '✓ Bon état : de nouveau disponible'], ['Réparation à faire', '🔧 Réparation à faire (fiche atelier créée)'], ['Hors service', '✕ Hors service']], 'Ex. : bruit au démarrage, joint usé');
+    if (!c) return;
+    b.disabled = true; const r = await api('pret_retour', { n, etat: c.choix, notes: c.note }); if (!r.ok) { b.disabled = false; alert(r.message); return; }
+    if (r.fiche) alert('Fiche atelier ' + r.fiche + ' créée : le matériel apparaît dans l\'onglet Atelier.');
+    ptRecharger();
+  }
   async function ptEtat(n, etat) { const r = await api('pret_etat', { n, etat }); if (!r.ok) alert(r.message); ptRecharger(); }
+
+  // ---------------- Atelier : matériel en réparation ----------------
+  let AT = null, atAjout = false, atEdit = '';
+  async function vueAtelier() {
+    const main = document.getElementById('main');
+    if (!AT) { main.innerHTML = '<h2>Atelier</h2><p class="sub">Chargement…</p>'; const d = await api('atelier'); if (!d.ok) { main.innerHTML = '<div class="vide">' + esc(d.message) + '</div>'; return; } AT = d; }
+    const coul = st => st === 'Prêt à relivrer' ? 'v' : st === 'À déposer à l\'agence' ? 'r' : st === 'Pièce commandée' || st === 'Envoyé chez le fabricant' ? 'o' : '';
+    let h = '<h2>Atelier</h2><p class="sub">Le matériel des cabinets (et du parc de prêt) en réparation : à qui c\'est, n° de série, panne, dates. Quand c\'est réparé, passez-le à « Prêt à relivrer » : une tâche est créée pour le relivrer et récupérer le prêt.</p>' +
+      '<div class="toolbar"><button class="btn" onclick="atAjout=!atAjout;vueAtelier()">' + (atAjout ? 'Fermer' : '+ Nouveau matériel à réparer') + '</button><span class="bdg">' + AT.enCours.length + ' en cours</span></div>';
+    if (atAjout) h += '<div class="card"><div class="g3"><div><label>Cabinet (propriétaire)</label><input id="atC" list="cabs"></div><div><label>Matériel</label><input id="atM" placeholder="Ex. : turbine, autoclave"></div><div><label>Marque / modèle</label><input id="atO"></div></div>' +
+      '<div class="g3"><div><label>N° de série</label><input id="atS"></div><div><label>Récupéré le</label><input id="atR" type="date" value="' + new Date().toISOString().slice(0, 10) + '"></div><div><label>Où est-il ?</label><select id="atSt"><option>À déposer à l\'agence</option><option>À l\'atelier</option></select></div></div>' +
+      '<label>Panne</label><textarea id="atP" rows="2"></textarea><p class="err" id="atErr"></p><button class="btn" onclick="atAjouter(this)">Enregistrer</button></div>';
+    const carte = o => '<div class="card"><div class="row" style="align-items:flex-start"><div style="flex:1"><b style="color:var(--navy)">' + esc(o.materiel) + (o.modele ? ' · ' + esc(o.modele) : '') + '</b> <span class="bdg ' + coul(o.statut) + '">' + esc(o.statut) + '</span>' +
+      '<div class="meta"><b style="color:var(--text)">' + esc(o.proprio || o.cabinet) + '</b>' + (o.serie ? ' · N° de série ' + esc(o.serie) : '') + ' · ' + esc(o.n) + (o.pret ? ' · prêt ' + esc(o.pret) + ' chez le client' : '') + '</div>' +
+      '<div class="meta">🔧 Panne : ' + esc(o.panne || '—') + '</div>' +
+      '<div class="meta">Récupéré le ' + esc(o.recupLe) + (o.recupPar ? ' par ' + esc(o.recupPar) : '') + (o.depotLe ? ' · déposé à l\'agence le ' + esc(o.depotLe) : '') + (o.repLe ? ' · réparé le ' + esc(o.repLe) + ' par ' + esc(o.repPar) : '') + (o.relivLe ? ' · relivré le ' + esc(o.relivLe) : '') + '</div>' +
+      (o.reparation ? '<div class="meta">✓ Réparation : ' + esc(o.reparation) + '</div>' : '') + (o.notes ? '<div class="meta">' + esc(o.notes) + '</div>' : '') +
+      (atEdit === o.n ? '<div style="margin-top:8px"><label>Réparation effectuée</label><textarea id="aeR" rows="2">' + esc(o.reparation) + '</textarea><div class="g2"><div><label>Panne</label><input id="aeP" value="' + esc(o.panne) + '"></div><div><label>N° de série</label><input id="aeS" value="' + esc(o.serie) + '"></div></div><label>Notes</label><input id="aeN" value="' + esc(o.notes) + '">' +
+        '<div class="toolbar" style="margin-top:6px"><button class="btn" onclick="atMaj(this,\'' + esc(o.n) + '\')">Enregistrer</button><button class="btn-light" onclick="atEdit=\'\';vueAtelier()">Annuler</button></div></div>' : '') + '</div>' +
+      (o.statut !== 'Relivré' ? '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end"><select style="width:auto" onchange="atStatut(this,\'' + esc(o.n) + '\')">' + AT.statuts.map(x => '<option' + (x === o.statut ? ' selected' : '') + '>' + esc(x) + '</option>').join('') + '</select><button class="btn-light" onclick="atEdit=\'' + esc(o.n) + '\';vueAtelier()">✎ Réparation</button></div>' : '') + '</div></div>';
+    AT.statuts.filter(st => st !== 'Relivré').forEach(st => { const l = AT.enCours.filter(o => o.statut === st); if (l.length) h += '<div class="sec">' + esc(st) + ' (' + l.length + ')</div>' + l.map(carte).join(''); });
+    if (!AT.enCours.length) h += '<div class="vide">Rien en réparation.</div>';
+    if (AT.relivres.length) h += '<div class="sec">Derniers relivrés</div>' + AT.relivres.map(carte).join('');
+    main.innerHTML = h + datalistCabs();
+  }
+  async function atAjouter(b) {
+    const v = id => document.getElementById(id).value.trim(), err = document.getElementById('atErr');
+    if (v('atC').length < 3) { err.textContent = 'Indiquez le cabinet.'; return; } if (!v('atM')) { err.textContent = 'Indiquez le matériel.'; return; }
+    const cab = D.cabinets.find(c => c.nom.toLowerCase() === v('atC').toLowerCase());
+    b.disabled = true; const r = await api('atelier_ajouter', { cabinet: v('atC'), cabId: cab ? cab.id : '', materiel: v('atM'), modele: v('atO'), serie: v('atS'), recupLe: v('atR'), statut: v('atSt'), panne: v('atP') });
+    if (!r.ok) { b.disabled = false; err.textContent = r.message; return; } atAjout = false; AT = null; vueAtelier();
+  }
+  async function atStatut(sel, n) { sel.disabled = true; const r = await api('atelier_maj', { n, statut: sel.value }); if (!r.ok) alert(r.message); AT = null; vueAtelier(); }
+  async function atMaj(b, n) { const v = id => document.getElementById(id).value.trim(); b.disabled = true; const r = await api('atelier_maj', { n, reparation: v('aeR'), panne: v('aeP'), serie: v('aeS'), notes: v('aeN') }); if (!r.ok) { b.disabled = false; alert(r.message); return; } atEdit = ''; AT = null; vueAtelier(); }
 
   // ---------------- Publier pour tous les cabinets ----------------
   let PB = null, pbType = 'actu', pbFic = null;
@@ -807,9 +866,13 @@
         '<button class="btn-light" title="Modifier la demande" onclick="demandeEditer(\'' + k + '\',' + i + ')">✎</button><button class="btn-light" title="Retirer la demande de la liste" onclick="demandeRetirer(this,\'' + k + '\',' + i + ')">🗑</button></div>'; };
     document.getElementById('main').innerHTML = '<div id="resBox"></div><div id="prjBox"></div><h2>Demandes des cabinets</h2><p class="sub">Les dernières demandes reçues depuis Mon Cabinet AD et la page étudiants. Chaque nouvelle demande crée toute seule une tâche pour la bonne personne (✓ Tâche) ; quand la tâche est cochée « faite », la demande disparaît d\'ici. « ➕ Tâche » transforme une demande en tâche (à qui, quand, techniciens et temps à prévoir). Le suivi (statut, notes) se fait dans le tableau Google. ✎ pour corriger une demande (statut, technicien, notes…), 🗑 pour la retirer de la liste.</p>' +
       (d.activations && d.activations.lignes.length ? '<div class="sec">Activations de Mon Cabinet AD (QR code des formations)</div>' + tableau(d.activations, ['N°', 'Demandé le', 'Profil', 'Prénom', 'Nom', 'Portable', 'E-mail', 'Cabinet', 'Ville', 'Statut', 'Installé le'], (l) => { const i = d.activations.lignes.indexOf(l), st = l[9];
-        return st === 'À valider' && D.voitTout ? '<button class="btn" style="white-space:nowrap" onclick="activer(this,' + d.activations.ref[i] + ')">✓ Valider et envoyer le lien</button>' : st === 'Lien envoyé' && D.voitTout ? '<button class="btn-light" style="white-space:nowrap" onclick="activer(this,' + d.activations.ref[i] + ')">Renvoyer un nouveau lien</button>' : ''; }) : '') +
+        return '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">' + (st === 'À valider' && D.voitTout ? '<button class="btn" style="white-space:nowrap" onclick="activer(this,' + d.activations.ref[i] + ')">✓ Valider et envoyer le lien</button>' : st === 'Lien envoyé' && D.voitTout ? '<button class="btn-light" style="white-space:nowrap" onclick="activer(this,' + d.activations.ref[i] + ')">Renvoyer un nouveau lien</button>' : '') +
+          '<button class="btn-light" title="Retirer de la liste" onclick="demandeRetirer(this,\'activations\',' + i + ')">🗑</button></div>'; }) : '') +
       '<div class="sec">Pannes et demandes d\'intervention</div>' + tableau(d.interventions, ['N°', 'Date', 'Cabinet', 'Contact', 'Téléphone', 'Problème décrit', 'Statut', 'Technicien'], bt('interventions')) +
-      '<div class="sec">Devis et opportunités</div>' + tableau(d.opportunites, ['N°', 'Date', 'Cabinet', 'Contact', 'Téléphone', 'Service', 'Détail', 'Statut'], bt('opportunites')) +
+      (() => { const iS = d.opportunites.entetes.indexOf('Service'), iD = d.opportunites.entetes.indexOf('Détail'), estC = l => /consom|commande|stock|fourniture|réassort/i.test((l[iS] || '') + ' ' + (iS < 0 ? (l[iD] || '') : ''));
+        const mat = Object.assign({}, d.opportunites, { lignes: d.opportunites.lignes.filter(l => !estC(l)) }), con = Object.assign({}, d.opportunites, { lignes: d.opportunites.lignes.filter(estC) });
+        return '<div class="sec">Devis et opportunités · matériel</div>' + tableau(mat, ['N°', 'Date', 'Cabinet', 'Contact', 'Téléphone', 'Service', 'Détail', 'Statut'], bt('opportunites')) +
+          '<div class="sec">Consommable · pour Jessika</div>' + tableau(con, ['N°', 'Date', 'Cabinet', 'Contact', 'Téléphone', 'Service', 'Détail', 'Statut'], bt('opportunites')); })() +
       '<div class="sec">Devis d\'entretien</div>' + tableau(d.devis, null, bt('devis')) +
       '<div class="sec">Étudiants</div>' + tableau(d.etudiants, ['Inscrit le', 'Prénom', 'Nom', 'Portable', 'Année', 'Installation envisagée', 'Projet', 'Statut'], bt('etudiants')) +
       '<div class="sec">Praticiens et assistantes (page formations)</div>' + tableau(d.pros, ['Inscrit le', 'Profil', 'Prénom', 'Nom', 'Portable', 'Cabinet', 'Ville', 'Événements', 'Statut'], bt('pros'));
@@ -873,15 +936,32 @@
     const d = await api('revisions');
     if (!d.ok) { main.innerHTML = '<div class="vide">' + esc(d.message) + '</div>'; return; }
     const l = d.revisions.filter(r => filtreRev === 'tout' || r.jours <= 60);
-    main.innerHTML = '<h2>Révisions annuelles</h2><p class="sub">Les appareils sous contrat d\'entretien. Après l\'entretien, cochez « Révision faite » : le compteur repart pour un an et le praticien voit sa nouvelle date dans Mon Cabinet AD.</p>' +
+    main.innerHTML = '<h2>Révisions annuelles</h2><p class="sub">Les appareils sous contrat d\'entretien. Notez chaque appel ou e-mail au cabinet avec « + suivi » (réponse, RDV). Après l\'entretien, cochez « Révision faite » : le compteur repart pour un an et le praticien voit sa nouvelle date dans Mon Cabinet AD.</p>' +
       '<div class="toolbar"><select onchange="filtreRev=this.value;vueRevs()"><option value="proches">En retard et dans les 60 jours</option><option value="tout"' + (filtreRev === 'tout' ? ' selected' : '') + '>Tous les appareils sous contrat</option></select></div>' +
       (l.length ? l.map(r => '<div class="card row"><div style="flex:1"><b style="color:var(--navy)">' + esc(r.cabinet) + '</b> · ' + esc(r.appareil) + (r.modele ? ' · ' + esc(r.modele) : '') +
         '<div class="meta">' + (r.repere ? '<b style="color:var(--text)">' + esc(r.repere) + '</b> · ' : '') + (r.serie ? 'N° de série ' + esc(r.serie) + ' · ' : '') + 'Dernière révision : ' + esc(r.derniere || 'jamais') +
         ' · <a href="#" onclick="revRep(this,' + r.ligne + ',\'' + esc(r.cabId) + '\',\'' + esc(r.serie || '').replace(/'/g, '') + '\',\'' + esc(r.repere || '').replace(/'/g, '') + '\');return false">✎ n° de série / repère</a></div>' +
-        '<div style="margin-top:5px"><span class="bdg ' + (r.jours < 0 ? 'r' : r.jours <= 30 ? 'o' : 'v') + '">' + (r.jours < 0 ? 'En retard de ' + (-r.jours) + ' j' : 'Prochaine : ' + esc(r.prochaine) + ' (dans ' + r.jours + ' j)') + '</span></div></div>' +
+        '<div style="margin-top:5px"><span class="bdg ' + (r.jours < 0 ? 'r' : r.jours <= 30 ? 'o' : 'v') + '">' + (r.jours < 0 ? 'En retard de ' + (-r.jours) + ' j' : 'Prochaine : ' + esc(r.prochaine) + ' (dans ' + r.jours + ' j)') + '</span></div>' + suiviRev(d, r) + '</div>' +
         '<label style="margin:0;display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer;border:1.5px solid var(--line);border-radius:10px;padding:9px 12px">' +
         '<input type="checkbox" style="width:20px;height:20px;accent-color:var(--navy)" onchange="revFaite(this,' + r.ligne + ',\'' + esc(r.cabId) + '\')"> Révision faite</label></div>').join('')
         : '<div class="vide">Aucune révision à prévoir dans les 60 jours.</div>');
+  }
+  let svOuvert = '';
+  function suiviRev(d, r) {
+    const k = r.cabId || r.cabinet, l = (d.suivi || {})[k] || [], der = l[0], id = 'sv_' + r.ligne;
+    let h = '<div class="meta" style="margin-top:6px">' + (der ? '📞 Dernier contact : ' + esc(der.date) + ' · ' + esc(der.canal) + ' · <b style="color:var(--text)">' + esc(der.reponse) + '</b>' + (der.rdv ? ' · RDV le ' + esc(der.rdv) : '') + (der.note ? ' · ' + esc(der.note) : '') + ' (' + esc(der.par) + ')' : '📞 Cabinet pas encore contacté') +
+      ' · <a href="#" onclick="svOuvert=svOuvert===\'' + id + '\'?\'\':\'' + id + '\';vueRevs();return false">' + (svOuvert === id ? 'fermer' : '+ suivi' + (l.length > 1 ? ' (' + l.length + ')' : '')) + '</a></div>';
+    if (svOuvert === id) {
+      h += (l.length > 1 ? '<div class="meta">' + l.slice(1).map(x => esc(x.date) + ' · ' + esc(x.canal) + ' · ' + esc(x.reponse) + (x.rdv ? ' · RDV ' + esc(x.rdv) : '') + (x.note ? ' · ' + esc(x.note) : '') + ' (' + esc(x.par) + ')').join('<br>') + '</div>' : '') +
+        '<div class="g3" style="margin-top:6px"><div><label>Contacté par</label><select id="svC">' + d.canaux.filter(x => x !== 'Révision faite').map(x => '<option>' + esc(x) + '</option>').join('') + '</select></div><div><label>Réponse</label><select id="svR">' + d.reponses.filter(x => x !== 'Révision faite').map(x => '<option>' + esc(x) + '</option>').join('') + '</select></div><div><label>RDV prévu le</label><input id="svD" type="date"></div></div>' +
+        '<label>Note</label><input id="svN" placeholder="Ex. : rappeler après les vacances"><div class="toolbar" style="margin-top:6px"><button class="btn" onclick="svAjout(this,\'' + esc(r.cabId) + '\',\'' + esc(r.cabinet).replace(/'/g, '') + '\')">Enregistrer le suivi</button></div>';
+    }
+    return h;
+  }
+  async function svAjout(b, cabId, cabinet) {
+    const v = id => document.getElementById(id).value.trim(); b.disabled = true;
+    const r = await api('revision_suivi', { cabId, cabinet, canal: v('svC'), reponse: v('svR'), rdv: v('svD'), note: v('svN') });
+    if (!r.ok) { b.disabled = false; alert(r.message); return; } svOuvert = ''; vueRevs();
   }
   function revRep(a, ligne, cabId, serie, repere) {
     const d = a.parentNode;
