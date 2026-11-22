@@ -2,7 +2,6 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<link rel="icon" href="../logo.png">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Alternative Dentaire · Formations et événements</title>
 <style>
@@ -204,11 +203,14 @@
     ortho: { nom: 'Orthodontiste', ic: '😁', desc: 'Orthodontie et ODF', publics: ['Tous', 'Praticiens', 'Orthodontistes'],
       h1: 'L\'orthodontie, <em>du scanner au fauteuil</em>.', p: 'Scanners intra-oraux, imagerie céphalométrique, aménagement d\'open space : venez découvrir les solutions pensées pour l\'orthodontie.',
       interets: ['Scanner intra-oral', 'Téléradiographie (céphalo)', 'Fauteuils d\'orthodontie', 'Aménagement open space', 'Aligneurs et logiciels', 'Stérilisation et hygiène', 'Soirées nouveautés'] },
-    assistante: { nom: 'Assistant(e) dentaire', ic: '🩺', desc: 'Assistante, secrétaire, hygiéniste', publics: ['Tous', 'Assistantes'],
+    assistante: { nom: 'Assistant(e) dentaire', ic: '🩺', desc: 'Assistante, assistante de direction, secrétaire', publics: ['Tous', 'Assistantes'],
       h1: 'Des formations <em>pour toute l\'équipe</em>.', p: 'AFGSU, stérilisation, hygiène, nouveautés : des formations pratiques au plus grand showroom dentaire de Montpellier, finançables FIF-PL / OPCO.',
       interets: ['Urgences (AFGSU)', 'Stérilisation et traçabilité', 'Hygiène et asepsie', 'Entretien du matériel', 'Ergonomie au fauteuil', 'Accueil et secrétariat', 'Soirées nouveautés'] }
   };
   let evs = [], tous = [], passes = [], choix = -1, profil = '';
+  // Omnipratique, implantologie et orthodontie se cumulent (un praticien peut cocher les trois)
+  const CUMUL = ['omni', 'implanto', 'ortho'];
+  let profilsChoisis = [];
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const fmtEur = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',').replace(',00', '') + ' €';
   const T = (tu, vous) => PROFILS[profil] && PROFILS[profil].tu ? tu : vous;
@@ -220,13 +222,29 @@
     let p = null; try { p = JSON.parse(localStorage.getItem('ad_etudiant') || 'null'); } catch (e) {}
     const q = new URLSearchParams(location.search).get('profil') || (/page=etudiants/.test(location.search) ? 'etudiant' : '') || (p && p.profil) || '';
     choisirProfil(PROFILS[q] ? q : '', true);
+    if (p && Array.isArray(p.profils) && p.profils[0] === profil) p.profils.slice(1).forEach(c => { if (CUMUL.includes(c)) choisirProfil(c, true); });
     if (p) remplir(p);
     charger();
   })();
 
+  function profilFusion() {
+    if (profilsChoisis.length < 2) return PROFILS[profil];
+    const L = profilsChoisis.map(c => PROFILS[c]), b = Object.assign({}, L[0]);
+    b.nom = L.map(x => x.nom).join(' + ');
+    b.publics = [...new Set(L.flatMap(x => x.publics))];
+    b.interets = [...new Set(L.flatMap(x => x.interets))];
+    return b;
+  }
   function choisirProfil(k, sansDefiler) {
-    profil = k; const P = PROFILS[k];
-    $('profils').innerHTML = Object.keys(PROFILS).map(c => '<button type="button" class="' + (c === k ? 'on' : '') + '" onclick="choisirProfil(\'' + c + '\')"><span class="ic">' + PROFILS[c].ic + '</span><b>' + PROFILS[c].nom + '</b><span>' + PROFILS[c].desc + '</span></button>').join('');
+    if (CUMUL.includes(k) && CUMUL.includes(profil) && sansDefiler !== 'init') {
+      sansDefiler = true;
+      profilsChoisis = profilsChoisis.includes(k) ? profilsChoisis.filter(x => x !== k) : profilsChoisis.concat(k);
+      if (!profilsChoisis.length) profilsChoisis = [k];
+      k = profilsChoisis[0];
+    } else profilsChoisis = k ? [k] : [];
+    profil = k; const P = profilFusion();
+    $('profils').innerHTML = Object.keys(PROFILS).map(c => '<button type="button" class="' + (profilsChoisis.includes(c) ? 'on' : '') + '" onclick="choisirProfil(\'' + c + '\')"><span class="ic">' + PROFILS[c].ic + '</span><b>' + (profilsChoisis.includes(c) && CUMUL.includes(c) ? '✓ ' : '') + PROFILS[c].nom + '</b><span>' + PROFILS[c].desc + '</span></button>').join('') +
+      (CUMUL.includes(profil) ? '<p class="sub" style="grid-column:1/-1;margin:4px 0 0">Vous exercez plusieurs spécialités ? Cochez-les toutes (omnipratique, implantologie, orthodontie).</p>' : '');
     $('badge').textContent = P ? P.nom : 'Formations et événements';
     if (P) { $('h1').innerHTML = P.h1; $('accroche').textContent = P.p; }
     $('ctaEv').textContent = P ? T('Je m\'inscris', 'Je m\'inscris') : 'Choisir mon profil';
@@ -288,12 +306,12 @@
 
   // Public d'un événement : une valeur ou une liste (« Orthodontie, Étudiants »), anciens ou nouveaux noms
   const NORM_PUB = { 'Omnipratique': 'Omnipraticiens', 'Orthodontie': 'Orthodontistes', 'Implantologie / chirurgie': 'Implantologues' };
-  function pourMoi(e) { const P = PROFILS[profil]; if (!P) return true; return String(e.public || 'Tous').split(/\s*,\s*/).some(x => P.publics.includes(NORM_PUB[x] || x)); }
+  function pourMoi(e) { const P = profilFusion(); if (!P) return true; return String(e.public || 'Tous').split(/\s*,\s*/).some(x => P.publics.includes(NORM_PUB[x] || x)); }
 
   function afficherEvs() {
     const box = $('evs'); if (!box) return;
     evs = tous.filter(pourMoi).slice(0, 12);
-    $('titreEv').textContent = PROFILS[profil] ? 'Prochains événements · ' + PROFILS[profil].nom : 'Prochains événements';
+    $('titreEv').textContent = profilFusion() ? 'Prochains événements · ' + profilFusion().nom : 'Prochains événements';
     box.innerHTML = evs.length ? evs.map((e, i) => {
       const dt = new Date(e.iso);
       return '<div class="ev"><div class="date"><div class="cal"><b>' + dt.getDate() + '</b><small>' + MOIS[dt.getMonth()] + '</small></div>' +
@@ -326,7 +344,7 @@
   async function envoyer(ev) {
     ev.preventDefault();
     const v = k => $(k).value.trim(), err = $('err'), etu = profil === 'etudiant';
-    const p = { profil, prenom: v('prenom'), nom: v('nom'), portable: v('portable'), email: v('email'), insta: v('insta'),
+    const p = { profil, profils: profilsChoisis.slice(), prenom: v('prenom'), nom: v('nom'), portable: v('portable'), email: v('email'), insta: v('insta'),
       interets: [...document.querySelectorAll('#interets input:checked')].map(i => i.value), photo: $('photo').checked };
     if (etu) Object.assign(p, { fac: v('fac'), annee: v('annee'), quand: v('quand'), type: v('type'), dep: v('dep') });
     else Object.assign(p, { cabinet: v('cabinet'), ville: v('ville') });

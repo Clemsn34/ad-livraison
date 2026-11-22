@@ -725,6 +725,37 @@
     if (!r.ok) { document.getElementById('facEtat').textContent = r.message; return; }
     FAC = r; vueFactures();
   }
+  async function vuePostes() {
+    let box = document.getElementById('dbBox'); if (!box) { box = document.createElement('div'); box.id = 'dbBox'; box.style.cssText = 'position:fixed;inset:0;background:rgba(15,35,71,.45);z-index:60;overflow:auto;padding:16px 10px'; document.body.appendChild(box); }
+    box.innerHTML = '<div class="card" style="max-width:1000px;margin:0 auto"><p class="sub">Chargement des PC…</p></div>';
+    const r = await api('postes'); if (!r.ok) { box.remove(); alert(r.message); return; }
+    box.innerHTML = '<div class="card" style="max-width:1000px;margin:0 auto"><div class="row"><h2 style="margin:0;flex:1">PC équipés de Mon Cabinet AD (' + r.postes.length + ')</h2><button class="btn-light" onclick="document.getElementById(\'dbBox\').remove()">Fermer</button></div>' +
+      '<p class="sub">Chaque nouveau PC inscrit vous est signalé sur le téléphone. Si un PC ne correspond pas à un cabinet (concurrent, PC inconnu), bloquez-le : il ne voit plus aucune information.</p>' +
+      '<div class="tw"><table><tr><th>Cabinet</th><th>PC</th><th>Inscrit le</th><th>Dernier contact</th><th>Version</th><th></th></tr>' + r.postes.map(p => '<tr' + (p.bloque ? ' style="background:#FDECEA"' : '') + '><td><b>' + esc(p.cabinet) + '</b><div class="meta">' + esc(p.cabId) + '</div></td><td>' + esc(p.poste) + '<div class="meta">' + esc(p.windows) + '</div></td><td>' + esc(p.inscrit) + '</td><td>' + esc(p.contact) + '</td><td>' + esc(p.version) + '</td>' +
+        '<td>' + (p.bloque ? '<div class="meta">' + esc(p.bloque) + '</div><button class="btn-light" onclick="bloquerPoste(this,' + p.ligne + ',\'' + esc(p.poste).replace(/'/g, '') + '\',false)">Débloquer</button>' : '<button class="btn-light" style="color:#C0392B" onclick="bloquerPoste(this,' + p.ligne + ',\'' + esc(p.poste).replace(/'/g, '') + '\',true)">⛔ Bloquer</button>') + '</td></tr>').join('') + '</table></div></div>';
+  }
+  async function bloquerPoste(b, ligne, poste, bloquer) {
+    if (bloquer && !confirm('Bloquer le PC ' + poste + ' ? Il ne verra plus aucune information.')) return;
+    b.disabled = true; const r = await api('poste_bloquer', { ligne, poste, bloquer }); if (!r.ok) { b.disabled = false; alert(r.message); return; } vuePostes();
+  }
+  async function vueDoublons() {
+    let box = document.getElementById('dbBox'); if (!box) { box = document.createElement('div'); box.id = 'dbBox'; box.style.cssText = 'position:fixed;inset:0;background:rgba(15,35,71,.45);z-index:60;overflow:auto;padding:16px 10px'; document.body.appendChild(box); }
+    box.innerHTML = '<div class="card" style="max-width:900px;margin:0 auto"><p class="sub">Recherche des doublons parmi les cabinets…</p></div>';
+    const r = await api('doublons'); if (!r.ok) { box.remove(); alert(r.message); return; }
+    const fiche = (x, autre) => '<div style="flex:1;min-width:220px"><b style="color:var(--navy)">' + esc(x.nom) + '</b><div class="meta">' + esc(x.id) + (x.ville ? ' · ' + esc(x.ville) : '') + '</div>' +
+      '<button class="btn" style="margin-top:6px" onclick="fusionner(this,\'' + esc(x.id) + '\',\'' + esc(autre.id) + '\')">Garder celle-ci</button></div>';
+    box.innerHTML = '<div class="card" style="max-width:900px;margin:0 auto"><div class="row"><h2 style="margin:0;flex:1">Doublons possibles (' + r.total + ')</h2><button class="btn-light" onclick="document.getElementById(\'dbBox\').remove();CL=null;vueClients()">Fermer</button></div>' +
+      '<p class="sub">Choisissez la fiche à garder (de préférence celle déjà utilisée : PC inscrits, hotline, factures). Elle récupère les informations manquantes de l\'autre, toutes les références sont reportées, et l\'autre fiche est désactivée (jamais supprimée).</p>' +
+      (r.paires.length ? r.paires.map(p => '<div class="card"><div class="meta" style="margin-bottom:6px">' + esc(p.pourquoi) + '</div><div class="row" style="flex-wrap:wrap;align-items:flex-start;gap:14px">' + fiche(p.a, p.b) + fiche(p.b, p.a) +
+        '<button class="btn-light" onclick="pasDoublon(this,\'' + esc(p.a.id) + '\',\'' + esc(p.b.id) + '\')">Pas un doublon</button></div></div>').join('') : '<div class="vide">Aucun doublon trouvé. 🎉</div>') + '</div>';
+  }
+  async function fusionner(b, garder, retirer) {
+    if (!confirm('Garder ' + garder + ' et y fusionner ' + retirer + ' ?')) return;
+    b.disabled = true; b.textContent = 'Fusion…'; const r = await api('clients_fusion', { garder, retirer });
+    if (!r.ok) { b.disabled = false; b.textContent = 'Garder celle-ci'; alert(r.message); return; }
+    b.closest('.card').innerHTML = '<div class="ok" style="color:var(--ok,#1E8449);font-weight:700">✓ ' + esc(retirer) + ' fusionné dans ' + esc(garder) + (r.rempli.length ? ' · complété : ' + esc(r.rempli.join(', ')) : '') + ' · ' + r.reportes + ' référence(s) reportée(s)</div>';
+  }
+  async function pasDoublon(b, a, c) { b.disabled = true; await api('doublon_ignorer', { a, b: c }); b.closest('.card').remove(); }
   async function vueClients() {
     const main = document.getElementById('main');
     if (!CL) { main.innerHTML = '<h2>Clients</h2><p class="sub">Chargement…</p>'; const d = await api('clients'); if (!d.ok) { main.innerHTML = '<div class="vide">' + esc(d.message) + '</div>'; return; } CL = d.clients; }
@@ -732,7 +763,7 @@
     const l = CL.filter(c => !f || n([c.nom, c.ville, c.cp, c.id, c.contact, c.personnes.map(p => p.nom).join(' ')].join(' ')).includes(f));
     const tel = t => t ? '<a class="btn-light" style="text-decoration:none;display:inline-block" href="tel:' + esc(String(t).replace(/\s/g, '')) + '">📞 ' + esc(t) + '</a>' : '';
     if (facVue) { return vueFactures(); }
-    let h = (peutFactures() ? '<div class="toolbar" style="justify-content:flex-end"><button class="btn-light" onclick="facVue=true;vueFactures()">💶 Factures en attente (Extrabat)</button></div>' : '') + '<h2>Clients</h2><p class="sub">' + CL.length + ' cabinets. Touchez un cabinet pour voir l\'adresse, les praticiens, le matériel prêté et les installations.</p>' +
+    let h = (peutFactures() || D.voitTout ? '<div class="toolbar" style="justify-content:flex-end">' + (D.voitTout ? '<button class="btn-light" onclick="vuePostes()">💻 PC Mon Cabinet AD</button><button class="btn-light" onclick="vueDoublons()">🔁 Doublons de cabinets</button>' : '') + (peutFactures() ? '<button class="btn-light" onclick="facVue=true;vueFactures()">💶 Factures en attente (Extrabat)</button>' : '') + '</div>' : '') + '<h2>Clients</h2><p class="sub">' + CL.length + ' cabinets. Touchez un cabinet pour voir l\'adresse, les praticiens, le matériel prêté et les installations.</p>' +
       '<div class="toolbar"><input id="clQ" placeholder="Rechercher (cabinet, ville, praticien…)" style="flex:1;min-width:200px" value="' + esc(clFiltre) + '" oninput="clFiltre=this.value;window.__clF=true;clearTimeout(window.__cl);window.__cl=setTimeout(vueClients,250)"></div>';
     h += l.slice(0, 150).map(c => {
       const o = clOuvert === c.id, adr = [c.adresse, (c.cp + ' ' + c.ville).trim()].filter(Boolean).join(', ');
@@ -1141,9 +1172,9 @@
     main.innerHTML = '<h2>Documents de ' + esc(D.moi.societe) + '</h2><p class="sub">Vos documents (procédures, fiches, tarifs…), rangés dans le Google Drive de la société. Ajoutez un fichier ou créez un modèle à vos couleurs.</p>' +
       '<div class="toolbar"><label class="btn" style="margin:0;color:#fff">+ Ajouter un fichier<input type="file" id="fic" style="display:none" onchange="envoyerFichier(this)"></label><span class="meta" id="ficEtat"></span></div>' +
       '<div class="sec">Modèles à vos couleurs</div>' + d.modeles.map(x => '<div class="card row"><div style="flex:1"><b style="color:var(--navy)">' + esc(x.titre) + '</b><div class="meta">' + esc(x.texte) + '</div></div>' +
-        '<button class="btn" onclick="creerModele(this,\'' + esc(x.cle) + '\')">Créer à mes couleurs</button></div>').join('') +
+        '<button class="btn-light" onclick="apercuModele(this,\'' + esc(x.cle) + '\')">👁 Voir et modifier</button><button class="btn" onclick="creerModele(this,\'' + esc(x.cle) + '\')">Créer le PDF à mes couleurs</button></div>').join('') +
       '<div class="sec">Fichiers (' + d.documents.length + ')</div>' + (d.documents.length ? d.documents.map(x => '<div class="card row"><div style="flex:1"><b style="color:var(--navy)">' + esc(x.nom) + '</b>' +
-        '<div class="meta">Ajouté le ' + esc(x.date) + ' · ' + Math.max(1, Math.round(x.taille / 1024)) + ' Ko</div></div><button class="btn-light" onclick="telecharger(this,\'' + esc(x.id) + '\')">Télécharger</button></div>').join('')
+        '<div class="meta">Ajouté le ' + esc(x.date) + ' · ' + Math.max(1, Math.round(x.taille / 1024)) + ' Ko</div></div><button class="btn-light" onclick="voirDoc(this,\'' + esc(x.id) + '\')">👁 Voir</button><button class="btn-light" onclick="telecharger(this,\'' + esc(x.id) + '\')">Télécharger</button></div>').join('')
         : '<div class="vide">Aucun document pour le moment.</div>');
   }
   function envoyerFichier(inp) {
@@ -1162,11 +1193,36 @@
     const bin = Uint8Array.from(atob(r.base64), c => c.charCodeAt(0)), url = URL.createObjectURL(new Blob([bin], { type: r.mime }));
     const a = document.createElement('a'); a.href = url; a.download = r.nom; document.body.appendChild(a); a.click(); a.remove();
   }
+  async function voirDoc(b, id) {
+    const w = window.open('', '_blank'); b.disabled = true;
+    const r = await api('doc_ouvrir', { id }); b.disabled = false;
+    if (!r.ok) { if (w) w.close(); alert(r.message); return; }
+    const url = URL.createObjectURL(new Blob([Uint8Array.from(atob(r.base64), c => c.charCodeAt(0))], { type: r.mime }));
+    if (w) w.location.href = url; else location.href = url;
+  }
+  async function apercuModele(b, cle, data) {
+    const t = b ? b.textContent : ''; if (b) { b.disabled = true; b.textContent = 'Chargement…'; }
+    const r = data || await api('modele_apercu', { modele: cle }); if (b) { b.disabled = false; b.textContent = t; }
+    if (!r.ok) { alert(r.message); return; }
+    let box = document.getElementById('mdBox'); if (!box) { box = document.createElement('div'); box.id = 'mdBox'; box.style.cssText = 'position:fixed;inset:0;background:rgba(15,35,71,.45);z-index:60;overflow:auto;padding:16px 10px'; document.body.appendChild(box); }
+    box.innerHTML = '<div class="card" style="max-width:1200px;margin:0 auto"><div class="row"><h2 style="margin:0;flex:1">Modèle « vacances » à vos couleurs</h2><button class="btn-light" onclick="document.getElementById(\'mdBox\').remove()">Fermer</button></div>' +
+      '<p class="sub">À gauche l\'aperçu, à droite les textes. Une section commence par « ## Titre », puis une ligne par point : « Point : explication ». Enregistrez pour voir l\'aperçu à jour, puis « Créer le PDF ».</p>' +
+      '<div class="g2" style="align-items:start"><iframe id="mdIf" style="width:100%;height:70vh;border:1px solid var(--line);border-radius:10px;background:#fff"></iframe><div><label>Avant de partir</label><textarea id="mdA" rows="12" style="font-family:monospace;font-size:12.5px">' + esc(r.avant) + '</textarea>' +
+      '<label>Au retour</label><textarea id="mdR" rows="10" style="font-family:monospace;font-size:12.5px">' + esc(r.retour) + '</textarea>' +
+      '<div class="toolbar" style="margin-top:8px"><button class="btn" onclick="enregModele(this,\'' + esc(cle) + '\')">Enregistrer les textes</button><button class="btn-light" onclick="enregModele(this,\'' + esc(cle) + '\',true)">Revenir au texte d\'origine</button><button class="btn" onclick="creerModele(this,\'' + esc(cle) + '\')">Créer le PDF</button></div></div></div></div>';
+    document.getElementById('mdIf').srcdoc = r.html;
+  }
+  async function enregModele(b, cle, reinit) {
+    if (reinit && !confirm('Revenir au texte d\'origine ?')) return;
+    b.disabled = true; const r = await api('modele_textes', { modele: cle, avant: document.getElementById('mdA').value, retour: document.getElementById('mdR').value, reinit: !!reinit });
+    b.disabled = false; if (!r.ok) { alert(r.message); return; } apercuModele(null, cle, r);
+  }
   async function creerModele(b, cle) {
     b.disabled = true; b.textContent = 'Création…';
     const r = await api('modele_creer', { modele: cle });
-    if (!r.ok) { b.disabled = false; b.textContent = 'Créer à mes couleurs'; alert(r.message); return; }
-    vueDocs();
+    if (!r.ok) { b.disabled = false; b.textContent = 'Créer le PDF à mes couleurs'; alert(r.message); return; }
+    const md = document.getElementById('mdBox'); if (md) md.remove();
+    await vueDocs(); alert('PDF créé : « ' + r.nom + ' » (en haut de la liste des fichiers, bouton 👁 Voir).');
   }
 
   // ---------------- Organigramme ----------------
