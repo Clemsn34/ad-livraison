@@ -803,8 +803,9 @@
     const d = await api('demandes'); DM = d;
     if (D.voitTout) setTimeout(chargerProjets, 0);
     const bt = k => (l, e) => { const i = d[k].lignes.indexOf(l), t = d[k].taches && d[k].taches[i];
-      return t ? '<span class="bdg t" style="white-space:nowrap">✓ Tâche ' + esc(t.n) + ' · ' + esc(t.pour) + '</span>' : '<button class="btn-light" style="white-space:nowrap" onclick="demandeEnTache(\'' + k + '\',' + i + ')">➕ Tâche</button>'; };
-    document.getElementById('main').innerHTML = '<div id="resBox"></div><div id="prjBox"></div><h2>Demandes des cabinets</h2><p class="sub">Les dernières demandes reçues depuis Mon Cabinet AD et la page étudiants. Chaque nouvelle demande crée toute seule une tâche pour la bonne personne (✓ Tâche) ; quand la tâche est cochée « faite », la demande disparaît d\'ici. « ➕ Tâche » transforme une demande en tâche (à qui, quand, techniciens et temps à prévoir). Le suivi (statut, notes) se fait dans le tableau Google.</p>' +
+      return '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">' + (t ? '<span class="bdg t" style="white-space:nowrap">✓ Tâche ' + esc(t.n) + ' · ' + esc(t.pour) + '</span>' : '<button class="btn-light" style="white-space:nowrap" onclick="demandeEnTache(\'' + k + '\',' + i + ')">➕ Tâche</button>') +
+        '<button class="btn-light" title="Modifier la demande" onclick="demandeEditer(\'' + k + '\',' + i + ')">✎</button><button class="btn-light" title="Retirer la demande de la liste" onclick="demandeRetirer(this,\'' + k + '\',' + i + ')">🗑</button></div>'; };
+    document.getElementById('main').innerHTML = '<div id="resBox"></div><div id="prjBox"></div><h2>Demandes des cabinets</h2><p class="sub">Les dernières demandes reçues depuis Mon Cabinet AD et la page étudiants. Chaque nouvelle demande crée toute seule une tâche pour la bonne personne (✓ Tâche) ; quand la tâche est cochée « faite », la demande disparaît d\'ici. « ➕ Tâche » transforme une demande en tâche (à qui, quand, techniciens et temps à prévoir). Le suivi (statut, notes) se fait dans le tableau Google. ✎ pour corriger une demande (statut, technicien, notes…), 🗑 pour la retirer de la liste.</p>' +
       (d.activations && d.activations.lignes.length ? '<div class="sec">Activations de Mon Cabinet AD (QR code des formations)</div>' + tableau(d.activations, ['N°', 'Demandé le', 'Profil', 'Prénom', 'Nom', 'Portable', 'E-mail', 'Cabinet', 'Ville', 'Statut', 'Installé le'], (l) => { const i = d.activations.lignes.indexOf(l), st = l[9];
         return st === 'À valider' && D.voitTout ? '<button class="btn" style="white-space:nowrap" onclick="activer(this,' + d.activations.ref[i] + ')">✓ Valider et envoyer le lien</button>' : st === 'Lien envoyé' && D.voitTout ? '<button class="btn-light" style="white-space:nowrap" onclick="activer(this,' + d.activations.ref[i] + ')">Renvoyer un nouveau lien</button>' : ''; }) : '') +
       '<div class="sec">Pannes et demandes d\'intervention</div>' + tableau(d.interventions, ['N°', 'Date', 'Cabinet', 'Contact', 'Téléphone', 'Problème décrit', 'Statut', 'Technicien'], bt('interventions')) +
@@ -814,6 +815,34 @@
       '<div class="sec">Praticiens et assistantes (page formations)</div>' + tableau(d.pros, ['Inscrit le', 'Profil', 'Prénom', 'Nom', 'Portable', 'Cabinet', 'Ville', 'Événements', 'Statut'], bt('pros'));
   }
   let DM = null;
+  // Colonnes modifiables par liste (les mêmes que celles affichées, sauf N°, date, identifiant)
+  const DM_COLS = { interventions: ['Cabinet', 'Contact', 'Téléphone', 'Problème décrit', 'Statut', 'Technicien', 'Notes'], opportunites: ['Cabinet', 'Contact', 'Téléphone', 'E-mail', 'Service', 'Détail', 'Statut', 'Montant estimé (€)', 'Notes'],
+    devis: ['Cabinet', 'Contact', 'Téléphone', 'Statut', 'Notes'], etudiants: ['Prénom', 'Nom', 'Portable', 'E-mail', 'Année', 'Installation envisagée', 'Projet', 'Statut', 'Notes'], pros: ['Profil', 'Prénom', 'Nom', 'Portable', 'E-mail', 'Cabinet', 'Ville', 'Statut', 'Notes'] };
+  const DM_STATUTS = ['Nouvelle', 'En cours', 'Rappelé', 'Devis envoyé', 'Gagnée', 'Perdue', 'Traitée', 'Annulée', 'Inscrit', 'Contacté'];
+  function demandeEditer(k, i) {
+    const t = DM[k], l = t.lignes[i], cols = DM_COLS[k].filter(c => t.entetes.indexOf(c) >= 0);
+    let box = document.getElementById('dmEdit'); if (!box) { box = document.createElement('div'); box.id = 'dmEdit'; box.style.cssText = 'position:fixed;inset:0;background:rgba(15,35,71,.45);z-index:60;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:20px 12px'; document.body.appendChild(box); }
+    box.innerHTML = '<div class="card" style="max-width:560px;width:100%;margin:0"><h2>Modifier la demande ' + esc(l[0]) + '</h2><p class="sub">' + esc(l[1] || '') + '</p>' +
+      cols.map((c, n) => { const v = l[t.entetes.indexOf(c)] || '', long = /Problème|Détail|Projet|Notes/.test(c);
+        return '<label>' + esc(c) + '</label>' + (long ? '<textarea id="dmF' + n + '" rows="3">' + esc(v) + '</textarea>' : '<input id="dmF' + n + '" value="' + esc(v) + '"' + (c === 'Statut' ? ' list="dmStatuts"' : c === 'Technicien' ? ' list="dmTechs"' : '') + '>'); }).join('') +
+      '<datalist id="dmStatuts">' + DM_STATUTS.map(x => '<option value="' + esc(x) + '">').join('') + '</datalist><datalist id="dmTechs">' + D.equipe.map(e => '<option value="' + esc(e.prenom) + '">').join('') + '</datalist>' +
+      '<p class="err" id="dmErr"></p><div class="toolbar"><button class="btn" id="dmOk">Enregistrer</button><button class="btn-light" onclick="document.getElementById(\'dmEdit\').remove()">Annuler</button></div></div>';
+    document.getElementById('dmOk').onclick = async () => {
+      const valeurs = {}; cols.forEach((c, n) => { const v = document.getElementById('dmF' + n).value.trim(); if (v !== String(l[t.entetes.indexOf(c)] || '')) valeurs[c] = v; });
+      if (!Object.keys(valeurs).length) { box.remove(); return; }
+      const b = document.getElementById('dmOk'); b.disabled = true; b.textContent = 'Enregistrement…';
+      const r = await api('demande_modifier', { k, ligne: t.ref[i], cle: l[0], valeurs });
+      if (!r.ok) { b.disabled = false; b.textContent = 'Enregistrer'; document.getElementById('dmErr').textContent = r.message; return; }
+      box.remove(); vueDemandes();
+    };
+  }
+  async function demandeRetirer(b, k, i) {
+    const t = DM[k], l = t.lignes[i];
+    if (!confirm('Retirer la demande ' + l[0] + ' de la liste ?\n(Elle reste dans le tableau Google, colonne « Retirée de l\'Agence le ».)')) return;
+    b.disabled = true; const r = await api('demande_retirer', { k, ligne: t.ref[i], cle: l[0] });
+    if (!r.ok) { b.disabled = false; alert(r.message); return; }
+    vueDemandes();
+  }
   async function activer(b, ligne) {
     if (!confirm('Envoyer par e-mail le lien d\'installation (valable pour 1 seule activation) ?')) return;
     b.disabled = true; b.textContent = 'Envoi…';
