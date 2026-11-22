@@ -35,8 +35,8 @@
   .dern { font-size: 13.5px; color: var(--muted); }
   .dern div { padding: 6px 0; border-top: 1px solid var(--line); }
   .dern b { color: #1F4FA8; }
-  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #E4E9F2; border-radius: 12px; padding: 4px; }
-  .modes button { font: inherit; font-size: 16px; font-weight: 700; border: 0; border-radius: 9px; padding: 10px; background: transparent; color: var(--muted); }
+  .modes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; background: #E4E9F2; border-radius: 12px; padding: 4px; }
+  .modes button { font: inherit; font-size: 14.5px; font-weight: 700; border: 0; border-radius: 9px; padding: 10px; background: transparent; color: var(--muted); }
   .modes button.on { background: #fff; color: var(--navy); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
   .mat { display: flex; gap: 12px; align-items: center; background: #fff; border: 1.5px solid var(--line); border-radius: 12px; padding: 11px 12px; }
   .mat input { width: 24px; height: 24px; flex-shrink: 0; accent-color: var(--navy); }
@@ -114,18 +114,21 @@ function decouper(txt) {
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let reco = null, ecoute = false, texteBase = '';
 function ecranDictee(auto) {
-  $('main').innerHTML = '<div class="modes"><button id="mT" class="' + (MODE === 'tache' ? 'on' : '') + '">📝 Tâche</button><button id="mP" class="' + (MODE === 'pret' ? 'on' : '') + '">🔧 Prêt de matériel</button></div>' +
+  $('main').innerHTML = '<div class="modes"><button id="mT" class="' + (MODE === 'tache' ? 'on' : '') + '">📝 Tâche</button><button id="mP" class="' + (MODE === 'pret' ? 'on' : '') + '">🔧 Prêt</button><button id="mF" class="' + (MODE === 'fiche' ? 'on' : '') + '">🔎 Fiche client</button></div>' +
     '<button class="mic" id="mic" aria-label="Dicter"><svg width="58" height="58" viewBox="0 0 24 24" fill="none" stroke="#E3A72F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg></button>' +
-    '<div class="etat" id="etat">' + (SR ? (MODE === 'pret' ? 'Dictez le cabinet et le matériel prêté' : 'Touchez le micro et dictez la tâche') : 'Dictez avec le micro du clavier') + '</div>' +
-    (MODE === 'pret' ? zonePret() : '<label>Tâche</label><textarea id="tx" placeholder="Ex. : Dr Marty, changer le ressort du bras de la seringue"></textarea>' +
+    '<div class="etat" id="etat">' + (SR ? (MODE === 'pret' ? 'Dictez le cabinet et le matériel prêté' : MODE === 'fiche' ? 'Dites le nom du cabinet' : 'Touchez le micro et dictez la tâche') : 'Dictez avec le micro du clavier') + '</div>' +
+    (MODE === 'fiche' ? zoneFiche() : MODE === 'pret' ? zonePret() : '<label>Tâche</label><textarea id="tx" placeholder="Ex. : Dr Marty, changer le ressort du bras de la seringue"></textarea>' +
     '<label>Client / cabinet (vide = interne)</label><input id="cab" list="cabs" placeholder="Reconnu automatiquement">' +
     '<datalist id="cabs">' + CABS.slice(0, 4000).map(c => '<option value="' + esc(c) + '">').join('') + '</datalist>' +
     '<label>Pour</label><div class="chips" id="pour">' + EQUIPE.map(p => '<button data-p="' + esc(p) + '" class="' + (p === MOI ? 'on' : '') + '">' + esc(p) + '</button>').join('') + '</div>' +
     '<p class="err" id="err"></p><button class="btn" id="go">Ajouter la tâche</button><div id="ok"></div><div class="dern" id="dern"></div>');
   $('mT').onclick = () => { MODE = 'tache'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
   $('mP').onclick = () => { MODE = 'pret'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
+  $('mF').onclick = () => { MODE = 'fiche'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
   $('mic').onclick = () => ecoute ? arreter() : demarrer();
-  if (MODE === 'pret') { initPret(); if (auto && SR) demarrer(); return; }
+  if (MODE === 'pret') { initPret(); if (PRE_CAB) { $('pcab').value = PRE_CAB; cabManuel = true; PRE_CAB = ''; listePret(); } if (auto && SR) demarrer(); return; }
+  if (MODE === 'fiche') { initFiche(); if (auto && SR) demarrer(); return; }
+  if (PRE_CAB) { setTimeout(() => { $('cab').value = PRE_CAB; cabManuel = true; PRE_CAB = ''; }, 0); }
   $('pour').onclick = e => { const b = e.target.closest('button'); if (b) b.classList.toggle('on'); };
   $('tx').oninput = () => appliquer(false);
   $('go').onclick = ajouter;
@@ -141,11 +144,11 @@ function appliquer(depuisDictee) {
 function demarrer() {
   if (!SR) return;
   reco = new SR(); reco.lang = 'fr-FR'; reco.interimResults = true; reco.continuous = false; reco.maxAlternatives = 1;
-  const champ = MODE === 'pret' ? 'ptx' : 'tx';
+  const champ = MODE === 'pret' ? 'ptx' : MODE === 'fiche' ? 'ftx' : 'tx';
   texteBase = $(champ).value ? $(champ).value.trim() + ' ' : '';
-  reco.onresult = e => { let s = ''; for (let i = 0; i < e.results.length; i++) s += e.results[i][0].transcript; $(champ).value = texteBase + s; if (MODE === 'pret') appliquerPret(); else appliquer(true); };
+  reco.onresult = e => { let s = ''; for (let i = 0; i < e.results.length; i++) s += e.results[i][0].transcript; $(champ).value = texteBase + s; if (MODE === 'pret') appliquerPret(); else if (MODE === 'fiche') { /* recherche à la fin de la phrase */ } else appliquer(true); };
   reco.onerror = e => { $('etat').textContent = e.error === 'not-allowed' ? 'Micro refusé : autorisez-le dans les réglages du navigateur.' : e.error === 'no-speech' ? 'Rien entendu. Touchez le micro pour réessayer.' : 'Dictée interrompue. Touchez le micro.'; };
-  reco.onend = () => { ecoute = false; $('mic').classList.remove('on'); if (($(MODE === 'pret' ? 'ptx' : 'tx').value || '').trim() && !/Micro refusé|Rien entendu|interrompue/.test($('etat').textContent)) $('etat').textContent = MODE === 'pret' ? 'Cochez le matériel prêté' : 'Vérifiez puis « Ajouter la tâche »'; };
+  reco.onend = () => { ecoute = false; if (MODE === 'fiche' && $('ftx') && $('ftx').value.trim()) { $('mic').classList.remove('on'); chercherFiche(); return; } $('mic').classList.remove('on'); if (($(MODE === 'pret' ? 'ptx' : MODE === 'fiche' ? 'ftx' : 'tx').value || '').trim() && !/Micro refusé|Rien entendu|interrompue/.test($('etat').textContent)) $('etat').textContent = MODE === 'pret' ? 'Cochez le matériel prêté' : 'Vérifiez puis « Ajouter la tâche »'; };
   try { reco.start(); ecoute = true; $('mic').classList.add('on'); $('etat').textContent = 'Je vous écoute…'; } catch (e) {}
 }
 function arreter() { try { reco && reco.stop(); } catch (e) {} }
@@ -174,7 +177,7 @@ function derniers() {
   $('dern').innerHTML = l.length ? '<div style="border:0;font-weight:700;color:var(--navy)">Dernières tâches dictées</div>' + l.map(x => '<div>' + esc(x.d) + ' · ' + (x.c ? '<b>' + esc(x.c) + '</b> : ' : '') + esc(x.t) + (x.p !== MOI ? ' <i>(' + esc(x.p) + ')</i>' : '') + '</div>').join('') : '';
 }
 // ----- Prêt de matériel : « Thomasset, une turbine NSK et un détartreur » -----
-let MODE = ls.get('dict_mode') === 'pret' ? 'pret' : 'tache', PRETS = null;
+let MODE = ['pret', 'fiche'].indexOf(ls.get('dict_mode')) >= 0 ? ls.get('dict_mode') : 'tache', PRETS = null, PRE_CAB = '';
 try { PRETS = JSON.parse(ls.get('dict_prets') || 'null'); } catch (e) {}
 function zonePret() {
   return '<label>Ce que vous avez dicté</label><textarea id="ptx" style="min-height:64px" placeholder="Ex. : Dr Marty, une turbine NSK et un détartreur"></textarea>' +
@@ -271,7 +274,79 @@ async function rendre(b) {
   try { const r = await api('prets'); if (r.ok) { PRETS = r; ls.set('dict_prets', JSON.stringify(r)); listePret(); } } catch (e) {}
 }
 document.addEventListener('input', e => { if (e.target && e.target.id === 'cab') cabManuel = !!e.target.value.trim(); });
-document.addEventListener('click', e => { if (e.target && (e.target.id === 'mT' || e.target.id === 'mP')) cabManuel = false; }, true);
+document.addEventListener('click', e => { if (e.target && /^m[TPF]$/.test(e.target.id || '')) cabManuel = false; }, true);
+
+// ----- Fiche client : on dit le nom du cabinet -----
+function zoneFiche() {
+  return '<div style="display:flex;gap:8px"><input id="ftx" list="cabs" placeholder="Nom du cabinet" style="flex:1"><button class="btn" id="fgo" style="width:auto;padding:0 18px;font-size:16px">Voir</button></div>' +
+    '<datalist id="cabs">' + CABS.slice(0, 4000).map(c => '<option value="' + esc(c) + '">').join('') + '</datalist>' +
+    '<p class="err" id="err"></p><div id="fiche"></div>';
+}
+function initFiche() {
+  $('fgo').onclick = chercherFiche;
+  $('ftx').onkeydown = e => { if (e.key === 'Enter') chercherFiche(); };
+  $('ftx').onchange = () => { if (CABS.includes($('ftx').value)) chercherFiche(); };
+  const der = ls.get('dict_fiche'); if (der) { try { afficherFiche(JSON.parse(der), true); } catch (e) {} }
+}
+function trouverCab(txt) {
+  const t = norm(String(txt).replace(/^(fiche|fiche client|client|cabinet du|cabinet de|le cabinet|chez)\s+/i, '')), L = D && D.cabinets ? D.cabinets : [];
+  if (!t) return null;
+  let c = L.find(x => norm(x.nom) === t); if (c) return { id: c.id, nom: c.nom };
+  const mots = t.split(' ').filter(w => w.length >= 3 && ['docteur', 'cabinet', 'dentaire', 'centre'].indexOf(w) < 0).map(w => w.replace(/^dr$/, ''));
+  const cands = mots.length ? L.filter(x => { const n = ' ' + norm(x.nom) + ' '; return mots.every(w => n.indexOf(' ' + w) >= 0); }) : [];
+  if (cands.length === 1) return { id: cands[0].id, nom: cands[0].nom };
+  if (cands.length > 1) return { choix: cands.slice(0, 12) };
+  return { nom: txt };
+}
+async function chercherFiche(cabId) {
+  const txt = $('ftx').value.trim(); if (!txt && !cabId) { $('err').textContent = 'Dites ou tapez le nom du cabinet.'; return; }
+  const c = typeof cabId === 'string' ? { id: cabId } : trouverCab(txt);
+  $('err').textContent = '';
+  if (c && c.choix) { afficherChoix(c.choix); return; }
+  $('fiche').innerHTML = '<div class="etat">Recherche de la fiche…</div>'; $('etat').textContent = 'Recherche…';
+  let r; try { r = await api('fiche_client', { cabId: c && c.id || '', nom: c && c.nom || txt }); }
+  catch (e) { if (e.message === 'code') { ecranCode('Session expirée : entrez à nouveau votre code.'); return; } $('fiche').innerHTML = ''; $('err').textContent = 'Pas de réseau.'; return; }
+  $('etat').textContent = 'Dites un autre nom de cabinet';
+  if (!r.ok) { $('fiche').innerHTML = ''; $('err').textContent = r.message; return; }
+  if (r.choix) { afficherChoix(r.choix); return; }
+  ls.set('dict_fiche', JSON.stringify(r)); afficherFiche(r);
+}
+function afficherChoix(l) {
+  $('fiche').innerHTML = '<div class="sec">Plusieurs cabinets correspondent</div>' + l.map(x => '<button class="mat" style="width:100%;text-align:left;font:inherit" data-id="' + esc(x.id) + '"><div class="d"><b>' + esc(x.nom) + '</b><span>' + esc(x.ville || x.id) + '</span></div></button>').join('');
+  document.querySelectorAll('#fiche [data-id]').forEach(b => b.onclick = () => { $('ftx').value = b.querySelector('b').textContent; chercherFiche(b.dataset.id); });
+}
+const pastille = (txt, coul) => '<span style="display:inline-block;font-size:13px;font-weight:700;padding:4px 10px;border-radius:16px;margin:2px 4px 2px 0;background:' + ({ v: '#E7F5EC;color:#1E8449', r: '#FDECEA;color:#C0392B', o: '#FFF4DC;color:#8A5A00', g: '#FFF8E8;color:#8A5A00;border:1.5px solid #E3A72F', b: '#EAF0FA;color:#0F2347' })[coul] + '">' + txt + '</span>';
+function afficherFiche(f, ancienne) {
+  const tel = String(f.telephone || '').trim(), telL = tel.replace(/[^\d+]/g, '');
+  const hot = f.hotline.valide ? pastille((f.hotline.essai ? 'Hotline (essai) ' : 'Hotline ') + 'jusqu\'au ' + esc(f.hotline.jusquau), 'v') : pastille(f.hotline.jusquau ? 'Hotline terminée le ' + esc(f.hotline.jusquau) : 'Pas de hotline', 'r');
+  const form = f.formule === 'vip' ? pastille('⭐ VIP jusqu\'au ' + esc(f.vipJusquau), 'g') : f.formule === 'entretien' ? pastille('Contrat d\'entretien · pas VIP', 'b') : pastille('Pas de contrat matériel · pas VIP', 'o');
+  let h = '<div style="background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:14px">' +
+    (ancienne ? '<div class="etat" style="text-align:left;font-size:12px;margin-bottom:4px">Dernière fiche consultée</div>' : '') +
+    '<div style="font-size:20px;font-weight:800;color:var(--navy)">' + esc(f.nom) + '</div><div style="color:var(--muted);font-size:13.5px">' + esc([f.ville, f.id].filter(Boolean).join(' · ')) + (f.contact ? ' · ' + esc(f.contact) : '') + '</div>' +
+    (telL ? '<a href="tel:' + esc(telL) + '" style="display:inline-block;margin-top:8px;color:#1F4FA8;font-weight:700;text-decoration:none">📞 ' + esc(tel) + '</a>' : '') +
+    '<div style="margin-top:10px">' + form + hot + '</div></div>';
+  h += '<div class="sec">Matériel en prêt chez lui</div>' + (f.prets.length ? f.prets.map(p => '<div class="mat"><div class="d"><b>' + esc(p.materiel) + '</b><span>N° ' + esc(p.serie || '—') + ' · prêté le ' + esc(p.le) + (p.retour ? ' · retour ' + (p.retard ? '<b style="color:var(--ko)">en retard (' + esc(p.retour) + ')</b>' : 'prévu ' + esc(p.retour)) : '') + '</span></div><button class="ret" data-n="' + esc(p.n) + '">Rendu ✓</button></div>').join('') : '<div class="etat" style="text-align:left">Aucun matériel en prêt.</div>');
+  h += '<div class="sec">Dossier technique</div>' + (f.dossier ? '<div style="display:flex;gap:8px;flex-wrap:wrap">' + (f.dossier.dt ? '<button class="btn" style="width:auto;font-size:15px;padding:11px 14px" data-doc="' + esc(f.dossier.dt.id) + '">📄 Dossier technique (' + esc(f.dossier.dt.date) + ')</button>' : '') + (f.dossier.aps ? '<button class="ret" style="border-color:var(--navy);color:var(--navy)" data-doc="' + esc(f.dossier.aps.id) + '">📐 Plan</button>' : '') + '<a class="ret" style="border-color:var(--navy);color:var(--navy);text-decoration:none" href="' + esc(f.dossier.url) + '" target="_blank">📁 Dossier ' + esc(f.dossier.nom) + '</a></div>' + (f.dossier.dt ? '' : '<div class="etat" style="text-align:left">Pas de PDF « dossier technique » dans ce dossier.</div>') : '<div class="etat" style="text-align:left">Aucun dossier praticien trouvé à ce nom.</div>');
+  if (f.materiel.length) h += '<div class="sec">Matériel sous contrat d\'entretien</div>' + f.materiel.map(x => '<div class="mat"><div class="d"><b>' + esc(x.appareil) + (x.modele ? ' · ' + esc(x.modele) : '') + '</b><span>' + (x.serie ? 'N° ' + esc(x.serie) + ' · ' : '') + (x.repere ? esc(x.repere) + ' · ' : '') + (x.prochaine ? 'révision ' + esc(x.prochaine) : '') + '</span></div></div>').join('');
+  if (f.notes) h += '<div class="sec">Notes</div><div class="etat" style="text-align:left">' + esc(f.notes) + '</div>';
+  h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px"><button class="ret" style="border-color:var(--navy);color:var(--navy);padding:12px" id="fT">📝 Tâche pour lui</button><button class="ret" style="border-color:var(--navy);color:var(--navy);padding:12px" id="fP">🔧 Lui prêter</button></div>';
+  $('fiche').innerHTML = h;
+  document.querySelectorAll('#fiche .ret[data-n]').forEach(b => b.onclick = async () => {
+    b.disabled = true; b.textContent = '…';
+    try { const r = await api('pret_retour', { n: b.dataset.n }); if (!r.ok) throw new Error(r.message); b.closest('.mat').remove(); }
+    catch (e) { b.disabled = false; b.textContent = 'Rendu ✓'; $('err').textContent = 'Retour non enregistré : ' + e.message; }
+  });
+  document.querySelectorAll('#fiche [data-doc]').forEach(b => b.onclick = async () => {
+    const t = b.innerHTML; b.disabled = true; b.textContent = 'Téléchargement…';
+    try { const r = await api('chantier_prat_ouvrir', { id: b.dataset.doc }); if (!r.ok) throw new Error(r.message);
+      const bin = Uint8Array.from(atob(r.base64), c => c.charCodeAt(0)), url = URL.createObjectURL(new Blob([bin], { type: r.mime || 'application/pdf' }));
+      const a = document.createElement('a'); a.href = url; a.download = r.nom || 'dossier-technique.pdf'; document.body.appendChild(a); a.click(); a.remove(); }
+    catch (e) { $('err').textContent = e.message === 'code' ? 'Session expirée.' : 'Ouverture impossible : ' + e.message; }
+    b.disabled = false; b.innerHTML = t;
+  });
+  $('fT').onclick = () => { PRE_CAB = f.nom; MODE = 'tache'; ls.set('dict_mode', MODE); ecranDictee(false); };
+  $('fP').onclick = () => { PRE_CAB = f.nom; MODE = 'pret'; ls.set('dict_mode', MODE); ecranDictee(false); };
+}
 if (!TOKEN && !ls.get('ag_code')) ecranCode(); else ecranDictee(true);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
