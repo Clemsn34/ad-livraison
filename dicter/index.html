@@ -182,12 +182,26 @@ function zonePret() {
     '<datalist id="cabs">' + CABS.slice(0, 4000).map(c => '<option value="' + esc(c) + '">').join('') + '</datalist>' +
     '<label>Retour prévu</label><div class="chips" id="pret_ret">' + [['', 'Pas de date'], ['7', '1 semaine'], ['14', '2 semaines'], ['30', '1 mois']].map((x, i) => '<button data-j="' + x[0] + '" class="' + (i === 0 ? 'on' : '') + '">' + x[1] + '</button>').join('') + '</div>' +
     '<div id="plist"><div class="etat">Chargement du parc de prêt…</div></div>' +
-    '<p class="err" id="err"></p><button class="btn" id="pgo">Prêter le matériel coché</button><div id="ok"></div><div id="pcours"></div>';
+    '<p class="err" id="err"></p><button class="btn" id="pgo">Prêter le matériel coché</button><div id="ok"></div><div id="pcours"></div>' +
+    '<details id="pajout" style="background:#fff;border:1.5px dashed var(--line);border-radius:12px;padding:10px 12px"><summary style="font-weight:700;color:var(--navy)">+ Ajouter un matériel au parc de prêt</summary>' +
+    '<div style="display:flex;flex-direction:column;gap:10px;margin-top:10px"><label>Type</label><select id="aT" style="width:100%;font:inherit;font-size:17px;padding:11px;border:1.5px solid var(--line);border-radius:10px;background:#fff">' + ['Turbine', 'Contre-angle', 'Pièce à main', 'Micromoteur', 'Détartreur', 'Lampe à polymériser', 'Capteur radio', 'Radio rétro-alvéolaire', 'Autoclave', 'Thermosoudeuse', 'Compresseur', 'Aspiration', 'Fauteuil', 'Scialytique', 'PC / informatique', 'Autre'].map(t => '<option>' + t + '</option>').join('') + '</select>' +
+    '<label>Marque</label><input id="aM" placeholder="Ex. : NSK"><label>Modèle</label><input id="aMo" placeholder="Ex. : Ti-Max Z900L"><label>N° de série</label><input id="aS" autocapitalize="characters">' +
+    '<button class="btn" id="aGo" style="font-size:16px;padding:12px">Ajouter au parc</button></div></details>';
 }
 async function initPret() {
   $('ptx').oninput = appliquerPret; $('pcab').oninput = () => { cabManuel = !!$('pcab').value.trim(); listePret(); };
   $('pret_ret').onclick = e => { const b = e.target.closest('button'); if (!b) return; document.querySelectorAll('#pret_ret button').forEach(x => x.classList.toggle('on', x === b)); };
   $('pgo').onclick = preter;
+  $('aGo').onclick = async () => {
+    const v = id => $(id).value.trim();
+    if (!v('aM') || !v('aS')) { $('err').textContent = 'Marque et n° de série obligatoires.'; return; }
+    $('aGo').disabled = true; $('err').textContent = '';
+    try { const r = await api('pret_materiel', { type: v('aT'), marque: v('aM'), modele: v('aMo'), serie: v('aS') }); if (!r.ok) throw new Error(r.message);
+      $('ok').innerHTML = '<div class="ok">✓ ' + esc(v('aT') + ' ' + v('aM')) + ' ajouté au parc (' + esc(r.n) + ')</div>'; ['aM', 'aMo', 'aS'].forEach(id => $(id).value = '');
+      const p = await api('prets'); if (p.ok) { PRETS = p; ls.set('dict_prets', JSON.stringify(p)); listePret(); } }
+    catch (e) { $('err').textContent = e.message === 'code' ? 'Session expirée.' : e.message; }
+    $('aGo').disabled = false;
+  };
   if (PRETS) listePret();
   try { const r = await api('prets'); if (r.ok) { PRETS = r; ls.set('dict_prets', JSON.stringify(r)); listePret(); } else if (!PRETS) $('plist').innerHTML = '<p class="err">' + esc(r.message) + '</p>'; }
   catch (e) { if (e.message === 'code') ecranCode('Session expirée : entrez à nouveau votre code.'); else if (!PRETS) $('plist').innerHTML = '<p class="err">Parc de prêt indisponible (réseau).</p>'; }
