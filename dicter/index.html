@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Dicter une tâche</title>
+<title>Dicter une tâche ou un prêt</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0F2347">
 <link rel="icon" href="icone-192.png">
@@ -35,11 +35,22 @@
   .dern { font-size: 13.5px; color: var(--muted); }
   .dern div { padding: 6px 0; border-top: 1px solid var(--line); }
   .dern b { color: #1F4FA8; }
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #E4E9F2; border-radius: 12px; padding: 4px; }
+  .modes button { font: inherit; font-size: 16px; font-weight: 700; border: 0; border-radius: 9px; padding: 10px; background: transparent; color: var(--muted); }
+  .modes button.on { background: #fff; color: var(--navy); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .mat { display: flex; gap: 12px; align-items: center; background: #fff; border: 1.5px solid var(--line); border-radius: 12px; padding: 11px 12px; }
+  .mat input { width: 24px; height: 24px; flex-shrink: 0; accent-color: var(--navy); }
+  #plist, #pcours { display: flex; flex-direction: column; gap: 8px; }
+  .mat.sug { border-color: var(--gold); background: #FFFBF0; }
+  .mat.pris { opacity: .55; }
+  .mat .d { flex: 1; } .mat .d b { color: var(--navy); font-size: 16px; } .mat .d span { display: block; font-size: 13.5px; color: var(--muted); }
+  .sec { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
+  .ret { font: inherit; font-size: 14px; font-weight: 700; border: 1.5px solid var(--ok); color: var(--ok); background: #fff; border-radius: 9px; padding: 7px 10px; }
 </style>
 </head>
 <body>
 <header>
-  <div><b>Dicter une tâche</b><small>Alternative Dentaire · Agence</small></div>
+  <div><b>Dicter</b><small>Alternative Dentaire · Agence</small></div>
   <a href="../agence/">Mes tâches</a>
 </header>
 <main id="main"></main>
@@ -103,18 +114,21 @@ function decouper(txt) {
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let reco = null, ecoute = false, texteBase = '';
 function ecranDictee(auto) {
-  $('main').innerHTML =
+  $('main').innerHTML = '<div class="modes"><button id="mT" class="' + (MODE === 'tache' ? 'on' : '') + '">📝 Tâche</button><button id="mP" class="' + (MODE === 'pret' ? 'on' : '') + '">🔧 Prêt de matériel</button></div>' +
     '<button class="mic" id="mic" aria-label="Dicter"><svg width="58" height="58" viewBox="0 0 24 24" fill="none" stroke="#E3A72F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg></button>' +
-    '<div class="etat" id="etat">' + (SR ? 'Touchez le micro et dictez la tâche' : 'Dictez avec le micro du clavier') + '</div>' +
-    '<label>Tâche</label><textarea id="tx" placeholder="Ex. : Dr Marty, changer le ressort du bras de la seringue"></textarea>' +
+    '<div class="etat" id="etat">' + (SR ? (MODE === 'pret' ? 'Dictez le cabinet et le matériel prêté' : 'Touchez le micro et dictez la tâche') : 'Dictez avec le micro du clavier') + '</div>' +
+    (MODE === 'pret' ? zonePret() : '<label>Tâche</label><textarea id="tx" placeholder="Ex. : Dr Marty, changer le ressort du bras de la seringue"></textarea>' +
     '<label>Client / cabinet (vide = interne)</label><input id="cab" list="cabs" placeholder="Reconnu automatiquement">' +
     '<datalist id="cabs">' + CABS.slice(0, 4000).map(c => '<option value="' + esc(c) + '">').join('') + '</datalist>' +
     '<label>Pour</label><div class="chips" id="pour">' + EQUIPE.map(p => '<button data-p="' + esc(p) + '" class="' + (p === MOI ? 'on' : '') + '">' + esc(p) + '</button>').join('') + '</div>' +
-    '<p class="err" id="err"></p><button class="btn" id="go">Ajouter la tâche</button><div id="ok"></div><div class="dern" id="dern"></div>';
+    '<p class="err" id="err"></p><button class="btn" id="go">Ajouter la tâche</button><div id="ok"></div><div class="dern" id="dern"></div>');
+  $('mT').onclick = () => { MODE = 'tache'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
+  $('mP').onclick = () => { MODE = 'pret'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
+  $('mic').onclick = () => ecoute ? arreter() : demarrer();
+  if (MODE === 'pret') { initPret(); if (auto && SR) demarrer(); return; }
   $('pour').onclick = e => { const b = e.target.closest('button'); if (b) b.classList.toggle('on'); };
   $('tx').oninput = () => appliquer(false);
   $('go').onclick = ajouter;
-  $('mic').onclick = () => ecoute ? arreter() : demarrer();
   derniers();
   if (auto && SR) demarrer(); else if (!SR) $('tx').focus();
 }
@@ -127,10 +141,11 @@ function appliquer(depuisDictee) {
 function demarrer() {
   if (!SR) return;
   reco = new SR(); reco.lang = 'fr-FR'; reco.interimResults = true; reco.continuous = false; reco.maxAlternatives = 1;
-  texteBase = $('tx').value ? $('tx').value.trim() + ' ' : '';
-  reco.onresult = e => { let s = ''; for (let i = 0; i < e.results.length; i++) s += e.results[i][0].transcript; $('tx').value = texteBase + s; appliquer(true); };
+  const champ = MODE === 'pret' ? 'ptx' : 'tx';
+  texteBase = $(champ).value ? $(champ).value.trim() + ' ' : '';
+  reco.onresult = e => { let s = ''; for (let i = 0; i < e.results.length; i++) s += e.results[i][0].transcript; $(champ).value = texteBase + s; if (MODE === 'pret') appliquerPret(); else appliquer(true); };
   reco.onerror = e => { $('etat').textContent = e.error === 'not-allowed' ? 'Micro refusé : autorisez-le dans les réglages du navigateur.' : e.error === 'no-speech' ? 'Rien entendu. Touchez le micro pour réessayer.' : 'Dictée interrompue. Touchez le micro.'; };
-  reco.onend = () => { ecoute = false; $('mic').classList.remove('on'); if ($('tx').value.trim() && !/Micro refusé|Rien entendu|interrompue/.test($('etat').textContent)) $('etat').textContent = 'Vérifiez puis « Ajouter la tâche »'; };
+  reco.onend = () => { ecoute = false; $('mic').classList.remove('on'); if (($(MODE === 'pret' ? 'ptx' : 'tx').value || '').trim() && !/Micro refusé|Rien entendu|interrompue/.test($('etat').textContent)) $('etat').textContent = MODE === 'pret' ? 'Cochez le matériel prêté' : 'Vérifiez puis « Ajouter la tâche »'; };
   try { reco.start(); ecoute = true; $('mic').classList.add('on'); $('etat').textContent = 'Je vous écoute…'; } catch (e) {}
 }
 function arreter() { try { reco && reco.stop(); } catch (e) {} }
@@ -158,7 +173,91 @@ function derniers() {
   const l = JSON.parse(ls.get('dict_dern') || '[]');
   $('dern').innerHTML = l.length ? '<div style="border:0;font-weight:700;color:var(--navy)">Dernières tâches dictées</div>' + l.map(x => '<div>' + esc(x.d) + ' · ' + (x.c ? '<b>' + esc(x.c) + '</b> : ' : '') + esc(x.t) + (x.p !== MOI ? ' <i>(' + esc(x.p) + ')</i>' : '') + '</div>').join('') : '';
 }
+// ----- Prêt de matériel : « Thomasset, une turbine NSK et un détartreur » -----
+let MODE = ls.get('dict_mode') === 'pret' ? 'pret' : 'tache', PRETS = null;
+try { PRETS = JSON.parse(ls.get('dict_prets') || 'null'); } catch (e) {}
+function zonePret() {
+  return '<label>Ce que vous avez dicté</label><textarea id="ptx" style="min-height:64px" placeholder="Ex. : Dr Marty, une turbine NSK et un détartreur"></textarea>' +
+    '<label>Cabinet / praticien</label><input id="pcab" list="cabs" placeholder="Reconnu automatiquement">' +
+    '<datalist id="cabs">' + CABS.slice(0, 4000).map(c => '<option value="' + esc(c) + '">').join('') + '</datalist>' +
+    '<label>Retour prévu</label><div class="chips" id="pret_ret">' + [['', 'Pas de date'], ['7', '1 semaine'], ['14', '2 semaines'], ['30', '1 mois']].map((x, i) => '<button data-j="' + x[0] + '" class="' + (i === 0 ? 'on' : '') + '">' + x[1] + '</button>').join('') + '</div>' +
+    '<div id="plist"><div class="etat">Chargement du parc de prêt…</div></div>' +
+    '<p class="err" id="err"></p><button class="btn" id="pgo">Prêter le matériel coché</button><div id="ok"></div><div id="pcours"></div>';
+}
+async function initPret() {
+  $('ptx').oninput = appliquerPret; $('pcab').oninput = () => { cabManuel = !!$('pcab').value.trim(); listePret(); };
+  $('pret_ret').onclick = e => { const b = e.target.closest('button'); if (!b) return; document.querySelectorAll('#pret_ret button').forEach(x => x.classList.toggle('on', x === b)); };
+  $('pgo').onclick = preter;
+  if (PRETS) listePret();
+  try { const r = await api('prets'); if (r.ok) { PRETS = r; ls.set('dict_prets', JSON.stringify(r)); listePret(); } else if (!PRETS) $('plist').innerHTML = '<p class="err">' + esc(r.message) + '</p>'; }
+  catch (e) { if (e.message === 'code') ecranCode('Session expirée : entrez à nouveau votre code.'); else if (!PRETS) $('plist').innerHTML = '<p class="err">Parc de prêt indisponible (réseau).</p>'; }
+}
+const VIDES = 'un une le la les des de du d l et pour pret prete preter prets en avec au aux chez son sa ses on lui a il elle ce cette aussi plus deux trois'.split(' ');
+const motsDe = s => norm(s).split(' ').filter(w => w.length > 1 && VIDES.indexOf(w) < 0).map(w => w.replace(/s$/, ''));
+function scoreMat(m, mots) {
+  const champ = motsDe([m.type, m.marque, m.modele, m.serie].join(' ')); let sc = 0;
+  mots.forEach(w => { if (champ.some(c => c === w || (w.length >= 4 && (c.indexOf(w) === 0 || w.indexOf(c) === 0) && c.length >= 4))) sc++; });
+  return sc;
+}
+function appliquerPret() {
+  const d = decouper($('ptx').value);
+  if (!cabManuel) $('pcab').value = d.cabinet;
+  listePret();
+}
+function listePret() {
+  if (!PRETS || !$('plist')) return;
+  const coches = new Set([...document.querySelectorAll('#plist input:checked')].map(i => i.value));
+  const txt = $('ptx').value, cab = $('pcab').value.trim(), d = decouper(txt);
+  const mots = motsDe(cab && norm(txt).indexOf(norm(cab)) === 0 ? txt.slice(cab.length) : d.titre);
+  const dispo = PRETS.materiels.filter(m => !m.pret && m.etat === 'Disponible').map(m => ({ m, sc: mots.length ? scoreMat(m, mots) : 0 }));
+  dispo.sort((a, b) => b.sc - a.sc || (a.m.type + a.m.marque).localeCompare(b.m.type + b.m.marque, 'fr'));
+  const sug = dispo.filter(x => x.sc > 0), autres = dispo.filter(x => !x.sc);
+  const ligne = (x, s) => '<label class="mat' + (s ? ' sug' : '') + '"><input type="checkbox" value="' + esc(x.m.n) + '"' + (coches.has(x.m.n) ? ' checked' : '') + '><div class="d"><b>' + esc(x.m.type) + ' · ' + esc([x.m.marque, x.m.modele].filter(Boolean).join(' ')) + '</b><span>N° de série ' + esc(x.m.serie || '—') + (x.m.notes ? ' · ' + esc(x.m.notes) : '') + '</span></div></label>';
+  let h = '';
+  if (!PRETS.materiels.length) h = '<div class="etat">Le parc de prêt est vide : ajoutez le matériel dans l\'Agence, onglet Prêts.</div>';
+  if (sug.length) h += '<div class="sec">Correspond à votre dictée</div>' + sug.map(x => ligne(x, true)).join('');
+  if (autres.length) h += '<div class="sec">' + (sug.length ? 'Autre matériel disponible' : 'Matériel disponible') + '</div>' + autres.map(x => ligne(x, false)).join('');
+  const sortis = PRETS.materiels.filter(m => m.pret);
+  if (sortis.length) h += '<div class="sec">Déjà prêté</div>' + sortis.filter(m => !cab || norm(m.pret.cabinet) !== norm(cab)).map(m => '<div class="mat pris"><div class="d"><b>' + esc(m.type) + ' · ' + esc([m.marque, m.modele].filter(Boolean).join(' ')) + '</b><span>N° ' + esc(m.serie || '—') + ' · chez ' + esc(m.pret.cabinet) + ' depuis le ' + esc(m.pret.le) + '</span></div></div>').join('');
+  $('plist').innerHTML = h;
+  // Prêts en cours chez ce cabinet : bouton « Rendu »
+  const chez = cab ? sortis.filter(m => norm(m.pret.cabinet) === norm(cab)) : [];
+  $('pcours').innerHTML = chez.length ? '<div class="sec">En prêt chez ' + esc(cab) + '</div>' + chez.map(m => '<div class="mat"><div class="d"><b>' + esc(m.type) + ' · ' + esc([m.marque, m.modele].filter(Boolean).join(' ')) + '</b><span>N° ' + esc(m.serie || '—') + ' · prêté le ' + esc(m.pret.le) + (m.pret.retour ? ' · retour prévu ' + esc(m.pret.retour) : '') + '</span></div><button class="ret" data-n="' + esc(m.pret.n) + '">Rendu ✓</button></div>').join('') : '';
+  document.querySelectorAll('#pcours .ret').forEach(b => b.onclick = () => rendre(b));
+}
+const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+async function preter() {
+  const ns = [...document.querySelectorAll('#plist input:checked')].map(i => i.value), cab = $('pcab').value.trim();
+  if (cab.length < 3) { $('err').textContent = 'Indiquez le cabinet.'; return; }
+  if (!ns.length) { $('err').textContent = 'Cochez le matériel prêté.'; return; }
+  const j = (document.querySelector('#pret_ret button.on') || {}).dataset ? document.querySelector('#pret_ret button.on').dataset.j : '';
+  const retour = j ? ymd(new Date(Date.now() + j * 86400000)) : '';
+  const c = D && D.cabinets ? D.cabinets.find(x => norm(x.nom) === norm(cab)) : null;
+  arreter(); $('pgo').disabled = true; $('err').textContent = ''; $('pgo').textContent = 'Envoi…';
+  const faits = [], ko = [];
+  for (const n of ns) {
+    try { const r = await api('pret_sortir', { n, cabinet: cab, cabId: c ? c.id : '', praticien: cab, retour }); if (r.ok) faits.push(n); else ko.push(r.message); }
+    catch (e) { if (e.message === 'code') { ecranCode('Session expirée : entrez à nouveau votre code.'); return; } ko.push('réseau'); }
+  }
+  const aujourdhui = new Date().toLocaleDateString('fr-FR');
+  PRETS.materiels.forEach(m => { if (faits.includes(m.n)) m.pret = { n: '', cabinet: cab, praticien: cab, le: aujourdhui, retour: retour ? new Date(retour).toLocaleDateString('fr-FR') : '' }; });
+  if (navigator.vibrate && faits.length) navigator.vibrate(60);
+  $('ok').innerHTML = faits.length ? '<div class="ok">✓ ' + faits.length + ' matériel' + (faits.length > 1 ? 's' : '') + ' prêté' + (faits.length > 1 ? 's' : '') + ' à ' + esc(cab) + ' le ' + aujourdhui + '</div>' : '';
+  $('err').textContent = ko.length ? 'Non enregistré : ' + ko.join(' · ') : '';
+  $('pgo').disabled = false; $('pgo').textContent = 'Prêter le matériel coché';
+  $('ptx').value = ''; listePret();
+  try { const r = await api('prets'); if (r.ok) { PRETS = r; ls.set('dict_prets', JSON.stringify(r)); listePret(); } } catch (e) {}
+}
+async function rendre(b) {
+  b.disabled = true; b.textContent = '…';
+  try { const r = await api('pret_retour', { n: b.dataset.n }); if (!r.ok) throw new Error(r.message); }
+  catch (e) { b.disabled = false; b.textContent = 'Rendu ✓'; $('err').textContent = e.message === 'code' ? 'Session expirée.' : 'Retour non enregistré : ' + e.message; return; }
+  PRETS.materiels.forEach(m => { if (m.pret && m.pret.n === b.dataset.n) m.pret = null; });
+  $('ok').innerHTML = '<div class="ok">✓ Retour enregistré</div>'; listePret();
+  try { const r = await api('prets'); if (r.ok) { PRETS = r; ls.set('dict_prets', JSON.stringify(r)); listePret(); } } catch (e) {}
+}
 document.addEventListener('input', e => { if (e.target && e.target.id === 'cab') cabManuel = !!e.target.value.trim(); });
+document.addEventListener('click', e => { if (e.target && (e.target.id === 'mT' || e.target.id === 'mP')) cabManuel = false; }, true);
 if (!TOKEN && !ls.get('ag_code')) ecranCode(); else ecranDictee(true);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
