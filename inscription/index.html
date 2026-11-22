@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="../logo.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alternative Dentaire · Formations et événements</title>
+<style>
+  :root { --navy: #0F2347; --gold: #E3A72F; --text: #1F2937; --muted: #5A6880; --line: #DCE3EE; --bg: #F4F6FA; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; color: var(--text); background: var(--bg); }
+  a { color: inherit; }
+  .hero { background: radial-gradient(120% 90% at 85% 0%, #24427A 0%, var(--navy) 55%, #0A1830 100%); color: #fff; padding: 22px 20px 34px; position: relative; overflow: hidden; }
+  .hero::after { content: ""; position: absolute; right: -90px; bottom: -120px; width: 300px; height: 300px; border-radius: 50%; border: 36px solid rgba(227,167,47,.16); }
+  .top { display: flex; align-items: center; gap: 10px; max-width: 980px; margin: 0 auto; }
+  .top img { width: 40px; height: 40px; border-radius: 8px; background: #fff; padding: 3px; }
+  .top b { letter-spacing: 1.5px; font-size: 14px; }
+  .top span { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--navy); background: var(--gold); padding: 5px 10px; border-radius: 20px; }
+  .hero-in { max-width: 980px; margin: 26px auto 0; position: relative; z-index: 1; }
+  h1 { font-size: clamp(28px, 6vw, 46px); line-height: 1.08; margin: 0 0 12px; letter-spacing: -.5px; }
+  h1 em { font-style: normal; color: var(--gold); }
+  .hero p { font-size: 16px; line-height: 1.5; color: #D5DDEB; max-width: 560px; margin: 0 0 20px; }
+  .cta { display: flex; flex-wrap: wrap; gap: 10px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 12px; padding: 13px 18px; font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; text-decoration: none; }
+  .btn-gold { background: var(--gold); color: var(--navy); }
+  .btn-ig { background: linear-gradient(45deg, #F58529, #DD2A7B 45%, #8134AF 75%, #515BD4); color: #fff; }
+  .btn-navy { background: var(--navy); color: #fff; }
+  .btn-light { background: #fff; color: var(--navy); border: 1.5px solid var(--line); }
+  .btn:disabled { opacity: .6; cursor: default; }
+  main { max-width: 980px; margin: 0 auto; padding: 0 16px 40px; }
+  section { margin-top: 30px; }
+  h2 { font-size: 22px; color: var(--navy); margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 14px; font-size: 14.5px; line-height: 1.5; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+  .ev { background: #fff; border-radius: 16px; padding: 16px; border: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; box-shadow: 0 6px 18px rgba(15,35,71,.06); }
+  .ev .date { display: flex; align-items: center; gap: 12px; }
+  .ev .cal { width: 54px; text-align: center; border-radius: 12px; background: var(--navy); color: #fff; padding: 6px 0; flex-shrink: 0; }
+  .ev .cal b { display: block; font-size: 22px; line-height: 1; }
+  .ev .cal small { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--gold); font-weight: 700; }
+  .ev h3 { margin: 0; font-size: 17px; color: var(--navy); line-height: 1.25; }
+  .ev .meta { font-size: 13px; color: var(--muted); line-height: 1.45; }
+  .tag { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 20px; background: #FFF4DC; color: #8A5A00; margin-right: 6px; }
+  .tag.b { background: #EAF0FA; color: var(--navy); }
+  .ev .pied { margin-top: auto; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding-top: 6px; }
+  .places { font-size: 13px; font-weight: 700; color: #1E8449; }
+  .places.full { color: #C0392B; }
+  .past { background: #fff; border-radius: 14px; border: 1px solid var(--line); padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .past b { color: var(--navy); display: block; }
+  .past span { color: var(--muted); font-size: 13px; }
+  .args { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .args div { background: #fff; border-left: 4px solid var(--gold); border-radius: 10px; padding: 12px 14px; font-size: 13.5px; color: var(--muted); }
+  .args b { display: block; color: var(--navy); font-size: 15px; margin-bottom: 2px; }
+  form, .card { background: #fff; border-radius: 18px; padding: 18px; border: 1px solid var(--line); box-shadow: 0 6px 18px rgba(15,35,71,.06); }
+  label { display: block; font-size: 13px; font-weight: 700; color: var(--navy); margin: 12px 0 5px; }
+  input, select, textarea { width: 100%; padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 10px; font: inherit; font-size: 15px; background: #fff; }
+  input:focus, select:focus { outline: none; border-color: var(--gold); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 560px) { .row { grid-template-columns: 1fr; } }
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  .chips label { margin: 0; font-weight: 600; color: var(--text); border: 1.5px solid var(--line); border-radius: 20px; padding: 7px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; }
+  .chips input { width: auto; margin: 0; accent-color: var(--navy); }
+  .chips label:has(input:checked) { border-color: var(--gold); background: #FFF8E8; }
+  .check { display: flex; gap: 10px; align-items: flex-start; font-weight: 500; color: var(--text); font-size: 13.5px; line-height: 1.45; margin-top: 12px; }
+  .check input { width: 18px; height: 18px; margin-top: 2px; flex-shrink: 0; accent-color: var(--navy); }
+  .photo { background: linear-gradient(90deg, #FFF4DC, #FDE7F1); border-radius: 12px; padding: 4px 12px 10px; margin-top: 12px; }
+  .evsel { background: #EAF0FA; border-radius: 12px; padding: 10px 14px; font-size: 14px; color: var(--navy); display: none; justify-content: space-between; align-items: center; gap: 10px; }
+  .evsel button { background: none; border: 0; color: var(--muted); font: inherit; text-decoration: underline; cursor: pointer; }
+  .err { color: #C0392B; font-size: 13.5px; min-height: 18px; margin: 10px 0 0; }
+  .ok { text-align: center; padding: 26px 10px; }
+  .ok .big { font-size: 46px; }
+  .ok h3 { color: var(--navy); font-size: 22px; margin: 8px 0; }
+  footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px 16px 30px; line-height: 1.7; }
+  .vide { color: var(--muted); font-size: 14px; background: #fff; border: 1px dashed var(--line); border-radius: 14px; padding: 16px; }
+  .profils { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .profils button { background: #fff; border: 1.5px solid var(--line); border-radius: 14px; padding: 14px 12px; font: inherit; cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: 3px; }
+  .profils button b { color: var(--navy); font-size: 15px; }
+  .profils button span { color: var(--muted); font-size: 12.5px; line-height: 1.35; }
+  .profils button.on { border-color: var(--gold); background: #FFF8E8; box-shadow: 0 0 0 2px rgba(227,167,47,.25); }
+  .profils .ic { font-size: 22px; }
+  .masque { display: none !important; }
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="top"><img src="../logo.png" alt=""><b>ALTERNATIVE DENTAIRE</b><span id="badge">Formations et événements</span></div>
+  <div class="hero-in">
+    <h1 id="h1">Formations, soirées et ateliers <em>au plus grand showroom dentaire</em> de Montpellier.</h1>
+    <p id="accroche">Essayez le matériel, rencontrez des confrères et formez-vous avec votre équipe. Choisissez votre profil : on vous montre les événements faits pour vous.</p>
+    <div class="cta">
+      <a class="btn btn-gold" href="#profil" id="ctaEv">Choisir mon profil</a>
+      <a class="btn btn-ig" href="https://www.instagram.com/alternative_dentaire/" target="_blank" rel="noopener">📸 @alternative_dentaire</a>
+    </div>
+  </div>
+</div>
+
+<main>
+  <section id="profil">
+    <h2>Vous êtes…</h2>
+    <p class="sub">Les événements et le formulaire s'adaptent à votre profil.</p>
+    <div class="profils" id="profils"></div>
+  </section>
+
+  <section id="projet">
+    <h2 id="titreF">Inscrivez-vous en 30 secondes</h2>
+    <p class="sub" id="subF">Laissez vos coordonnées : vous serez prévenu(e) en premier de nos prochains événements.</p>
+    <form id="f" onsubmit="envoyer(event)">
+      <div class="evsel" id="evsel"><span id="evselTxt"></span><button type="button" onclick="choisir(-1)">Retirer</button></div>
+      <div class="row">
+        <div><label for="prenom">Prénom</label><input id="prenom" autocomplete="given-name" required></div>
+        <div><label for="nom">Nom</label><input id="nom" autocomplete="family-name" required></div>
+      </div>
+      <div class="row">
+        <div><label for="portable">Portable</label><input id="portable" type="tel" autocomplete="tel" required placeholder="06 12 34 56 78"></div>
+        <div><label for="email">E-mail</label><input id="email" type="email" autocomplete="email" required></div>
+      </div>
+      <div class="row">
+        <div><label for="insta" id="lInsta">Votre Instagram (facultatif)</label><input id="insta" placeholder="@compte"></div>
+        <div class="blocPro"><label for="cabinet">Cabinet</label><input id="cabinet" autocomplete="organization" placeholder="Ex. : Cabinet du Dr Martin"></div>
+        <div class="blocEtu"><label for="fac">Faculté</label><input id="fac" list="facs" placeholder="Ex. : Montpellier"><datalist id="facs"><option>Montpellier</option><option>Marseille</option><option>Toulouse</option><option>Lyon</option><option>Bordeaux</option><option>Clermont-Ferrand</option><option>Nice</option></datalist></div>
+      </div>
+      <div class="row blocPro">
+        <div><label for="ville">Ville du cabinet</label><input id="ville" autocomplete="address-level2" placeholder="Ex. : Montpellier"></div>
+        <div></div>
+      </div>
+      <div class="blocEtu">
+        <div class="row">
+          <div><label for="annee">Où tu en es</label><select id="annee"><option>2e année</option><option>3e année</option><option>4e année</option><option selected>5e année</option><option>6e année</option><option>Interne</option><option>Jeune diplômé(e)</option><option>Assistant(e) / collaborateur(trice)</option></select></div>
+          <div><label for="quand">Installation envisagée</label><select id="quand"></select></div>
+        </div>
+        <div class="row">
+          <div><label for="type">Ton projet</label><select id="type"><option>Je ne sais pas encore</option><option>Création de cabinet</option><option>Reprise de cabinet</option><option>Collaboration / association</option><option>Remplacements d'abord</option></select></div>
+          <div><label for="dep">Où ?</label><select id="dep"><option value="">Je ne sais pas encore</option><option>Hérault (34)</option><option>Gard (30)</option><option>Aude (11)</option><option>Vaucluse (84)</option><option>Bouches-du-Rhône (13)</option><option>Ailleurs</option></select></div>
+        </div>
+      </div>
+      <label id="lInt">Ce qui vous intéresse</label>
+      <div class="chips" id="interets"></div>
+      <label class="check blocPro" style="background:#EEF2FA;border:1px solid var(--line);border-radius:12px;padding:10px 12px"><input type="checkbox" id="assist" checked> <span><b>💻 Recevoir le lien d'installation de l'Assistance Alternative Dentaire</b> pour l'ordinateur du cabinet : infos et formations de votre spécialité, vos documents et factures, « J'ai un problème » en un clic, dépannage en moins de 3 h. Gratuit.</span></label>
+      <label class="check"><input type="checkbox" id="accord"> <span id="tAccord"></span></label>
+      <div class="photo"><label class="check"><input type="checkbox" id="photo"> <span id="tPhoto"></span></label></div>
+      <p class="err" id="err"></p>
+      <button class="btn btn-navy" id="send" style="width:100%;justify-content:center">Envoyer</button>
+    </form>
+    <div style="margin-top:16px">
+    <div class="args" id="args">
+      <div><b>Cabinet clé en main</b>Un seul interlocuteur : plans, matériel, artisans, financement.</div>
+      <div><b>Plus de <span class="annees-exp">25</span> ans d'expérience</b>Conseil indépendant multimarque, entreprise locale.</div>
+      <div><b>Dépannage en moins de 3 h</b>Pour toute panne bloquante.</div>
+    </div>
+    <p style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-size:14px;margin:0 0 14px">🔒 <b>Collaborateur, remplaçant ou jeune diplômé avec un projet d'installation ?</b> <a href="https://script.google.com/macros/s/AKfycbylyfquDSMq2V5u_fq6L0a8N-MNIRzZhmXa1vGSX_h-k6lBg0w4P-QcrAjZzz_y7pw2hQ/exec?page=projet&src=formations" style="color:var(--navy);font-weight:700">Votre espace confidentiel →</a><br><span style="color:var(--muted)">Clément vous rappelle personnellement. Nous n'en parlons jamais au cabinet où vous travaillez.</span></p>
+    </div>
+  </section>
+
+  <section id="evenements">
+    <h2 id="titreEv">Prochains événements</h2>
+    <p class="sub" id="subEv">Inscription en 30 secondes. Les photos et vidéos de chaque événement sont publiées sur notre Instagram.</p>
+    <div class="grid" id="evs"><div class="vide">Chargement…</div></div>
+  </section>
+
+  <section id="passes" style="display:none">
+    <h2>Revivez nos derniers événements</h2>
+    <p class="sub">Vous y étiez ? Retrouvez-vous en photo et en vidéo.</p>
+    <div style="display:flex;flex-direction:column;gap:8px" id="pass"></div>
+  </section>
+
+  <section id="simulateur" style="display:none">
+    <button type="button" class="btn btn-light" id="simuOnglet" style="width:100%;justify-content:space-between" onclick="const c=document.getElementById('simuCorps'),o=c.style.display==='none';c.style.display=o?'block':'none';this.querySelector('em').textContent=o?'▲':'▼';if(o)simuler();">
+      <span>🏗️ Vous avez un projet d'installation ou de changement de matériel ?</span><em style="font-style:normal">▼</em></button>
+    <div class="card" id="simuCorps" style="display:none;margin-top:8px">
+      <p class="sub" style="margin-top:0">Une première idée du budget en 30 secondes. Fourchettes indicatives : chaque projet est différent, on affine ensemble, sans engagement.</p>
+      <div class="row">
+        <div><label for="sSalles">Salles de soins</label><select id="sSalles" onchange="simuler()"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></div>
+        <div><label for="sImg">Imagerie</label><select id="sImg" onchange="simuler()"><option value="">Pas de panoramique</option><option value="pano" selected>Panoramique</option><option value="conebeam">Cône beam</option></select></div>
+      </div>
+      <div class="row">
+        <div><label for="sSurf">Travaux d'aménagement (m², 0 si aucun)</label><input id="sSurf" type="number" min="0" step="10" value="80" oninput="simuler()"></div>
+        <div><label for="sSter">Salle de stérilisation</label><select id="sSter" onchange="simuler()"><option value="1">Oui, complète</option><option value="0">Non, déjà équipée</option></select></div>
+      </div>
+      <div id="sRes" style="margin-top:14px;background:#F4F6FA;border-radius:12px;padding:14px"></div>
+      <a class="btn btn-gold" style="margin-top:12px;justify-content:center;width:100%" href="https://script.google.com/macros/s/AKfycbylyfquDSMq2V5u_fq6L0a8N-MNIRzZhmXa1vGSX_h-k6lBg0w4P-QcrAjZzz_y7pw2hQ/exec?page=projet&src=simulateur">🔒 Parler de mon projet, en toute discrétion</a>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <b style="color:var(--navy)">Alternative Dentaire</b> · 10 rue de la Prade, 34880 Lavérune (5 min de Montpellier)<br>
+  04 69 96 03 60 · contact@alternativedentaire.fr · <a href="https://www.instagram.com/alternative_dentaire/" target="_blank" rel="noopener">Instagram</a>
+</footer>
+
+<script>
+  const EXEC = 'https://script.google.com/macros/s/AKfycbylyfquDSMq2V5u_fq6L0a8N-MNIRzZhmXa1vGSX_h-k6lBg0w4P-QcrAjZzz_y7pw2hQ/exec';
+  const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+  // Profils : textes, publics d'événements et centres d'intérêt adaptés
+  const PROFILS = {
+    etudiant: { nom: 'Étudiant(e)', ic: '🎓', desc: 'En fac, interne ou jeune diplômé(e)', tu: true, publics: ['Tous', 'Étudiants'],
+      h1: 'De la fac à <em>ton premier cabinet</em>,<br>on est avec toi.', p: 'Soirées, ateliers et formations au plus grand showroom dentaire de Montpellier. Viens essayer le matériel, rencontrer des praticiens et prépare ton installation avec nous.',
+      titreF: 'Ton projet d\'installation', subF: 'Création, reprise, collaboration : dis-nous où tu en es. On te tient au courant des événements et on t\'accompagne le moment venu, du plan à la mise en service.',
+      interets: ['Implantologie', 'Orthodontie', 'Parodontologie', 'Endodontie', 'Esthétique', 'Gestion du cabinet', 'Ressources humaines', 'Stérilisation et hygiène', 'Urgences (AFGSU)', 'Radioprotection', 'Informatique et RGPD', 'Soirées et rencontres'] },
+    omni: { nom: 'Omnipraticien(ne)', ic: '🦷', desc: 'Chirurgien-dentiste en exercice', publics: ['Tous', 'Praticiens', 'Omnipraticiens'],
+      h1: 'Votre cabinet, <em>notre métier</em>.', p: 'Démonstrations, soirées nouveautés et formations au plus grand showroom dentaire de Montpellier. Essayez le matériel avant de choisir.',
+      interets: ['Fauteuil et unit', 'Imagerie (pano, cône beam)', 'Scanner intra-oral et CFAO', 'Stérilisation et hygiène', 'Mise en conformité ARS', 'Urgences (AFGSU)', 'Radioprotection', 'Informatique et RGPD', 'Agrandissement ou rénovation', 'Soirées nouveautés'] },
+    implanto: { nom: 'Implantologue', ic: '🔩', desc: 'Chirurgie et implantologie', publics: ['Tous', 'Praticiens', 'Implantologues'],
+      h1: 'L\'implantologie <em>avec le bon matériel</em>.', p: 'Cône beam, moteurs, chirurgie guidée, bloc opératoire : venez voir et essayer le matériel, et formez-vous avec nos partenaires.',
+      interets: ['Cône beam', 'Moteurs et contre-angles', 'Chirurgie guidée', 'Scanner intra-oral', 'Bloc opératoire et éclairage', 'Stérilisation et traçabilité', 'Piézochirurgie', 'Soirées nouveautés'] },
+    ortho: { nom: 'Orthodontiste', ic: '😁', desc: 'Orthodontie et ODF', publics: ['Tous', 'Praticiens', 'Orthodontistes'],
+      h1: 'L\'orthodontie, <em>du scanner au fauteuil</em>.', p: 'Scanners intra-oraux, imagerie céphalométrique, aménagement d\'open space : venez découvrir les solutions pensées pour l\'orthodontie.',
+      interets: ['Scanner intra-oral', 'Téléradiographie (céphalo)', 'Fauteuils d\'orthodontie', 'Aménagement open space', 'Aligneurs et logiciels', 'Stérilisation et hygiène', 'Soirées nouveautés'] },
+    assistante: { nom: 'Assistant(e) dentaire', ic: '🩺', desc: 'Assistante, secrétaire, hygiéniste', publics: ['Tous', 'Assistantes'],
+      h1: 'Des formations <em>pour toute l\'équipe</em>.', p: 'AFGSU, stérilisation, hygiène, nouveautés : des formations pratiques au plus grand showroom dentaire de Montpellier, finançables FIF-PL / OPCO.',
+      interets: ['Urgences (AFGSU)', 'Stérilisation et traçabilité', 'Hygiène et asepsie', 'Entretien du matériel', 'Ergonomie au fauteuil', 'Accueil et secrétariat', 'Soirées nouveautés'] }
+  };
+  let evs = [], tous = [], passes = [], choix = -1, profil = '';
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const fmtEur = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',').replace(',00', '') + ' €';
+  const T = (tu, vous) => PROFILS[profil] && PROFILS[profil].tu ? tu : vous;
+  const $ = id => document.getElementById(id);
+
+  (function init() {
+    const y = new Date().getFullYear();
+    $('quand').innerHTML = '<option>Je ne sais pas encore</option>' + [0, 1, 2, 3, 4, 5, 6].map(i => '<option>' + (y + i) + '</option>').join('');
+    let p = null; try { p = JSON.parse(localStorage.getItem('ad_etudiant') || 'null'); } catch (e) {}
+    const q = new URLSearchParams(location.search).get('profil') || (/page=etudiants/.test(location.search) ? 'etudiant' : '') || (p && p.profil) || '';
+    choisirProfil(PROFILS[q] ? q : '', true);
+    if (p) remplir(p);
+    charger();
+  })();
+
+  function choisirProfil(k, sansDefiler) {
+    profil = k; const P = PROFILS[k];
+    $('profils').innerHTML = Object.keys(PROFILS).map(c => '<button type="button" class="' + (c === k ? 'on' : '') + '" onclick="choisirProfil(\'' + c + '\')"><span class="ic">' + PROFILS[c].ic + '</span><b>' + PROFILS[c].nom + '</b><span>' + PROFILS[c].desc + '</span></button>').join('');
+    $('badge').textContent = P ? P.nom : 'Formations et événements';
+    if (P) { $('h1').innerHTML = P.h1; $('accroche').textContent = P.p; }
+    $('ctaEv').textContent = P ? T('Je m\'inscris', 'Je m\'inscris') : 'Choisir mon profil';
+    $('ctaEv').href = P ? '#projet' : '#profil';
+    document.querySelectorAll('.blocEtu').forEach(e => e.classList.toggle('masque', k !== 'etudiant'));
+    document.querySelectorAll('.blocPro').forEach(e => e.classList.toggle('masque', !P || k === 'etudiant'));
+    $('projet').classList.toggle('masque', !P);
+    $('titreF').textContent = P && P.titreF ? P.titreF : 'Inscrivez-vous en 30 secondes';
+    $('subF').textContent = P && P.subF ? P.subF : 'Recevez en avant-première nos formations, soirées nouveautés et infos réglementaires pour votre activité' + (k === 'assistante' ? ' d\'assistante.' : '.');
+    $('subEv').textContent = T('Inscris-toi en 30 secondes. Les photos et vidéos de chaque événement sont publiées sur notre Instagram.', 'Inscription en 30 secondes. Les photos et vidéos de chaque événement sont publiées sur notre Instagram.');
+    $('lInsta').textContent = T('Ton Instagram (facultatif)', 'Votre Instagram (facultatif)');
+    $('lInt').textContent = T('Ce qui t\'intéresse', 'Ce qui vous intéresse');
+    $('tAccord').textContent = T('J\'accepte qu\'Alternative Dentaire garde mes coordonnées pour m\'informer de ses événements et m\'accompagner dans mon projet d\'installation. Je peux demander leur suppression à tout moment (contact@alternativedentaire.fr).',
+      'J\'accepte qu\'Alternative Dentaire garde mes coordonnées pour m\'informer de ses événements et formations. Je peux demander leur suppression à tout moment (contact@alternativedentaire.fr).');
+    $('tPhoto').innerHTML = '<b>📸 ' + T('Je veux bien apparaître', 'J\'accepte d\'apparaître') + ' sur les photos et vidéos</b> des événements publiées sur Instagram et nos réseaux.';
+    const coches = [...document.querySelectorAll('#interets input:checked')].map(i => i.value);
+    $('interets').innerHTML = (P ? P.interets : []).map(t => '<label><input type="checkbox" value="' + esc(t) + '"' + (coches.includes(t) ? ' checked' : '') + '>' + esc(t) + '</label>').join('');
+    if (choix >= 0 && P && !P.publics.includes(evs[choix] && evs[choix].public)) choisir(-1);
+    afficherEvs();
+    if (!sansDefiler && P) $('projet').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function remplir(p) {
+    ['prenom', 'nom', 'portable', 'email', 'insta', 'fac', 'annee', 'quand', 'type', 'dep', 'cabinet', 'ville'].forEach(k => { if (p[k]) $(k).value = p[k]; });
+    (p.interets || []).forEach(t => { const i = document.querySelector('#interets input[value="' + t.replace(/"/g, '') + '"]'); if (i) i.checked = true; });
+    if (p.photo) $('photo').checked = true;
+  }
+
+  async function appel(req) {
+    const r = await fetch(EXEC, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(req) });
+    return r.json();
+  }
+
+  // Simulateur clé en main (affiché seulement si le gérant l'a activé)
+  let SIMU = null;
+  async function chargerSimu() {
+    try { const r = await appel({ action: 'simulateur' }); if (r && r.ok && r.actif) { SIMU = r; $('simulateur').style.display = 'block'; simuler(); } } catch (e) {}
+  }
+  function simuler() {
+    if (!SIMU) return;
+    const P = SIMU.prix, n = Number($('sSalles').value) || 1, img = $('sImg').value, m2 = Math.max(0, Number($('sSurf').value) || 0), st = $('sSter').value === '1';
+    const g = k => P[k] || [0, 0]; let lo = 0, hi = 0;
+    const add = (k, q) => { lo += g(k)[0] * q; hi += g(k)[1] * q; };
+    add('fauteuil', n); add('mobilier', n); add('radio', n); add('capteur', n); if (img) add(img, 1); if (st) add('sterilisation', 1); add('technique', 1); add('informatique', 1); add('travaux', m2);
+    const mid = (lo + hi) / 2, t = SIMU.taux / 1200, d = SIMU.duree, mens = t ? mid * t / (1 - Math.pow(1 + t, -d)) : mid / d;
+    const e = v => Math.round(v / 1000).toLocaleString('fr-FR') + ' k€';
+    $('sRes').innerHTML = '<div style="font-size:13px;color:var(--muted)">Budget estimé (TTC)</div><div style="font-size:24px;font-weight:800;color:var(--navy)">' + e(lo) + ' à ' + e(hi) + '</div>' +
+      '<div style="margin-top:6px;color:var(--navy)">soit environ <b>' + Math.round(mens / 10) * 10 + ' € par mois</b> sur ' + Math.round(d / 12) + ' ans</div>' +
+      '<div style="font-size:12px;color:var(--muted);margin-top:6px">Estimation indicative (taux ' + String(SIMU.taux).replace('.', ',') + ' %), hors local et hors assurance. Devis précis gratuit, plans et aide au financement compris.</div>';
+  }
+  async function charger() {
+    chargerSimu();
+    let d = null;
+    try { d = await appel({ action: 'evenements' }); } catch (e) {}
+    if (!d || !d.ok) { $('evs').innerHTML = '<div class="vide">Les événements n\'ont pas pu être chargés. Suivez-nous sur Instagram pour ne rien rater !</div>'; return; }
+    tous = d.evenements || []; passes = d.passes || [];
+    afficherEvs();
+  }
+
+  // Public d'un événement : une valeur ou une liste (« Orthodontie, Étudiants »), anciens ou nouveaux noms
+  const NORM_PUB = { 'Omnipratique': 'Omnipraticiens', 'Orthodontie': 'Orthodontistes', 'Implantologie / chirurgie': 'Implantologues' };
+  function pourMoi(e) { const P = PROFILS[profil]; if (!P) return true; return String(e.public || 'Tous').split(/\s*,\s*/).some(x => P.publics.includes(NORM_PUB[x] || x)); }
+
+  function afficherEvs() {
+    const box = $('evs'); if (!box) return;
+    evs = tous.filter(pourMoi).slice(0, 12);
+    $('titreEv').textContent = PROFILS[profil] ? 'Prochains événements · ' + PROFILS[profil].nom : 'Prochains événements';
+    box.innerHTML = evs.length ? evs.map((e, i) => {
+      const dt = new Date(e.iso);
+      return '<div class="ev"><div class="date"><div class="cal"><b>' + dt.getDate() + '</b><small>' + MOIS[dt.getMonth()] + '</small></div>' +
+        '<div><span class="tag">' + esc(e.type || 'Événement') + '</span>' + (e.theme ? '<span class="tag b">' + esc(e.theme) + '</span>' : '') + (e.public && e.public !== 'Tous' ? String(e.public).split(/\s*,\s*/).map(x => '<span class="tag b">' + esc(x) + '</span>').join('') : '') + '</div></div>' +
+        '<h3>' + esc(e.intitule) + '</h3><div class="meta">' + esc(e.date.charAt(0).toUpperCase() + e.date.slice(1)) + (e.horaires ? ', ' + esc(e.horaires) : '') + '<br>' + esc(e.lieu) +
+        (e.prix ? ' · ' + fmtEur(e.prix) + ' TTC' : '') + (e.financement ? '<br>' + esc(e.financement) : '') + '</div>' +
+        '<div class="pied"><span class="places' + (e.places === 0 ? ' full' : '') + '">' + (e.places === null ? '' : e.places === 0 ? 'Complet' : e.places + ' place' + (e.places > 1 ? 's' : '')) + '</span>' +
+        '<span style="display:flex;gap:6px">' + (e.instagram ? '<a class="btn btn-light" style="padding:9px 12px" href="' + esc(e.instagram) + '" target="_blank" rel="noopener">📸</a>' : '') +
+        '<button class="btn btn-gold" style="padding:9px 14px" onclick="choisir(' + i + ')">' + (e.places === 0 ? 'Liste d\'attente' : T('Je participe', 'Je m\'inscris')) + '</button></span></div></div>';
+    }).join('') : '<div class="vide">Pas d\'événement programmé pour le moment. ' + T('Laisse tes coordonnées plus bas : tu seras prévenu(e) en premier.', 'Laissez vos coordonnées plus bas : vous serez prévenu(e) en premier.') + '</div>';
+    const p = passes.filter(pourMoi).slice(0, 8);
+    $('passes').style.display = p.length ? 'block' : 'none';
+    $('pass').innerHTML = p.map(e => '<div class="past"><div><b>' + esc(e.intitule) + '</b><span>' + esc(e.dateCourte) + ' · ' + esc(e.lieu) + '</span></div>' +
+      '<a class="btn btn-ig" style="padding:9px 14px;font-size:13.5px" href="' + esc(e.instagram) + '" target="_blank" rel="noopener">📸 Photos et vidéos</a></div>').join('');
+  }
+
+  function choisir(i) {
+    choix = i;
+    const s = $('evsel');
+    if (i < 0) { s.style.display = 'none'; $('send').textContent = 'Envoyer'; return; }
+    if (!profil) { $('profil').scrollIntoView({ behavior: 'smooth' }); $('profils').style.outline = '2px solid #E3A72F'; setTimeout(() => $('profils').style.outline = '', 1500); choix = -1; return; }
+    const e = evs[i];
+    $('evselTxt').innerHTML = '<b>Inscription :</b> ' + esc(e.intitule) + ' · ' + esc(e.dateCourte) + (e.places === 0 ? ' (liste d\'attente)' : '');
+    s.style.display = 'flex';
+    $('send').textContent = e.places === 0 ? T('M\'inscrire sur la liste d\'attente', 'M\'inscrire sur la liste d\'attente') : T('Je participe', 'Je m\'inscris');
+    $('projet').scrollIntoView({ behavior: 'smooth' });
+    setTimeout(() => { const x = $('prenom'); if (x) x.focus(); }, 400);
+  }
+
+  async function envoyer(ev) {
+    ev.preventDefault();
+    const v = k => $(k).value.trim(), err = $('err'), etu = profil === 'etudiant';
+    const p = { profil, prenom: v('prenom'), nom: v('nom'), portable: v('portable'), email: v('email'), insta: v('insta'),
+      interets: [...document.querySelectorAll('#interets input:checked')].map(i => i.value), photo: $('photo').checked };
+    if (etu) Object.assign(p, { fac: v('fac'), annee: v('annee'), quand: v('quand'), type: v('type'), dep: v('dep') });
+    else Object.assign(p, { cabinet: v('cabinet'), ville: v('ville') });
+    if (p.portable.replace(/\D/g, '').length < 9) { err.textContent = T('Indique ton numéro de portable.', 'Indiquez votre numéro de portable.'); return; }
+    if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(p.email)) { err.textContent = T('Vérifie ton adresse e-mail.', 'Vérifiez votre adresse e-mail.'); return; }
+    const veutAssist = !etu && $('assist') && $('assist').checked;
+    if (veutAssist && p.cabinet.length < 3) { err.textContent = 'Indiquez le nom de votre cabinet (pour l\'Assistance).'; $('cabinet').focus(); return; }
+    if (!$('accord').checked) { err.textContent = T('Coche la case d\'accord pour qu\'on puisse te recontacter.', 'Cochez la case d\'accord pour que nous puissions vous recontacter.'); return; }
+    err.textContent = '';
+    const b = $('send'); b.disabled = true; b.textContent = 'Envoi…';
+    let r = null;
+    try { r = await appel(Object.assign({ action: 'etudiant', accord: true, evenement: choix >= 0 ? evs[choix].id : '' }, p)); } catch (e) {}
+    if (!r || !r.ok) { b.disabled = false; b.textContent = 'Envoyer'; err.textContent = (r && r.message) || T('Envoi impossible pour le moment. Réessaie dans un instant ou appelle-nous au 04 69 96 03 60.', 'Envoi impossible pour le moment. Réessayez dans un instant ou appelez-nous au 04 69 96 03 60.'); return; }
+    try { localStorage.setItem('ad_etudiant', JSON.stringify(p)); } catch (e) {}
+    let act = null;
+    if (veutAssist) {
+      const PROF_ACT = { omni: 'Omnipraticien', implanto: 'Implantologue', ortho: 'Orthodontiste', assistante: 'Assistante' };
+      try { act = await appel({ action: 'activation_demande', profil: PROF_ACT[profil] || 'Omnipraticien', prenom: p.prenom, nom: p.nom, portable: p.portable, email: p.email, cabinet: p.cabinet, ville: p.ville }); } catch (e) {}
+    }
+    const e = choix >= 0 ? evs[choix] : null;
+    $('f').innerHTML = '<div class="ok"><div class="big">' + (e ? '🎉' : '🙌') + '</div><h3>' + (e ? (r.attente ? T('Tu es sur la liste d\'attente', 'Vous êtes sur la liste d\'attente') : T('C\'est noté, à très vite !', 'C\'est noté, à très bientôt !')) : 'Merci ' + esc(p.prenom) + ' !') + '</h3>' +
+      '<p class="sub">' + (e ? esc(e.intitule) + ' · ' + esc(e.date) + (e.horaires ? ', ' + esc(e.horaires) : '') + '<br>' + esc(e.lieu) : T('Tu seras prévenu(e) en premier de nos prochains événements.', 'Vous serez prévenu(e) en premier de nos prochains événements.')) + '</p>' +
+      '<p class="sub">' + T('Suis-nous', 'Suivez-nous') + ' pour voir les photos et vidéos' + (p.photo ? T(' (et te retrouver dessus 😉)', ' (et vous y retrouver)') : '') + '.</p>' +
+      (act && act.ok ? '<p class="sub" style="background:#EEF2FA;border-radius:12px;padding:10px 12px">💻 <b>Assistance Alternative Dentaire :</b> votre demande est enregistrée. Après validation, vous recevrez par e-mail votre lien d\'installation.</p>' : (act && act.message ? '<p class="sub">💻 ' + esc(act.message) + '</p>' : '')) +
+      '<a class="btn btn-ig" href="https://www.instagram.com/alternative_dentaire/" target="_blank" rel="noopener">📸 Suivre @alternative_dentaire</a></div>';
+  }
+</script>
+<script>document.querySelectorAll('.annees-exp').forEach(e=>e.textContent=new Date().getFullYear()-2001);</script>
+</body>
+</html>
