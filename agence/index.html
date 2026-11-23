@@ -577,12 +577,42 @@
       c.artisans.map(a => '<div class="row" style="padding:5px 0;border-bottom:1px solid var(--line)"><div style="flex:1"><b>' + esc(a.metier) + '</b> · ' + esc(a.nom) +
         '<div class="meta">' + (a.tel ? '<a href="tel:' + esc(a.tel.replace(/\s/g, '')) + '">📞 ' + esc(a.tel) + '</a> ' : '') + (a.email ? ' <a href="mailto:' + esc(a.email) + '">✉ ' + esc(a.email) + '</a>' : '') + (a.remarque ? ' · ' + esc(a.remarque) : '') + '</div></div>' +
         '<button class="btn-light" title="Retirer" onclick="chSuppr(this,\'' + n + '\',' + a.ligne + ')">✕</button></div>').join('') +
+      blocEnvoiArtisans(c) +
       '<div class="g3" style="margin-top:8px"><div><label>Métier</label><select id="arM">' + CH.metiers.map(x => '<option>' + esc(x) + '</option>').join('') + '</select></div>' +
       '<div><label>Nom / société</label><input id="arN"></div><div><label>Téléphone</label><input id="arT" type="tel"></div></div>' +
       '<div class="g2"><div><label>E-mail</label><input id="arE" type="email"></div><div><label>Remarque</label><input id="arR"></div></div>' +
       '<p class="err" id="arErr"></p><button class="btn" onclick="chArtisan(this,\'' + n + '\')">Ajouter l\'artisan</button>' +
       '<div class="sec">Tâches restantes</div>' + (c.reste.length ? c.reste.map(t => '<div class="meta">☐ ' + esc(t.titre) + ' · ' + esc(t.pour) + ' · ' + esc(t.echeance) + '</div>').join('') : '<div class="meta">✅ Tout est fait (' + c.faites + ' tâche(s)).</div>') +
       '</div>';
+  }
+  // Envoi des plans d'implantation / dossier technique aux artisans, par e-mail (pièces jointes)
+  function blocEnvoiArtisans(c) {
+    const n = esc(c.n), av = c.artisans.filter(a => a.email), docs = [];
+    if (c.prat) {
+      if (c.prat.dt) docs.push({ id: c.prat.dt.id, nom: '📄 Dossier technique (' + c.prat.dt.date + ')', on: true });
+      if (c.prat.aps) docs.push({ id: c.prat.aps.id, nom: '📐 Plan (' + c.prat.aps.nom + ')', on: true });
+      (c.prat.recents || []).filter(x => /\.(pdf|png|jpe?g|dwg)$/i.test(x.nom) && !docs.some(d => d.id === x.id)).slice(0, 8).forEach(x => docs.push({ id: x.id, nom: x.nom + (x.sous ? ' (' + x.sous + ')' : ''), on: false }));
+    }
+    c.docs.forEach(x => docs.push({ id: x.id, nom: x.nom, on: /plan|implant|descriptif/i.test(x.nom) }));
+    if (!c.artisans.length) return '';
+    return '<details class="card" style="margin-top:8px;background:#F7F9FC"' + (envoiOuvert === c.n ? ' open' : '') + ' ontoggle="if(this.open)envoiOuvert=\'' + n + '\'"><summary style="cursor:pointer;font-weight:700;color:var(--navy)">✉ Envoyer les plans aux artisans</summary>' +
+      (av.length ? '<label>Destinataires</label><div class="chips">' + av.map(a => '<label><input type="checkbox" name="evA" value="' + a.ligne + '" checked>' + esc(a.metier + ' · ' + a.nom) + '</label>').join('') + '</div>' : '<div class="meta">Aucun artisan avec une adresse e-mail : ajoutez-la ci-dessous.</div>') +
+      (c.artisans.length > av.length ? '<div class="meta">Sans e-mail : ' + esc(c.artisans.filter(a => !a.email).map(a => a.nom).join(', ')) + '</div>' : '') +
+      '<label>Documents joints</label>' + (docs.length ? '<div class="chips">' + docs.map(d => '<label><input type="checkbox" name="evD" value="' + esc(d.id) + '"' + (d.on ? ' checked' : '') + '>' + esc(d.nom) + '</label>').join('') + '</div>' : '<div class="meta">Aucun document : associez le dossier praticien ou ajoutez un document au chantier.</div>') +
+      '<label>Message</label><textarea id="evM" rows="3">Bonjour,\nVous trouverez ci-joint les plans d\'implantation et le dossier technique pour le chantier ' + esc(c.praticien || c.cabinet) + '. Merci de nous confirmer leur bonne réception.</textarea>' +
+      '<p class="err" id="evErr"></p><button class="btn"' + (av.length && docs.length ? '' : ' disabled') + ' onclick="envoyerArtisans(this,\'' + n + '\')">Envoyer par e-mail</button><span class="meta" style="margin-left:8px">Vous êtes en copie, les réponses vous arrivent.</span></details>';
+  }
+  let envoiOuvert = '';
+  async function envoyerArtisans(b, n) {
+    const artisans = cochés('evA').map(Number), fichiers = cochés('evD'), e = document.getElementById('evErr');
+    if (!artisans.length) { e.textContent = 'Cochez au moins un artisan.'; return; }
+    if (!fichiers.length) { e.textContent = 'Cochez au moins un document.'; return; }
+    if (!confirm('Envoyer ' + fichiers.length + ' document(s) à ' + artisans.length + ' artisan(s) ?')) return;
+    b.disabled = true; e.style.color = 'var(--muted)'; e.textContent = 'Envoi en cours…';
+    let r; try { r = await api('chantier_envoi_artisans', { n, artisans, fichiers, message: document.getElementById('evM').value }); } catch (x) { r = { ok: false, message: 'Connexion impossible.' }; }
+    b.disabled = false;
+    if (!r.ok) { e.style.color = ''; e.textContent = r.message; return; }
+    e.style.color = 'var(--ok)'; e.textContent = '✓ Envoyé à ' + r.a + ' (' + r.fichiers + ' document(s)).';
   }
   async function rechargerCh() { CH = null; await vueChantiers(); }
   async function majChantier(b, n) {
