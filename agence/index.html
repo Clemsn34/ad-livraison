@@ -643,6 +643,20 @@
   }
   // ----- Documents du cabinet (vus aussi dans « Mes documents » de l'Assistance) : Matériel / Consommable -----
   let CD = null, cdOnglet = APP === 'conso' ? 'conso' : 'mat';
+  // Dossier « Praticiens » du Drive : dossier technique, plan, et tout le dossier (consultable sans compte Google)
+  async function chargerCabPrat() {
+    const z = document.getElementById('cabPrat'); if (!z) return;
+    let r; try { r = await api('client_dossiers', { cabId: z.dataset.id, cabinet: z.dataset.nom, contact: z.dataset.contact }); } catch (e) { r = { ok: false, message: 'Connexion impossible.' }; }
+    if (!r.ok) { z.innerHTML = '<div class="meta">' + esc(r.message) + '</div>'; return; }
+    const p = r.prat;
+    if (!p) { z.innerHTML = '<div class="meta">Aucun dossier praticien trouvé à ce nom dans le Drive (dossier « Praticiens »).</div>'; return; }
+    z.innerHTML = '<div class="toolbar">' +
+      (p.dt ? '<button class="btn" onclick="pratOuvrir(this,\'' + esc(p.dt.id) + '\')">📄 Dossier technique (' + esc(p.dt.date) + ')' + mo(p.dt.taille) + '</button>' : '') +
+      (p.aps ? '<button class="btn-light" onclick="pratOuvrir(this,\'' + esc(p.aps.id) + '\')">📐 Plan</button>' : '') +
+      '<button class="btn-light" onclick="pratDossier(\'' + esc(p.id) + '\')">📁 Tout le dossier (' + (p.nb || 0) + ' fichiers)</button>' +
+      '<a class="btn-light" style="text-decoration:none;display:inline-block" href="' + esc(p.url) + '" target="_blank">Ouvrir dans Google Drive</a></div>' +
+      '<div class="meta">Dossier Drive : ' + esc(p.nom) + (p.dt ? '' : ' · pas de PDF « dossier technique » dedans') + '</div>';
+  }
   async function chargerCabDocs() {
     const z = document.getElementById('cabDocs'); if (!z) return;
     let r; try { r = await api('cab_docs', { id: z.dataset.id, nom: z.dataset.nom }); } catch (e) { r = { ok: false, message: 'Connexion impossible.' }; }
@@ -774,10 +788,12 @@
           (c.prets.length ? '<div class="sec" style="margin-top:10px">Matériel prêté</div>' + c.prets.map(p => '<div class="meta" style="padding:2px 0">' + esc(p.materiel) + (p.serie ? ' · n° ' + esc(p.serie) : '') + (p.retour ? ' · retour ' + (p.retard ? '<b style="color:#C0392B">prévu le ' + esc(p.retour) + ' (en retard)</b>' : 'prévu le ' + esc(p.retour)) : '') + '</div>').join('') : '') +
           (c.installs.length ? '<div class="sec" style="margin-top:10px">Installations</div>' + c.installs.map(i => '<div class="meta" style="padding:2px 0">' + esc(i.date || 'Date à fixer') + ' · ' + esc(i.materiel) + ' · ' + esc(i.statut) + '</div>').join('') : '') +
           (c.notes ? '<div class="sec" style="margin-top:10px">Notes</div><div class="meta">' + esc(c.notes) + '</div>' : '') +
+          (D.chantiers ? '<div class="sec" style="margin-top:10px">Dossier technique et Drive du praticien</div><div id="cabPrat" data-id="' + esc(c.id) + '" data-nom="' + esc(c.nom) + '" data-contact="' + esc((c.personnes[0] || {}).nom || '') + '"><div class="meta">Chargement…</div></div>' : '') +
           '<div class="sec" style="margin-top:10px">Documents du cabinet</div><div id="cabDocs" data-id="' + esc(c.id) + '" data-nom="' + esc(c.nom) + '"><div class="meta">Chargement…</div></div>' + '</div>' : '') + '</div>';
     }).join('') + (l.length > 150 ? '<div class="vide">' + (l.length - 150) + ' autres : affinez la recherche.</div>' : '') + (!l.length ? '<div class="vide">Aucun cabinet trouvé.</div>' : '');
     main.innerHTML = h;
     if (document.getElementById('cabDocs')) chargerCabDocs();
+    if (document.getElementById('cabPrat')) chargerCabPrat();
     if (window.__clF) { const q = document.getElementById('clQ'); q.focus(); q.setSelectionRange(q.value.length, q.value.length); window.__clF = false; }
   }
 
