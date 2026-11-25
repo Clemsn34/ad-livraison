@@ -695,6 +695,20 @@
       '<a class="btn-light" style="text-decoration:none;display:inline-block" href="' + esc(p.url) + '" target="_blank">Ouvrir dans Google Drive</a></div>' +
       '<div class="meta">Dossier Drive : ' + esc(p.nom) + (p.dt ? '' : ' · pas de PDF « dossier technique » dedans') + '</div>';
   }
+  // Proposition de financement (PDF aux couleurs AD, rangé dans le dossier du praticien)
+  async function finProposition(b) {
+    const z = document.getElementById('cabFin'), out = document.getElementById('finRes'), mt = Number(String(document.getElementById('finMt').value).replace(',', '.'));
+    if (!(mt >= 1000 && mt <= 500000)) { out.innerHTML = '<p class="err">Montant TTC entre 1 000 et 500 000 €.</p>'; return; }
+    b.disabled = true; out.innerHTML = '<div class="meta">Création de la proposition…</div>';
+    let r; try { r = await api('fin_proposition', { cabId: z.dataset.id, cabinet: z.dataset.nom, contact: z.dataset.contact, ville: z.dataset.ville, montant: mt }); } catch (e) { r = { ok: false, message: 'Connexion impossible.' }; }
+    b.disabled = false;
+    if (!r.ok) { out.innerHTML = '<p class="err">' + esc(r.message) + '</p>'; return; }
+    const eu = v => v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+    out.innerHTML = '<div class="card" style="background:#F7F9FC;margin-top:6px">' + r.loyers.map(x => '<div class="row"><div style="flex:1">' + x.mois + ' mois</div><b>' + eu(x.loyer) + ' TTC / mois</b></div>').join('') +
+      '<div class="toolbar" style="margin-top:8px">' + (r.id ? '<button class="btn" onclick="event.stopPropagation();pratOuvrir(this,\'' + esc(r.id) + '\')">📄 Ouvrir la proposition</button>' : '') + '</div>' +
+      '<div class="meta">' + esc(r.nom) + (r.dossier ? ' · rangée dans le dossier « ' + esc(r.dossier) + ' »' : '') + ' · avec les 1ers loyers majorés</div></div>';
+    delete MEMO['prat|' + z.dataset.id];
+  }
   // ---------------- Extrabat (lecture à la demande, création ponctuelle : jamais de synchronisation) ----------------
   const exbZ = () => document.getElementById('cabExb');
   const exbData = z => ({ cabId: z.dataset.id, nom: z.dataset.nom, adresse: z.dataset.adr, cp: z.dataset.cp, ville: z.dataset.ville, tel: z.dataset.tel, email: z.dataset.email });
@@ -952,6 +966,7 @@
           (c.installs.length ? '<div class="sec" style="margin-top:10px">Installations</div>' + c.installs.map(i => '<div class="meta" style="padding:2px 0">' + esc(i.date || 'Date à fixer') + ' · ' + esc(i.materiel) + ' · ' + esc(i.statut) + '</div>').join('') : '') +
           (c.notes ? '<div class="sec" style="margin-top:10px">Notes</div><div class="meta">' + esc(c.notes) + '</div>' : '') +
           (D.chantiers ? '<div class="sec" style="margin-top:10px">Dossier technique et Drive du praticien</div><div id="cabPrat" data-id="' + esc(c.id) + '" data-nom="' + esc(c.nom) + '" data-contact="' + esc((c.personnes[0] || {}).nom || '') + '"><div class="meta">Chargement…</div></div>' : '') +
+          (D.chantiers ? '<div class="sec" style="margin-top:10px">Financement</div><div id="cabFin" data-id="' + esc(c.id) + '" data-nom="' + esc(c.nom) + '" data-contact="' + esc((c.personnes[0] || {}).nom || '') + '" data-ville="' + esc(c.ville || '') + '"><div class="toolbar"><input id="finMt" type="number" inputmode="decimal" placeholder="Montant du projet TTC" style="max-width:220px" onclick="event.stopPropagation()" onkeydown="if(event.key===\'Enter\')finProposition(this)"><button class="btn" onclick="event.stopPropagation();finProposition(this)">💶 Créer la proposition de financement</button></div><div id="finRes"></div></div>' : '') +
           (D.extrabat ? '<div class="sec" style="margin-top:10px">Extrabat</div><div id="cabExb" data-id="' + esc(c.id) + '" data-nom="' + esc(c.nom) + '" data-adr="' + esc(c.adresse || '') + '" data-cp="' + esc(c.cp || '') + '" data-ville="' + esc(c.ville || '') + '" data-tel="' + esc(c.tel || '') + '" data-email="' + esc(c.email || '') + '"><button class="btn-light" onclick="event.stopPropagation();chargerExb()">🔗 Voir dans Extrabat</button></div>' : '') +
           '<div class="sec" style="margin-top:10px">Documents du cabinet</div><div id="cabDocs" data-id="' + esc(c.id) + '" data-nom="' + esc(c.nom) + '"><div class="meta">Chargement…</div></div>' + '</div>' : '') + '</div>';
     }).join('') + (l.length > 150 ? '<div class="vide">' + (l.length - 150) + ' autres : affinez la recherche.</div>' : '') + (!l.length ? '<div class="vide">Aucun cabinet trouvé.</div>' : '');
