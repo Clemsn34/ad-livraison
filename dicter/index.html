@@ -488,7 +488,7 @@ const eqDe = (piece, nom) => { const P = CAT.pieces.find(x => x.piece === piece)
 function ajouterSalle(piece) {
   const P = CAT.pieces.find(x => x.piece === piece); if (!P) return;
   const n = PJ.salles.filter(s => s.piece === piece).length + 1, items = {};
-  P.equipements.forEach(e => { items[e.equip] = { on: !!e.defaut, marque: '', modele: '', options: [], qte: 1, note: '' }; });
+  P.equipements.forEach(e => { items[e.equip] = { on: !!e.defaut, marque: '', modele: '', options: [], qte: 1, note: '', offert: !!e.offert }; });
   PJ.salles.push({ piece, salle: n, items, ouvert: true }); sauverPJ(); afficherDevis();
 }
 function afficherDevis() {
@@ -518,7 +518,8 @@ function afficherDevis() {
             (M && M.modeles.filter(x => x.modele).length ? '<div class="chips">' + M.modeles.filter(x => x.modele).map(x => '<button data-mo="' + esc(k) + '" data-v="' + esc(x.modele) + '" class="' + (it.modele === x.modele ? 'on' : '') + '">' + esc(x.modele) + '</button>').join('') + '</div>' : '') +
             (M && M.options && M.options.length ? '<div style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Options ' + esc(M.marque) + '</div>' + M.options.map(o => '<label class="pj-opt"><input type="checkbox" data-op="' + esc(k) + '" data-v="' + esc(o.option) + '"' + (it.options.includes(o.option) ? ' checked' : '') + '>' + esc(o.option) + '</label>').join('') : '') +
             '<input data-mod="' + esc(k) + '" placeholder="' + (e.marques.length ? 'Autre marque / modèle, précision…' : 'Marque, modèle, précision…') + '" value="' + esc(it.note) + '">' +
-            '<div class="pj-qte">Quantité <button data-q="' + esc(k) + '" data-d="-1">−</button><b>' + it.qte + '</b><button data-q="' + esc(k) + '" data-d="1">+</button></div></div>';
+            '<div class="pj-qte">Quantité <button data-q="' + esc(k) + '" data-d="-1">−</button><b>' + it.qte + '</b><button data-q="' + esc(k) + '" data-d="1">+</button>' +
+            '<label class="pj-opt" style="margin-left:auto;color:' + (it.offert ? 'var(--ok)' : 'var(--muted)') + ';font-weight:700"><input type="checkbox" data-off="' + esc(k) + '"' + (it.offert ? ' checked' : '') + ' style="accent-color:var(--ok)">Offert</label></div></div>';
         }
         h += '</div>';
       });
@@ -545,6 +546,7 @@ function afficherDevis() {
   z.querySelectorAll('[data-mq]').forEach(b => b.onclick = () => { const i = it(b.dataset.mq); if (i.marque === b.dataset.v) { i.marque = ''; } else { i.marque = b.dataset.v; } i.modele = ''; i.options = []; sauverPJ(); afficherDevis(); });
   z.querySelectorAll('[data-mo]').forEach(b => b.onclick = () => { const i = it(b.dataset.mo); i.modele = i.modele === b.dataset.v ? '' : b.dataset.v; sauverPJ(); afficherDevis(); });
   z.querySelectorAll('[data-op]').forEach(b => b.onchange = () => { const i = it(b.dataset.op); i.options = i.options.filter(x => x !== b.dataset.v); if (b.checked) i.options.push(b.dataset.v); sauverPJ(); });
+  z.querySelectorAll('[data-off]').forEach(b => b.onchange = () => { it(b.dataset.off).offert = b.checked; sauverPJ(); afficherDevis(); });
   z.querySelectorAll('[data-mod]').forEach(b => b.oninput = () => { it(b.dataset.mod).note = b.value; sauverPJ(); });
   z.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { const i = it(b.dataset.q); i.qte = Math.max(1, Math.min(99, i.qte + +b.dataset.d)); sauverPJ(); afficherDevis(); });
   $('jgo').onclick = envoyerDevis;
@@ -552,7 +554,7 @@ function afficherDevis() {
 }
 async function envoyerDevis() {
   const lignes = [];
-  PJ.salles.forEach(S => Object.entries(S.items).forEach(([eq, i]) => { if (i.on) lignes.push({ piece: S.piece, salle: S.salle, equip: eq, marque: i.marque, modele: i.modele, options: i.options, qte: i.qte, note: i.note }); }));
+  PJ.salles.forEach(S => Object.entries(S.items).forEach(([eq, i]) => { if (i.on) lignes.push({ piece: S.piece, salle: S.salle, equip: eq, marque: i.marque, modele: i.modele, options: i.options, qte: i.qte, note: i.note, offert: !!i.offert }); }));
   $('err').textContent = '';
   if (!(PJ.nom || PJ.cabinet).trim()) { $('err').textContent = 'Indiquez le praticien ou le cabinet.'; return; }
   if (!lignes.length) { $('err').textContent = 'Ajoutez une pièce et cochez le matériel.'; return; }
