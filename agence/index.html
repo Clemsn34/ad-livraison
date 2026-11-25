@@ -699,30 +699,38 @@
   function vueFinancement() {
     document.getElementById('main').innerHTML = '<h2>Financement</h2><p class="sub">Indiquez le montant TTC : la proposition Dentaire Finance (loyers identiques et 1er loyer majoré) sort en PDF aux couleurs d\'Alternative Dentaire. Pour la ranger dans le dossier d\'un praticien, passez plutôt par sa fiche client.</p>' +
       '<div class="card"><div class="g2"><div><label>Montant du projet TTC</label><input id="fsM" type="number" inputmode="decimal" placeholder="Ex. : 24500"></div><div><label>Nom sur la proposition (facultatif)</label><input id="fsN" placeholder="Ex. : Dr Martin"></div></div>' +
-      '<p class="err" id="fsE"></p><button class="btn" onclick="finSimple(this)">📄 Créer le PDF</button><div id="fsR"></div></div>';
+      '<label>E-mail du praticien (pour lui envoyer)</label><input id="fsMail" type="email" placeholder="praticien@exemple.fr">' +
+      '<p class="err" id="fsE"></p><div class="toolbar"><button class="btn" onclick="finSimple(this, true)">✉ Envoyer par e-mail</button><button class="btn-light" onclick="finSimple(this, false)">📄 Créer le PDF seulement</button></div><div id="fsR"></div></div>';
   }
-  async function finSimple(b) {
-    const mt = Number(String(document.getElementById('fsM').value).replace(',', '.')), e = document.getElementById('fsE'), out = document.getElementById('fsR');
+  async function finSimple(b, envoyer) {
+    const mt = Number(String(document.getElementById('fsM').value).replace(',', '.')), e = document.getElementById('fsE'), out = document.getElementById('fsR'), mail = document.getElementById('fsMail').value.trim();
     e.textContent = ''; if (!(mt >= 1000 && mt <= 500000)) { e.textContent = 'Montant TTC entre 1 000 et 500 000 €.'; return; }
-    b.disabled = true; b.textContent = 'Création…';
-    let r; try { r = await api('fin_simple', { montant: mt, nom: document.getElementById('fsN').value.trim() }); } catch (x) { r = { ok: false, message: 'Connexion impossible.' }; }
-    b.disabled = false; b.textContent = '📄 Créer le PDF';
+    if (envoyer && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) { e.textContent = 'Indiquez l\'e-mail du praticien.'; return; }
+    const t = b.textContent; b.disabled = true; b.textContent = envoyer ? 'Envoi…' : 'Création…';
+    let r; try { r = await api('fin_simple', { montant: mt, nom: document.getElementById('fsN').value.trim(), email: envoyer ? mail : '' }); } catch (x) { r = { ok: false, message: 'Connexion impossible.' }; }
+    b.disabled = false; b.textContent = t;
     if (!r.ok) { e.textContent = r.message; return; }
     const bin = Uint8Array.from(atob(r.base64), c => c.charCodeAt(0)), url = URL.createObjectURL(new Blob([bin], { type: 'application/pdf' }));
     const eu = v => v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
     out.innerHTML = '<div style="margin-top:10px">' + r.loyers.map(x => '<div class="row"><div style="flex:1">' + x.mois + ' mois</div><b>' + eu(x.loyer) + ' TTC / mois</b></div>').join('') +
-      '<div class="toolbar" style="margin-top:8px"><a class="btn" style="text-decoration:none" href="' + url + '" download="' + esc(r.nom) + '">⬇ Télécharger le PDF</a><a class="btn-light" style="text-decoration:none" href="' + url + '" target="_blank">Ouvrir</a></div></div>';
+      (r.envoye ? '<div style="color:var(--ok);font-weight:700;margin-top:8px">✓ Proposition envoyée à ' + esc(r.envoye) + ' (vous êtes en copie cachée)</div>' : '') +
+      '<div class="toolbar" style="margin-top:8px"><a class="btn-light" style="text-decoration:none" href="' + url + '" download="' + esc(r.nom) + '">⬇ Télécharger</a><a class="btn-light" style="text-decoration:none" href="' + url + '" target="_blank">Ouvrir</a>' +
+      (navigator.canShare && navigator.canShare({ files: [new File([bin], r.nom, { type: 'application/pdf' })] }) ? '<button class="btn-light" id="fsPart">↗ Partager (WhatsApp, Mail…)</button>' : '') + '</div></div>';
+    const bp = document.getElementById('fsPart');
+    if (bp) bp.onclick = () => navigator.share({ files: [new File([bin], r.nom, { type: 'application/pdf' })], title: r.nom }).catch(() => {});
   }
   // Proposition de financement (PDF aux couleurs AD, rangé dans le dossier du praticien)
-  async function finProposition(b) {
-    const z = document.getElementById('cabFin'), out = document.getElementById('finRes'), mt = Number(String(document.getElementById('finMt').value).replace(',', '.'));
+  async function finProposition(b, envoyer) {
+    const z = document.getElementById('cabFin'), out = document.getElementById('finRes'), mt = Number(String(document.getElementById('finMt').value).replace(',', '.')), mail = document.getElementById('finMail').value.trim();
     if (!(mt >= 1000 && mt <= 500000)) { out.innerHTML = '<p class="err">Montant TTC entre 1 000 et 500 000 €.</p>'; return; }
-    b.disabled = true; out.innerHTML = '<div class="meta">Création de la proposition…</div>';
-    let r; try { r = await api('fin_proposition', { cabId: z.dataset.id, cabinet: z.dataset.nom, contact: z.dataset.contact, ville: z.dataset.ville, montant: mt }); } catch (e) { r = { ok: false, message: 'Connexion impossible.' }; }
+    if (envoyer && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) { out.innerHTML = '<p class="err">Indiquez l\'e-mail du praticien.</p>'; return; }
+    b.disabled = true; out.innerHTML = '<div class="meta">' + (envoyer ? 'Création et envoi…' : 'Création de la proposition…') + '</div>';
+    let r; try { r = await api('fin_proposition', { cabId: z.dataset.id, cabinet: z.dataset.nom, contact: z.dataset.contact, ville: z.dataset.ville, montant: mt, email: envoyer ? mail : '' }); } catch (e) { r = { ok: false, message: 'Connexion impossible.' }; }
     b.disabled = false;
     if (!r.ok) { out.innerHTML = '<p class="err">' + esc(r.message) + '</p>'; return; }
     const eu = v => v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-    out.innerHTML = '<div class="card" style="background:#F7F9FC;margin-top:6px">' + r.loyers.map(x => '<div class="row"><div style="flex:1">' + x.mois + ' mois</div><b>' + eu(x.loyer) + ' TTC / mois</b></div>').join('') +
+    out.innerHTML = (r.envoye ? '<div style="color:var(--ok);font-weight:700;margin-top:6px">✓ Proposition envoyée à ' + esc(r.envoye) + ' (vous êtes en copie cachée)</div>' : '') + (r.alerte ? '<p class="err">' + esc(r.alerte) + '</p>' : '') +
+      '<div class="card" style="background:#F7F9FC;margin-top:6px">' + r.loyers.map(x => '<div class="row"><div style="flex:1">' + x.mois + ' mois</div><b>' + eu(x.loyer) + ' TTC / mois</b></div>').join('') +
       '<div class="toolbar" style="margin-top:8px">' + (r.id ? '<button class="btn" onclick="event.stopPropagation();pratOuvrir(this,\'' + esc(r.id) + '\')">📄 Ouvrir la proposition</button>' : '') + '</div>' +
       '<div class="meta">' + esc(r.nom) + (r.dossier ? ' · rangée dans le dossier « ' + esc(r.dossier) + ' »' : '') + ' · avec les 1ers loyers majorés</div></div>';
     delete MEMO['prat|' + z.dataset.id];
@@ -984,7 +992,7 @@
           (c.installs.length ? '<div class="sec" style="margin-top:10px">Installations</div>' + c.installs.map(i => '<div class="meta" style="padding:2px 0">' + esc(i.date || 'Date à fixer') + ' · ' + esc(i.materiel) + ' · ' + esc(i.statut) + '</div>').join('') : '') +
           (c.notes ? '<div class="sec" style="margin-top:10px">Notes</div><div class="meta">' + esc(c.notes) + '</div>' : '') +
           (D.chantiers ? '<div class="sec" style="margin-top:10px">Dossier technique et Drive du praticien</div><div id="cabPrat" data-id="' + esc(c.id) + '" data-nom="' + esc(c.nom) + '" data-contact="' + esc((c.personnes[0] || {}).nom || '') + '"><div class="meta">Chargement…</div></div>' : '') +
-          (D.chantiers ? '<div class="sec" style="margin-top:10px">Financement</div><div id="cabFin" data-id="' + esc(c.id) + '" data-nom="' + esc(c.nom) + '" data-contact="' + esc((c.personnes[0] || {}).nom || '') + '" data-ville="' + esc(c.ville || '') + '"><div class="toolbar"><input id="finMt" type="number" inputmode="decimal" placeholder="Montant du projet TTC" style="max-width:220px" onclick="event.stopPropagation()" onkeydown="if(event.key===\'Enter\')finProposition(this)"><button class="btn" onclick="event.stopPropagation();finProposition(this)">💶 Créer la proposition de financement</button></div><div id="finRes"></div></div>' : '') +
+          (D.chantiers ? '<div class="sec" style="margin-top:10px">Financement</div><div id="cabFin" data-id="' + esc(c.id) + '" data-nom="' + esc(c.nom) + '" data-contact="' + esc((c.personnes[0] || {}).nom || '') + '" data-ville="' + esc(c.ville || '') + '"><div class="toolbar"><input id="finMt" type="number" inputmode="decimal" placeholder="Montant du projet TTC" style="max-width:220px" onclick="event.stopPropagation()"><input id="finMail" type="email" placeholder="E-mail du praticien" value="' + esc(c.email || '') + '" style="max-width:260px" onclick="event.stopPropagation()"></div><div class="toolbar"><button class="btn" onclick="event.stopPropagation();finProposition(this, true)">✉ Créer et envoyer par e-mail</button><button class="btn-light" onclick="event.stopPropagation();finProposition(this, false)">💶 Créer seulement</button></div><div id="finRes"></div></div>' : '') +
           (D.extrabat ? '<div class="sec" style="margin-top:10px">Extrabat</div><div id="cabExb" data-id="' + esc(c.id) + '" data-nom="' + esc(c.nom) + '" data-adr="' + esc(c.adresse || '') + '" data-cp="' + esc(c.cp || '') + '" data-ville="' + esc(c.ville || '') + '" data-tel="' + esc(c.tel || '') + '" data-email="' + esc(c.email || '') + '"><button class="btn-light" onclick="event.stopPropagation();chargerExb()">🔗 Voir dans Extrabat</button></div>' : '') +
           '<div class="sec" style="margin-top:10px">Documents du cabinet</div><div id="cabDocs" data-id="' + esc(c.id) + '" data-nom="' + esc(c.nom) + '"><div class="meta">Chargement…</div></div>' + '</div>' : '') + '</div>';
     }).join('') + (l.length > 150 ? '<div class="vide">' + (l.length - 150) + ' autres : affinez la recherche.</div>' : '') + (!l.length ? '<div class="vide">Aucun cabinet trouvé.</div>' : '');
