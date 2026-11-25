@@ -527,6 +527,7 @@ function afficherDevis() {
     h += '</div>';
   });
   h += '<div class="pj-add">' + CAT.pieces.map(P => '<button data-add="' + esc(P.piece) + '">+ ' + esc(P.piece) + '</button>').join('') + '</div>' +
+    zoneFinancement() +
     '<div class="sec">Note</div><textarea id="jnote" placeholder="Délais, budget, financement, surface… (le micro dicte ici)">' + esc(PJ.note) + '</textarea>' +
     '<label class="pj-sw"><input type="checkbox" id="jrec"' + (PJ.recap ? ' checked' : '') + '>Envoyer le récapitulatif au praticien par e-mail</label>' +
     '<label class="pj-sw"><input type="checkbox" id="jexb"' + (PJ.extrabat ? ' checked' : '') + '>Créer le devis dans Extrabat' + (CAT.extrabat ? '' : ' <small style="color:var(--muted);font-weight:500">(dès que la clé API sera posée)</small>') + '</label>' +
@@ -550,7 +551,50 @@ function afficherDevis() {
   z.querySelectorAll('[data-mod]').forEach(b => b.oninput = () => { it(b.dataset.mod).note = b.value; sauverPJ(); });
   z.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { const i = it(b.dataset.q); i.qte = Math.max(1, Math.min(99, i.qte + +b.dataset.d)); sauverPJ(); afficherDevis(); });
   $('jgo').onclick = envoyerDevis;
+  if ($('jfin')) { $('jfin').oninput = () => { PJ.finMontant = $('jfin').value; sauverPJ(); majFin(); }; $('jfinon').onchange = e => { PJ.finActif = e.target.checked; sauverPJ(); }; majFin(); }
   if ($('jraz')) $('jraz').onclick = () => { if (!confirm('Effacer ce projet et en commencer un nouveau ?')) return; PJ = nouveauPJ(); sauverPJ(); afficherDevis(); };
+}
+// ----- Financement (barème Dentaire Finance lu par le serveur) -----
+function finLoyer(b, M, mois) {
+  if (!(M >= 1000 && M <= 500000)) return null;
+  const refi = M * (1 + (b.mrg + b.kom) / 100), refi12 = M * (1 + (b.mrg12 + b.kom) / 100), vr = M * (b.vr || 0) / 100;
+  let l = b.lignes[0]; b.lignes.forEach(x => { if (x.de <= refi) l = x; });
+  const t = l.taux[mois]; if (!(t > 0)) return null;
+  const r = t / 1200, q = Math.pow(1 + r, mois);
+  return Math.round((refi12 * q - vr) * r / ((1 + r) * (q - 1)) * 100) / 100;
+}
+function estimationHT() {
+  let tot = 0, sans = 0;
+  PJ.salles.forEach(S => Object.entries(S.items).forEach(([eq, i]) => {
+    if (!i.on || i.offert) return;
+    const e = eqDe(S.piece, eq); if (!e) { sans++; return; }
+    const M = e.marques.find(x => x.marque === i.marque), mo = M && M.modeles.find(x => x.modele === i.modele);
+    const prix = mo ? mo.prix : (!i.marque && e.prix ? e.prix : 0);
+    if (prix) tot += prix * i.qte; else sans++;
+    (i.options || []).forEach(o => { const op = M && (M.options || []).find(x => x.option === o); if (op && op.prix && !op.offert) tot += op.prix * i.qte; });
+  }));
+  return { ht: Math.round(tot / 1.2 * 100) / 100, sans };
+}
+const eur = v => v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+function zoneFinancement() {
+  const F = CAT.financement;
+  if (!F) return '';
+  if (!F.ok) return '<div class="sec">Financement</div><div class="dern"><div>' + esc(F.message) + '</div></div>';
+  const est = estimationHT();
+  return '<div class="sec">Financement</div>' +
+    (est.ht ? '<div class="dern"><div>Estimation catalogue : <b>' + eur(est.ht) + ' HT</b>' + (est.sans ? ' · ' + est.sans + ' ligne(s) sans prix' : '') + ' <button class="ret" id="jfinest" style="padding:3px 8px;font-size:12.5px">Reprendre</button></div></div>' : '') +
+    '<input id="jfin" type="number" inputmode="decimal" placeholder="Montant HT à financer" value="' + esc(PJ.finMontant || '') + '">' +
+    '<div id="jfintab" class="dern"></div>' +
+    '<label class="pj-sw"><input type="checkbox" id="jfinon"' + (PJ.finActif !== false ? ' checked' : '') + '>Joindre les mensualités au devis et au récapitulatif</label>' +
+    '<div class="dern" style="font-size:12px">Barème ' + esc(F.fichier || '') + (F.fin ? ' · valable jusqu\'au ' + esc(F.fin.split('-').reverse().join('/')) : '') + '</div>';
+}
+function majFin() {
+  const F = CAT.financement, z = $('jfintab'); if (!z || !F || !F.ok) return;
+  if ($('jfinest')) $('jfinest').onclick = () => { $('jfin').value = estimationHT().ht; PJ.finMontant = $('jfin').value; sauverPJ(); majFin(); };
+  const M = Number(String($('jfin').value).replace(',', '.'));
+  if (!M) { z.innerHTML = ''; return; }
+  if (M < 1000 || M > 500000) { z.innerHTML = '<div>Montant hors barème (1 000 à 500 000 € HT).</div>'; return; }
+  z.innerHTML = (F.proposees || [36, 48, 60, 72, 84]).map(m => { const l = finLoyer(F, M, m); return l ? '<div style="display:flex"><span style="flex:1">' + m + ' mois</span><b>' + eur(l) + ' HT / mois</b></div>' : ''; }).join('');
 }
 async function envoyerDevis() {
   const lignes = [];
@@ -561,7 +605,7 @@ async function envoyerDevis() {
   if (PJ.recap && PJ.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(PJ.email.trim())) { $('err').textContent = 'E-mail invalide.'; return; }
   const cab = D && D.cabinets ? D.cabinets.find(c => c.nom === PJ.cabinet) : null;
   const b = $('jgo'); b.disabled = true; b.textContent = 'Envoi…';
-  let r; try { r = await api('proj_envoyer', { cabId: cab ? cab.id : '', cabinet: PJ.cabinet, praticien: { nom: (PJ.nom || PJ.cabinet).trim(), prenom: PJ.prenom, tel: PJ.tel, email: PJ.email.trim(), ville: PJ.ville }, contexte: PJ.contexte, lignes, note: PJ.note, recap: PJ.recap && !!PJ.email.trim(), extrabat: PJ.extrabat }); }
+  let r; try { r = await api('proj_envoyer', { cabId: cab ? cab.id : '', cabinet: PJ.cabinet, praticien: { nom: (PJ.nom || PJ.cabinet).trim(), prenom: PJ.prenom, tel: PJ.tel, email: PJ.email.trim(), ville: PJ.ville }, contexte: PJ.contexte, lignes, note: PJ.note, recap: PJ.recap && !!PJ.email.trim(), extrabat: PJ.extrabat, financement: { actif: PJ.finActif !== false && !!Number(PJ.finMontant), montantHT: Number(String(PJ.finMontant || '').replace(',', '.')) || 0 } }); }
   catch (e) { b.disabled = false; b.textContent = 'Envoyer la demande de devis'; $('err').textContent = e.message === 'code' ? 'Session expirée.' : 'Pas de réseau : le projet reste enregistré sur le téléphone, réessayez.'; return; }
   b.disabled = false; b.textContent = 'Envoyer la demande de devis';
   if (!r.ok) { $('err').textContent = r.message; return; }
