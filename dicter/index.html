@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Dicter une tâche, un prêt ou une panne</title>
+<title>Dicter : tâche, prêt, fiche, panne, devis</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0F2347">
 <link rel="icon" href="icone-192.png">
@@ -35,7 +35,7 @@
   .dern { font-size: 13.5px; color: var(--muted); }
   .dern div { padding: 6px 0; border-top: 1px solid var(--line); }
   .dern b { color: #1F4FA8; }
-  .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 6px; background: #E4E9F2; border-radius: 12px; padding: 4px; }
+  .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(62px, 1fr)); gap: 6px; background: #E4E9F2; border-radius: 12px; padding: 4px; }
   .modes button { font: inherit; font-size: 14.5px; font-weight: 700; border: 0; border-radius: 9px; padding: 10px; background: transparent; color: var(--muted); }
   .modes button.on { background: #fff; color: var(--navy); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
   .mat { display: flex; gap: 12px; align-items: center; background: #fff; border: 1.5px solid var(--line); border-radius: 12px; padding: 11px 12px; }
@@ -46,6 +46,23 @@
   .mat .d { flex: 1; } .mat .d b { color: var(--navy); font-size: 16px; } .mat .d span { display: block; font-size: 13.5px; color: var(--muted); }
   .sec { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
   .ret { font: inherit; font-size: 14px; font-weight: 700; border: 1.5px solid var(--ok); color: var(--ok); background: #fff; border-radius: 9px; padding: 7px 10px; }
+  .pj-salle { background: #fff; border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+  .pj-salle h3 { margin: 0 0 6px; font-size: 16px; color: var(--navy); display: flex; align-items: center; gap: 8px; }
+  .pj-salle h3 button { margin-left: auto; font: inherit; font-size: 13px; border: 0; background: none; color: var(--ko); }
+  .pj-eq { border-top: 1px solid var(--line); padding: 8px 0; }
+  .pj-eq > label { display: flex; align-items: center; gap: 10px; font-size: 15.5px; font-weight: 600; color: var(--text); margin: 0; }
+  .pj-eq > label input { width: 22px; height: 22px; accent-color: var(--navy); flex-shrink: 0; }
+  .pj-det { margin: 8px 0 2px 32px; display: flex; flex-direction: column; gap: 6px; }
+  .pj-det .chips button { padding: 5px 10px; font-size: 13.5px; }
+  .pj-det input { font-size: 15px; padding: 8px 10px; }
+  .pj-qte { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+  .pj-qte button { width: 34px; height: 34px; border-radius: 8px; border: 1.5px solid var(--line); background: #fff; font-size: 18px; font-weight: 700; color: var(--navy); }
+  .pj-opt { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; margin: 0; color: var(--text); }
+  .pj-opt input { width: 20px; height: 20px; accent-color: var(--gold); }
+  .pj-add { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pj-add button { font: inherit; font-size: 14px; font-weight: 700; border: 1.5px dashed var(--navy); color: var(--navy); background: #fff; border-radius: 10px; padding: 8px 12px; }
+  .pj-sw { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; margin: 0; color: var(--text); }
+  .pj-sw input { width: 22px; height: 22px; accent-color: var(--navy); }
 </style>
 </head>
 <body>
@@ -114,10 +131,10 @@ function decouper(txt) {
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let reco = null, ecoute = false, texteBase = '';
 function ecranDictee(auto) {
-  $('main').innerHTML = '<div class="modes"><button id="mT" class="' + (MODE === 'tache' ? 'on' : '') + '">📝 Tâche</button><button id="mP" class="' + (MODE === 'pret' ? 'on' : '') + '">🔧 Prêt</button><button id="mF" class="' + (MODE === 'fiche' ? 'on' : '') + '">🔎 Fiche client</button>' + (D && D.estAD === false ? '' : '<button id="mD" class="' + (MODE === 'panne' ? 'on' : '') + '">🛠 Panne</button>') + '</div>' +
+  $('main').innerHTML = '<div class="modes"><button id="mT" class="' + (MODE === 'tache' ? 'on' : '') + '">📝 Tâche</button><button id="mP" class="' + (MODE === 'pret' ? 'on' : '') + '">🔧 Prêt</button><button id="mF" class="' + (MODE === 'fiche' ? 'on' : '') + '">🔎 Fiche client</button>' + (D && D.estAD === false ? '' : '<button id="mD" class="' + (MODE === 'panne' ? 'on' : '') + '">🛠 Panne</button><button id="mV" class="' + (MODE === 'devis' ? 'on' : '') + '">📋 Devis</button>') + '</div>' +
     '<button class="mic" id="mic" aria-label="Dicter"><svg width="58" height="58" viewBox="0 0 24 24" fill="none" stroke="#E3A72F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg></button>' +
-    '<div class="etat" id="etat">' + (SR ? (MODE === 'pret' ? 'Dictez le cabinet et le matériel prêté' : MODE === 'panne' ? 'Dites la marque, le modèle et le code d\'erreur' : MODE === 'fiche' ? 'Dites le nom du cabinet' : 'Touchez le micro et dictez la tâche') : 'Dictez avec le micro du clavier') + '</div>' +
-    (MODE === 'panne' ? zonePanne() : MODE === 'fiche' ? zoneFiche() : MODE === 'pret' ? zonePret() : '<label>Tâche</label><textarea id="tx" placeholder="Ex. : Dr Marty, changer le ressort du bras de la seringue"></textarea>' +
+    '<div class="etat" id="etat">' + (SR ? (MODE === 'pret' ? 'Dictez le cabinet et le matériel prêté' : MODE === 'devis' ? 'Le micro dicte la note du projet' : MODE === 'panne' ? 'Dites la marque, le modèle et le code d\'erreur' : MODE === 'fiche' ? 'Dites le nom du cabinet' : 'Touchez le micro et dictez la tâche') : 'Dictez avec le micro du clavier') + '</div>' +
+    (MODE === 'devis' ? '<div id="devis"></div>' : MODE === 'panne' ? zonePanne() : MODE === 'fiche' ? zoneFiche() : MODE === 'pret' ? zonePret() : '<label>Tâche</label><textarea id="tx" placeholder="Ex. : Dr Marty, changer le ressort du bras de la seringue"></textarea>' +
     '<label>Client / cabinet (vide = interne)</label><input id="cab" list="cabs" placeholder="Reconnu automatiquement">' +
     '<datalist id="cabs">' + CABS.slice(0, 4000).map(c => '<option value="' + esc(c) + '">').join('') + '</datalist>' +
     '<label>Pour</label><div class="chips" id="pour">' + EQUIPE.map(p => '<button data-p="' + esc(p) + '" class="' + (p === MOI ? 'on' : '') + '">' + esc(p) + '</button>').join('') + '</div>' +
@@ -125,11 +142,13 @@ function ecranDictee(auto) {
   $('mT').onclick = () => { MODE = 'tache'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
   $('mP').onclick = () => { MODE = 'pret'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
   $('mF').onclick = () => { MODE = 'fiche'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
+  if ($('mV')) $('mV').onclick = () => { MODE = 'devis'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
   if ($('mD')) $('mD').onclick = () => { MODE = 'panne'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
   $('mic').onclick = () => ecoute ? arreter() : demarrer();
   if (MODE === 'pret') { initPret(); if (PRE_CAB) { $('pcab').value = PRE_CAB; cabManuel = true; PRE_CAB = ''; listePret(); } return; }
   if (MODE === 'fiche') { initFiche(); return; }
   if (MODE === 'panne') { initPanne(); return; }
+  if (MODE === 'devis') { initDevis(); return; }
   if (PRE_CAB) { setTimeout(() => { $('cab').value = PRE_CAB; cabManuel = true; PRE_CAB = ''; }, 0); }
   $('pour').onclick = e => { const b = e.target.closest('button'); if (b) b.classList.toggle('on'); };
   $('tx').oninput = () => appliquer(false);
@@ -146,11 +165,11 @@ function appliquer(depuisDictee) {
 function demarrer() {
   if (!SR) return;
   reco = new SR(); reco.lang = 'fr-FR'; reco.interimResults = true; reco.continuous = false; reco.maxAlternatives = 1;
-  const champ = MODE === 'pret' ? 'ptx' : MODE === 'fiche' ? 'ftx' : MODE === 'panne' ? 'dtx' : 'tx';
+  const champ = MODE === 'pret' ? 'ptx' : MODE === 'fiche' ? 'ftx' : MODE === 'panne' ? 'dtx' : MODE === 'devis' ? 'jnote' : 'tx';
   texteBase = $(champ).value ? $(champ).value.trim() + ' ' : '';
-  reco.onresult = e => { let s = ''; for (let i = 0; i < e.results.length; i++) s += e.results[i][0].transcript; $(champ).value = texteBase + s; if (MODE === 'pret') appliquerPret(); else if (MODE === 'fiche' || MODE === 'panne') { /* recherche à la fin de la phrase */ } else appliquer(true); };
+  reco.onresult = e => { let s = ''; for (let i = 0; i < e.results.length; i++) s += e.results[i][0].transcript; $(champ).value = texteBase + s; if (MODE === 'pret') appliquerPret(); else if (MODE === 'fiche' || MODE === 'panne') { /* recherche à la fin de la phrase */ } else if (MODE === 'devis') { PJ.note = $('jnote').value; sauverPJ(); } else appliquer(true); };
   reco.onerror = e => { $('etat').textContent = e.error === 'not-allowed' ? 'Micro refusé : autorisez-le dans les réglages du navigateur.' : e.error === 'no-speech' ? 'Rien entendu. Touchez le micro pour réessayer.' : 'Dictée interrompue. Touchez le micro.'; };
-  reco.onend = () => { ecoute = false; if (MODE === 'panne' && $('dtx') && $('dtx').value.trim()) { $('mic').classList.remove('on'); chercherPanne(); return; } if (MODE === 'fiche' && $('ftx') && $('ftx').value.trim()) { $('mic').classList.remove('on'); chercherFiche(); return; } $('mic').classList.remove('on'); if (($(MODE === 'pret' ? 'ptx' : MODE === 'fiche' ? 'ftx' : 'tx').value || '').trim() && !/Micro refusé|Rien entendu|interrompue/.test($('etat').textContent)) $('etat').textContent = MODE === 'pret' ? 'Cochez le matériel prêté' : 'Vérifiez puis « Ajouter la tâche »'; };
+  reco.onend = () => { ecoute = false; if (MODE === 'devis') { $('mic').classList.remove('on'); $('etat').textContent = 'Note ajoutée'; return; } if (MODE === 'panne' && $('dtx') && $('dtx').value.trim()) { $('mic').classList.remove('on'); chercherPanne(); return; } if (MODE === 'fiche' && $('ftx') && $('ftx').value.trim()) { $('mic').classList.remove('on'); chercherFiche(); return; } $('mic').classList.remove('on'); if (($(MODE === 'pret' ? 'ptx' : MODE === 'fiche' ? 'ftx' : 'tx').value || '').trim() && !/Micro refusé|Rien entendu|interrompue/.test($('etat').textContent)) $('etat').textContent = MODE === 'pret' ? 'Cochez le matériel prêté' : 'Vérifiez puis « Ajouter la tâche »'; };
   try { reco.start(); ecoute = true; $('mic').classList.add('on'); $('etat').textContent = 'Je vous écoute…'; } catch (e) {}
 }
 function arreter() { try { reco && reco.stop(); } catch (e) {} }
@@ -179,7 +198,7 @@ function derniers() {
   $('dern').innerHTML = l.length ? '<div style="border:0;font-weight:700;color:var(--navy)">Dernières tâches dictées</div>' + l.map(x => '<div>' + esc(x.d) + ' · ' + (x.c ? '<b>' + esc(x.c) + '</b> : ' : '') + esc(x.t) + (x.p !== MOI ? ' <i>(' + esc(x.p) + ')</i>' : '') + '</div>').join('') : '';
 }
 // ----- Prêt de matériel : « Thomasset, une turbine NSK et un détartreur » -----
-let MODE = ['pret', 'fiche', 'panne'].indexOf(ls.get('dict_mode')) >= 0 ? ls.get('dict_mode') : 'tache', PRETS = null, PRE_CAB = '';
+let MODE = ['pret', 'fiche', 'panne', 'devis'].indexOf(ls.get('dict_mode')) >= 0 ? ls.get('dict_mode') : 'tache', PRETS = null, PRE_CAB = '';
 try { PRETS = JSON.parse(ls.get('dict_prets') || 'null'); } catch (e) {}
 function zonePret() {
   return '<label>Ce que vous avez dicté</label><textarea id="ptx" style="min-height:64px" placeholder="Ex. : Dr Marty, une turbine NSK et un détartreur"></textarea>' +
@@ -452,6 +471,103 @@ async function telechargerDoc(b) {
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([P.bin], { type: 'application/pdf' })); a.download = P.nom || 'manuel.pdf'; document.body.appendChild(a); a.click(); a.remove();
   } catch (e) { $('err').textContent = 'Ouverture impossible : ' + e.message; }
   finally { b.disabled = false; b.textContent = t; }
+}
+// ----- Devis de projet : pièce par pièce, marque, modèle, options -----
+let CAT = null, PJ = null;
+try { CAT = JSON.parse(ls.get('dict_cat') || 'null'); } catch (e) {}
+function nouveauPJ() { return { cabinet: '', nom: '', prenom: '', tel: '', email: '', ville: '', contexte: ls.get('dict_ctx') || 'Salon', salles: [], note: '', recap: true, extrabat: true }; }
+try { PJ = JSON.parse(ls.get('dict_pj') || 'null'); } catch (e) {}
+if (!PJ) PJ = nouveauPJ();
+function sauverPJ() { ls.set('dict_pj', JSON.stringify(PJ)); }
+async function initDevis() {
+  afficherDevis();
+  try { const r = await api('proj_catalogue', {}); if (r.ok) { CAT = r; ls.set('dict_cat', JSON.stringify(r)); afficherDevis(); } }
+  catch (e) { if (e.message === 'code') { ecranCode('Session expirée : entrez à nouveau votre code.'); return; } if (!CAT) $('devis').innerHTML = '<p class="err">Pas de réseau : catalogue indisponible.</p>'; }
+}
+const eqDe = (piece, nom) => { const P = CAT.pieces.find(x => x.piece === piece); return P ? P.equipements.find(e => e.equip === nom) : null; };
+function ajouterSalle(piece) {
+  const P = CAT.pieces.find(x => x.piece === piece); if (!P) return;
+  const n = PJ.salles.filter(s => s.piece === piece).length + 1, items = {};
+  P.equipements.forEach(e => { items[e.equip] = { on: !!e.defaut, marque: '', modele: '', options: [], qte: 1, note: '' }; });
+  PJ.salles.push({ piece, salle: n, items, ouvert: true }); sauverPJ(); afficherDevis();
+}
+function afficherDevis() {
+  const z = $('devis'); if (!z) return;
+  if (!CAT) { z.innerHTML = '<div class="etat">Chargement du catalogue…</div>'; return; }
+  const ctx = (CAT.contextes || ['Salon', 'Installation', 'Autre']);
+  let h = '<div class="sec">Praticien</div>' +
+    '<input id="jcab" list="cabs" placeholder="Cabinet déjà client (ou laisser vide)" value="' + esc(PJ.cabinet) + '">' +
+    '<datalist id="cabs">' + CABS.slice(0, 4000).map(c => '<option value="' + esc(c) + '">').join('') + '</datalist>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input id="jnom" placeholder="Nom (Dr …)" value="' + esc(PJ.nom) + '"><input id="jpre" placeholder="Prénom" value="' + esc(PJ.prenom) + '"></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input id="jtel" type="tel" placeholder="Téléphone" value="' + esc(PJ.tel) + '"><input id="jvil" placeholder="Ville" value="' + esc(PJ.ville) + '"></div>' +
+    '<input id="jmail" type="email" placeholder="E-mail (pour le récapitulatif)" value="' + esc(PJ.email) + '">' +
+    '<div class="chips" id="jctx">' + ctx.map(c => '<button data-c="' + esc(c) + '" class="' + (PJ.contexte === c ? 'on' : '') + '">' + esc(c) + '</button>').join('') + '</div>' +
+    '<div class="sec">Pièces et matériel</div>';
+  PJ.salles.forEach((S, si) => {
+    const nbMeme = PJ.salles.filter(x => x.piece === S.piece).length, nb = Object.values(S.items).filter(i => i.on).length;
+    h += '<div class="pj-salle"><h3><span data-tog="' + si + '" style="flex:1">' + (S.ouvert ? '▾ ' : '▸ ') + esc(S.piece + (nbMeme > 1 ? ' ' + S.salle : '')) + ' <small style="color:var(--muted);font-weight:500">· ' + nb + ' équipement' + (nb > 1 ? 's' : '') + '</small></span><button data-del="' + si + '">Retirer</button></h3>';
+    if (S.ouvert) {
+      const P = CAT.pieces.find(x => x.piece === S.piece) || { equipements: [] };
+      P.equipements.forEach(e => {
+        const it = S.items[e.equip] || (S.items[e.equip] = { on: false, marque: '', modele: '', options: [], qte: 1, note: '' }), k = si + '|' + e.equip;
+        h += '<div class="pj-eq"><label><input type="checkbox" data-on="' + esc(k) + '"' + (it.on ? ' checked' : '') + '>' + esc(e.equip) + '</label>';
+        if (it.on) {
+          const M = e.marques.find(x => x.marque === it.marque);
+          h += '<div class="pj-det">' +
+            (e.marques.length ? '<div class="chips">' + e.marques.map(x => '<button data-mq="' + esc(k) + '" data-v="' + esc(x.marque) + '" class="' + (it.marque === x.marque ? 'on' : '') + '">' + esc(x.marque) + '</button>').join('') + '</div>' : '') +
+            (M && M.modeles.filter(x => x.modele).length ? '<div class="chips">' + M.modeles.filter(x => x.modele).map(x => '<button data-mo="' + esc(k) + '" data-v="' + esc(x.modele) + '" class="' + (it.modele === x.modele ? 'on' : '') + '">' + esc(x.modele) + '</button>').join('') + '</div>' : '') +
+            (M && M.options && M.options.length ? '<div style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Options ' + esc(M.marque) + '</div>' + M.options.map(o => '<label class="pj-opt"><input type="checkbox" data-op="' + esc(k) + '" data-v="' + esc(o.option) + '"' + (it.options.includes(o.option) ? ' checked' : '') + '>' + esc(o.option) + '</label>').join('') : '') +
+            '<input data-mod="' + esc(k) + '" placeholder="' + (e.marques.length ? 'Autre marque / modèle, précision…' : 'Marque, modèle, précision…') + '" value="' + esc(it.note) + '">' +
+            '<div class="pj-qte">Quantité <button data-q="' + esc(k) + '" data-d="-1">−</button><b>' + it.qte + '</b><button data-q="' + esc(k) + '" data-d="1">+</button></div></div>';
+        }
+        h += '</div>';
+      });
+    }
+    h += '</div>';
+  });
+  h += '<div class="pj-add">' + CAT.pieces.map(P => '<button data-add="' + esc(P.piece) + '">+ ' + esc(P.piece) + '</button>').join('') + '</div>' +
+    '<div class="sec">Note</div><textarea id="jnote" placeholder="Délais, budget, financement, surface… (le micro dicte ici)">' + esc(PJ.note) + '</textarea>' +
+    '<label class="pj-sw"><input type="checkbox" id="jrec"' + (PJ.recap ? ' checked' : '') + '>Envoyer le récapitulatif au praticien par e-mail</label>' +
+    '<label class="pj-sw"><input type="checkbox" id="jexb"' + (PJ.extrabat ? ' checked' : '') + '>Créer le devis dans Extrabat' + (CAT.extrabat ? '' : ' <small style="color:var(--muted);font-weight:500">(dès que la clé API sera posée)</small>') + '</label>' +
+    '<p class="err" id="err"></p><button class="btn" id="jgo">Envoyer la demande de devis</button><div id="ok"></div>' +
+    (PJ.salles.length || PJ.nom ? '<button class="ret" id="jraz" style="align-self:center;border-color:var(--muted);color:var(--muted)">Nouveau projet (tout effacer)</button>' : '');
+  z.innerHTML = h;
+  const champ = (id, cle) => { const el = $(id); el.oninput = () => { PJ[cle] = el.value; sauverPJ(); }; };
+  champ('jcab', 'cabinet'); champ('jnom', 'nom'); champ('jpre', 'prenom'); champ('jtel', 'tel'); champ('jvil', 'ville'); champ('jmail', 'email'); champ('jnote', 'note');
+  $('jrec').onchange = e => { PJ.recap = e.target.checked; sauverPJ(); };
+  $('jexb').onchange = e => { PJ.extrabat = e.target.checked; sauverPJ(); };
+  $('jctx').onclick = e => { const b = e.target.closest('button'); if (!b) return; PJ.contexte = b.dataset.c; ls.set('dict_ctx', PJ.contexte); sauverPJ(); afficherDevis(); };
+  const it = k => { const [si, eq] = [k.slice(0, k.indexOf('|')), k.slice(k.indexOf('|') + 1)]; return PJ.salles[+si].items[eq]; };
+  z.querySelectorAll('[data-add]').forEach(b => b.onclick = () => ajouterSalle(b.dataset.add));
+  z.querySelectorAll('[data-tog]').forEach(b => b.onclick = () => { const S = PJ.salles[+b.dataset.tog]; S.ouvert = !S.ouvert; sauverPJ(); afficherDevis(); });
+  z.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { if (!confirm('Retirer cette pièce du projet ?')) return; PJ.salles.splice(+b.dataset.del, 1); sauverPJ(); afficherDevis(); });
+  z.querySelectorAll('[data-on]').forEach(b => b.onchange = () => { it(b.dataset.on).on = b.checked; sauverPJ(); afficherDevis(); });
+  z.querySelectorAll('[data-mq]').forEach(b => b.onclick = () => { const i = it(b.dataset.mq); if (i.marque === b.dataset.v) { i.marque = ''; } else { i.marque = b.dataset.v; } i.modele = ''; i.options = []; sauverPJ(); afficherDevis(); });
+  z.querySelectorAll('[data-mo]').forEach(b => b.onclick = () => { const i = it(b.dataset.mo); i.modele = i.modele === b.dataset.v ? '' : b.dataset.v; sauverPJ(); afficherDevis(); });
+  z.querySelectorAll('[data-op]').forEach(b => b.onchange = () => { const i = it(b.dataset.op); i.options = i.options.filter(x => x !== b.dataset.v); if (b.checked) i.options.push(b.dataset.v); sauverPJ(); });
+  z.querySelectorAll('[data-mod]').forEach(b => b.oninput = () => { it(b.dataset.mod).note = b.value; sauverPJ(); });
+  z.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { const i = it(b.dataset.q); i.qte = Math.max(1, Math.min(99, i.qte + +b.dataset.d)); sauverPJ(); afficherDevis(); });
+  $('jgo').onclick = envoyerDevis;
+  if ($('jraz')) $('jraz').onclick = () => { if (!confirm('Effacer ce projet et en commencer un nouveau ?')) return; PJ = nouveauPJ(); sauverPJ(); afficherDevis(); };
+}
+async function envoyerDevis() {
+  const lignes = [];
+  PJ.salles.forEach(S => Object.entries(S.items).forEach(([eq, i]) => { if (i.on) lignes.push({ piece: S.piece, salle: S.salle, equip: eq, marque: i.marque, modele: i.modele, options: i.options, qte: i.qte, note: i.note }); }));
+  $('err').textContent = '';
+  if (!(PJ.nom || PJ.cabinet).trim()) { $('err').textContent = 'Indiquez le praticien ou le cabinet.'; return; }
+  if (!lignes.length) { $('err').textContent = 'Ajoutez une pièce et cochez le matériel.'; return; }
+  if (PJ.recap && PJ.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(PJ.email.trim())) { $('err').textContent = 'E-mail invalide.'; return; }
+  const cab = D && D.cabinets ? D.cabinets.find(c => c.nom === PJ.cabinet) : null;
+  const b = $('jgo'); b.disabled = true; b.textContent = 'Envoi…';
+  let r; try { r = await api('proj_envoyer', { cabId: cab ? cab.id : '', cabinet: PJ.cabinet, praticien: { nom: (PJ.nom || PJ.cabinet).trim(), prenom: PJ.prenom, tel: PJ.tel, email: PJ.email.trim(), ville: PJ.ville }, contexte: PJ.contexte, lignes, note: PJ.note, recap: PJ.recap && !!PJ.email.trim(), extrabat: PJ.extrabat }); }
+  catch (e) { b.disabled = false; b.textContent = 'Envoyer la demande de devis'; $('err').textContent = e.message === 'code' ? 'Session expirée.' : 'Pas de réseau : le projet reste enregistré sur le téléphone, réessayez.'; return; }
+  b.disabled = false; b.textContent = 'Envoyer la demande de devis';
+  if (!r.ok) { $('err').textContent = r.message; return; }
+  const nomPj = (PJ.nom || PJ.cabinet).trim();
+  PJ = nouveauPJ(); sauverPJ(); afficherDevis();
+  $('ok').innerHTML = '<div class="ok">✓ Projet ' + esc(r.n || '') + ' de ' + esc(nomPj) + ' envoyé' + (r.tache ? ' · tâche ' + esc(r.tache) : '') + (r.devis ? ' · devis Extrabat créé' : '') + (r.recap ? ' · récapitulatif envoyé' : '') + '</div>' +
+    (r.alertes && r.alertes.length ? '<div class="dern">' + r.alertes.map(a => '<div>' + esc(a) + '</div>').join('') + '</div>' : '');
+  $('ok').scrollIntoView({ behavior: 'smooth' });
 }
 if (!TOKEN && !ls.get('ag_code')) ecranCode(); else ecranDictee(false);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
