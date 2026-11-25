@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Dicter une tâche ou un prêt</title>
+<title>Dicter une tâche, un prêt ou une panne</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0F2347">
 <link rel="icon" href="icone-192.png">
@@ -35,7 +35,7 @@
   .dern { font-size: 13.5px; color: var(--muted); }
   .dern div { padding: 6px 0; border-top: 1px solid var(--line); }
   .dern b { color: #1F4FA8; }
-  .modes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; background: #E4E9F2; border-radius: 12px; padding: 4px; }
+  .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 6px; background: #E4E9F2; border-radius: 12px; padding: 4px; }
   .modes button { font: inherit; font-size: 14.5px; font-weight: 700; border: 0; border-radius: 9px; padding: 10px; background: transparent; color: var(--muted); }
   .modes button.on { background: #fff; color: var(--navy); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
   .mat { display: flex; gap: 12px; align-items: center; background: #fff; border: 1.5px solid var(--line); border-radius: 12px; padding: 11px 12px; }
@@ -114,10 +114,10 @@ function decouper(txt) {
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let reco = null, ecoute = false, texteBase = '';
 function ecranDictee(auto) {
-  $('main').innerHTML = '<div class="modes"><button id="mT" class="' + (MODE === 'tache' ? 'on' : '') + '">📝 Tâche</button><button id="mP" class="' + (MODE === 'pret' ? 'on' : '') + '">🔧 Prêt</button><button id="mF" class="' + (MODE === 'fiche' ? 'on' : '') + '">🔎 Fiche client</button></div>' +
+  $('main').innerHTML = '<div class="modes"><button id="mT" class="' + (MODE === 'tache' ? 'on' : '') + '">📝 Tâche</button><button id="mP" class="' + (MODE === 'pret' ? 'on' : '') + '">🔧 Prêt</button><button id="mF" class="' + (MODE === 'fiche' ? 'on' : '') + '">🔎 Fiche client</button>' + (D && D.estAD === false ? '' : '<button id="mD" class="' + (MODE === 'panne' ? 'on' : '') + '">🛠 Panne</button>') + '</div>' +
     '<button class="mic" id="mic" aria-label="Dicter"><svg width="58" height="58" viewBox="0 0 24 24" fill="none" stroke="#E3A72F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg></button>' +
-    '<div class="etat" id="etat">' + (SR ? (MODE === 'pret' ? 'Dictez le cabinet et le matériel prêté' : MODE === 'fiche' ? 'Dites le nom du cabinet' : 'Touchez le micro et dictez la tâche') : 'Dictez avec le micro du clavier') + '</div>' +
-    (MODE === 'fiche' ? zoneFiche() : MODE === 'pret' ? zonePret() : '<label>Tâche</label><textarea id="tx" placeholder="Ex. : Dr Marty, changer le ressort du bras de la seringue"></textarea>' +
+    '<div class="etat" id="etat">' + (SR ? (MODE === 'pret' ? 'Dictez le cabinet et le matériel prêté' : MODE === 'panne' ? 'Dites la marque, le modèle et le code d\'erreur' : MODE === 'fiche' ? 'Dites le nom du cabinet' : 'Touchez le micro et dictez la tâche') : 'Dictez avec le micro du clavier') + '</div>' +
+    (MODE === 'panne' ? zonePanne() : MODE === 'fiche' ? zoneFiche() : MODE === 'pret' ? zonePret() : '<label>Tâche</label><textarea id="tx" placeholder="Ex. : Dr Marty, changer le ressort du bras de la seringue"></textarea>' +
     '<label>Client / cabinet (vide = interne)</label><input id="cab" list="cabs" placeholder="Reconnu automatiquement">' +
     '<datalist id="cabs">' + CABS.slice(0, 4000).map(c => '<option value="' + esc(c) + '">').join('') + '</datalist>' +
     '<label>Pour</label><div class="chips" id="pour">' + EQUIPE.map(p => '<button data-p="' + esc(p) + '" class="' + (p === MOI ? 'on' : '') + '">' + esc(p) + '</button>').join('') + '</div>' +
@@ -125,9 +125,11 @@ function ecranDictee(auto) {
   $('mT').onclick = () => { MODE = 'tache'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
   $('mP').onclick = () => { MODE = 'pret'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
   $('mF').onclick = () => { MODE = 'fiche'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
+  if ($('mD')) $('mD').onclick = () => { MODE = 'panne'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
   $('mic').onclick = () => ecoute ? arreter() : demarrer();
   if (MODE === 'pret') { initPret(); if (PRE_CAB) { $('pcab').value = PRE_CAB; cabManuel = true; PRE_CAB = ''; listePret(); } return; }
   if (MODE === 'fiche') { initFiche(); return; }
+  if (MODE === 'panne') { initPanne(); return; }
   if (PRE_CAB) { setTimeout(() => { $('cab').value = PRE_CAB; cabManuel = true; PRE_CAB = ''; }, 0); }
   $('pour').onclick = e => { const b = e.target.closest('button'); if (b) b.classList.toggle('on'); };
   $('tx').oninput = () => appliquer(false);
@@ -144,11 +146,11 @@ function appliquer(depuisDictee) {
 function demarrer() {
   if (!SR) return;
   reco = new SR(); reco.lang = 'fr-FR'; reco.interimResults = true; reco.continuous = false; reco.maxAlternatives = 1;
-  const champ = MODE === 'pret' ? 'ptx' : MODE === 'fiche' ? 'ftx' : 'tx';
+  const champ = MODE === 'pret' ? 'ptx' : MODE === 'fiche' ? 'ftx' : MODE === 'panne' ? 'dtx' : 'tx';
   texteBase = $(champ).value ? $(champ).value.trim() + ' ' : '';
-  reco.onresult = e => { let s = ''; for (let i = 0; i < e.results.length; i++) s += e.results[i][0].transcript; $(champ).value = texteBase + s; if (MODE === 'pret') appliquerPret(); else if (MODE === 'fiche') { /* recherche à la fin de la phrase */ } else appliquer(true); };
+  reco.onresult = e => { let s = ''; for (let i = 0; i < e.results.length; i++) s += e.results[i][0].transcript; $(champ).value = texteBase + s; if (MODE === 'pret') appliquerPret(); else if (MODE === 'fiche' || MODE === 'panne') { /* recherche à la fin de la phrase */ } else appliquer(true); };
   reco.onerror = e => { $('etat').textContent = e.error === 'not-allowed' ? 'Micro refusé : autorisez-le dans les réglages du navigateur.' : e.error === 'no-speech' ? 'Rien entendu. Touchez le micro pour réessayer.' : 'Dictée interrompue. Touchez le micro.'; };
-  reco.onend = () => { ecoute = false; if (MODE === 'fiche' && $('ftx') && $('ftx').value.trim()) { $('mic').classList.remove('on'); chercherFiche(); return; } $('mic').classList.remove('on'); if (($(MODE === 'pret' ? 'ptx' : MODE === 'fiche' ? 'ftx' : 'tx').value || '').trim() && !/Micro refusé|Rien entendu|interrompue/.test($('etat').textContent)) $('etat').textContent = MODE === 'pret' ? 'Cochez le matériel prêté' : 'Vérifiez puis « Ajouter la tâche »'; };
+  reco.onend = () => { ecoute = false; if (MODE === 'panne' && $('dtx') && $('dtx').value.trim()) { $('mic').classList.remove('on'); chercherPanne(); return; } if (MODE === 'fiche' && $('ftx') && $('ftx').value.trim()) { $('mic').classList.remove('on'); chercherFiche(); return; } $('mic').classList.remove('on'); if (($(MODE === 'pret' ? 'ptx' : MODE === 'fiche' ? 'ftx' : 'tx').value || '').trim() && !/Micro refusé|Rien entendu|interrompue/.test($('etat').textContent)) $('etat').textContent = MODE === 'pret' ? 'Cochez le matériel prêté' : 'Vérifiez puis « Ajouter la tâche »'; };
   try { reco.start(); ecoute = true; $('mic').classList.add('on'); $('etat').textContent = 'Je vous écoute…'; } catch (e) {}
 }
 function arreter() { try { reco && reco.stop(); } catch (e) {} }
@@ -177,7 +179,7 @@ function derniers() {
   $('dern').innerHTML = l.length ? '<div style="border:0;font-weight:700;color:var(--navy)">Dernières tâches dictées</div>' + l.map(x => '<div>' + esc(x.d) + ' · ' + (x.c ? '<b>' + esc(x.c) + '</b> : ' : '') + esc(x.t) + (x.p !== MOI ? ' <i>(' + esc(x.p) + ')</i>' : '') + '</div>').join('') : '';
 }
 // ----- Prêt de matériel : « Thomasset, une turbine NSK et un détartreur » -----
-let MODE = ['pret', 'fiche'].indexOf(ls.get('dict_mode')) >= 0 ? ls.get('dict_mode') : 'tache', PRETS = null, PRE_CAB = '';
+let MODE = ['pret', 'fiche', 'panne'].indexOf(ls.get('dict_mode')) >= 0 ? ls.get('dict_mode') : 'tache', PRETS = null, PRE_CAB = '';
 try { PRETS = JSON.parse(ls.get('dict_prets') || 'null'); } catch (e) {}
 function zonePret() {
   return '<label>Ce que vous avez dicté</label><textarea id="ptx" style="min-height:64px" placeholder="Ex. : Dr Marty, une turbine NSK et un détartreur"></textarea>' +
@@ -361,6 +363,95 @@ function afficherFiche(f, ancienne) {
   });
   $('fT').onclick = () => { PRE_CAB = f.nom; MODE = 'tache'; ls.set('dict_mode', MODE); ecranDictee(false); };
   $('fP').onclick = () => { PRE_CAB = f.nom; MODE = 'pret'; ls.set('dict_mode', MODE); ecranDictee(false); };
+}
+// ----- Panne : marque + modèle + code d'erreur -> passage du manuel -----
+function zonePanne() {
+  return '<div style="display:flex;gap:8px"><input id="dtx" placeholder="Ex. : Melag 23 erreur 12" style="flex:1"><button class="btn" id="dgo" style="width:auto;padding:0 18px;font-size:16px">Chercher</button></div>' +
+    '<p class="err" id="err"></p><div id="panne"></div>';
+}
+function initPanne() {
+  $('dgo').onclick = chercherPanne;
+  $('dtx').onkeydown = e => { if (e.key === 'Enter') chercherPanne(); };
+}
+function nombresFr(t) {
+  const N = { zero: 0, un: 1, une: 1, deux: 2, trois: 3, quatre: 4, cinq: 5, six: 6, sept: 7, huit: 8, neuf: 9, dix: 10, onze: 11, douze: 12, treize: 13, quatorze: 14, quinze: 15, seize: 16, vingt: 20, vingts: 20, trente: 30, quarante: 40, cinquante: 50, soixante: 60, cent: 100, cents: 100 };
+  t = t.replace(/\b(zero|une?|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingts?|trente|quarante|cinquante|soixante|cents?)\b/g, m => N[m]).replace(/(\d)-(?=\d)/g, '$1 ').replace(/\b(\d+) et (\d+)\b/g, '$1 $2');
+  t = t.replace(/\b4 20\b/g, '80').replace(/\b([1-9]) 100\b/g, (m, a) => a * 100);
+  t = t.replace(/\b(100|[2-9]00)(?: (\d{1,2}))?(?: (\d{1,2}))?\b/g, (m, c, a, b) => +c + (+a || 0) + (+b || 0));
+  for (let k = 0; k < 2; k++) t = t.replace(/\b([2-9]0) (1?\d)\b/g, (m, a, b) => +b < 20 ? +a + +b : m);
+  return t;
+}
+function analysePanne(q) {
+  let t = ' ' + q.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() + ' ';
+  t = nombresFr(t);
+  const m = /\b(?:erreur|error|err|code|alarme|defaut|panne|message|affiche)\s*(?:numero|n°|no|n)?\s*([a-z]{0,3})\s*[-.]?\s*(\d{1,4}[a-z]?)\b/.exec(t);
+  if (!m) return { modele: q.trim(), code: '' };
+  return { modele: (t.slice(0, m.index) + ' ' + t.slice(m.index + m[0].length)).replace(/\s+/g, ' ').trim(), code: (m[1] + m[2]).toUpperCase() };
+}
+let PDFJS = null;
+async function pdfJs() {
+  if (PDFJS) return PDFJS;
+  await new Promise((ok, ko) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'; s.onload = ok; s.onerror = ko; document.head.appendChild(s); });
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  return (PDFJS = window.pdfjsLib);
+}
+const PDFS = {};
+async function chercherPanne() {
+  const q = $('dtx').value.trim(); if (!q) return;
+  const an = analysePanne(q), z = $('panne'); $('err').textContent = '';
+  if (!an.code) { $('err').textContent = 'Dites aussi le code d\'erreur (ex. « erreur 12 », « code E 23 »).'; return; }
+  z.innerHTML = '<div class="etat">Code <b>' + esc(an.code) + '</b>' + (an.modele ? ' · ' + esc(an.modele) : '') + ' : recherche dans les manuels…</div>'; $('etat').textContent = 'Recherche…';
+  let r; try { r = await api('doc_panne', { q: an.modele, code: an.code }); }
+  catch (e) { if (e.message === 'code') { ecranCode('Session expirée : entrez à nouveau votre code.'); return; } z.innerHTML = ''; $('err').textContent = 'Pas de réseau.'; return; }
+  $('etat').textContent = 'Code ' + an.code;
+  if (!r.ok) { z.innerHTML = ''; $('err').textContent = r.message; return; }
+  if (!r.fichiers.length) { z.innerHTML = '<div class="vide" style="color:var(--muted)">Le code ' + esc(an.code) + ' n\'apparaît dans aucun manuel ' + (r.dossiers.length ? 'de « ' + esc(r.dossiers[0].nom) + ' »' : 'trouvé pour ce modèle') + '. Précisez la marque ou le modèle, ou cherchez dans l\'onglet Doc technique de l\'Agence.</div>'; return; }
+  const lettres = an.code.replace(/\d.*$/, ''), num = String(+an.code.replace(/^[A-Z]*/, '').replace(/[A-Z]$/, ''));
+  const motif = lettres ? new RegExp('(^|[^A-Z0-9])' + lettres + '\\s?[-.]?\\s?0*' + num + '(?![0-9])', 'i')
+    : new RegExp('(err(?:or|eur)?|code|alarme?|d[ée]faut|fault|message|E|n°)\\s?[-.:]?\\s?0*' + num + '(?![0-9])', 'i');
+  z.innerHTML = '<div class="etat" id="pEtat">Lecture de ' + r.fichiers.length + ' document(s)…</div><div id="pRes" style="display:flex;flex-direction:column;gap:10px"></div>';
+  let trouve = 0;
+  for (const f of r.fichiers) {
+    let pdf; try { pdf = await api('doc_fichier', { id: f.id }); } catch (e) { continue; }
+    if (!pdf.ok || !/pdf/.test(pdf.type || '')) continue;
+    try {
+      const lib = await pdfJs(), bin = Uint8Array.from(atob(pdf.base64), c => c.charCodeAt(0)), doc = await lib.getDocument({ data: bin.slice() }).promise;
+      const pages = [];
+      for (let p = 1; p <= doc.numPages && pages.length < 4; p++) {
+        const txt = (await (await doc.getPage(p)).getTextContent()).items.map(i => i.str).join(' ').replace(/\s+/g, ' ');
+        const mm = motif.exec(txt);
+        if (mm) pages.push({ p, extrait: txt.slice(Math.max(0, mm.index - 100), mm.index + 420) });
+      }
+      if (!pages.length) continue;
+      trouve++; PDFS[f.id] = { doc, bin, nom: pdf.nom };
+      $('pRes').insertAdjacentHTML('beforeend', '<div class="mat" style="flex-direction:column;align-items:stretch"><div class="d"><b>📕 ' + esc(f.nom) + '</b><span>' + esc(f.chemin) + '</span></div>' +
+        pages.map(x => '<div style="background:#FFF8E6;border-radius:8px;padding:8px;font-size:15px;line-height:1.45">' + esc(x.extrait).replace(motif, m0 => '<mark>' + m0 + '</mark>') +
+          '<div style="margin-top:6px"><button class="ret" style="border-color:var(--navy);color:var(--navy)" data-f="' + esc(f.id) + '" data-p="' + x.p + '">Voir la page ' + x.p + '</button></div><div class="pg"></div></div>').join('') +
+        '<button class="ret" style="border-color:var(--muted);color:var(--muted)" data-dl="' + esc(f.id) + '">Télécharger le PDF complet</button></div>');
+    } catch (e) {}
+  }
+  $('pEtat').textContent = trouve ? 'Le code ' + an.code + ' apparaît dans ' + trouve + ' document(s) :' : 'Documents trouvés, mais le texte n\'est pas lisible (manuels scannés) :';
+  if (!trouve) $('pRes').innerHTML = r.fichiers.map(f => '<div class="mat"><div class="d"><b>📕 ' + esc(f.nom) + '</b><span>' + esc(f.chemin) + '</span></div><button class="ret" data-dl="' + esc(f.id) + '">Ouvrir</button></div>').join('');
+  z.querySelectorAll('[data-p]').forEach(b => b.onclick = () => voirPage(b));
+  z.querySelectorAll('[data-dl]').forEach(b => b.onclick = () => telechargerDoc(b));
+}
+async function voirPage(b) {
+  const zone = b.parentNode.nextElementSibling; if (zone.innerHTML) { zone.innerHTML = ''; b.textContent = 'Voir la page ' + b.dataset.p; return; }
+  const P = PDFS[b.dataset.f]; if (!P) return;
+  b.textContent = 'Affichage…';
+  const page = await P.doc.getPage(+b.dataset.p), w = Math.min(zone.parentNode.clientWidth || 340, 900), v0 = page.getViewport({ scale: 1 }), echelle = (w / v0.width) * (window.devicePixelRatio || 1);
+  const vp = page.getViewport({ scale: echelle }), cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height; cv.style.width = '100%'; cv.style.marginTop = '8px'; cv.style.borderRadius = '6px'; cv.style.border = '1px solid var(--line)'; cv.style.background = '#fff';
+  await page.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+  zone.appendChild(cv); b.textContent = 'Masquer la page ' + b.dataset.p;
+}
+async function telechargerDoc(b) {
+  const t = b.textContent; b.disabled = true; b.textContent = 'Téléchargement…';
+  try {
+    let P = PDFS[b.dataset.dl];
+    if (!P) { const r = await api('doc_fichier', { id: b.dataset.dl }); if (!r.ok) { if (r.lien) { window.open(r.lien, '_blank'); return; } throw new Error(r.message); } P = { bin: Uint8Array.from(atob(r.base64), c => c.charCodeAt(0)), nom: r.nom }; }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([P.bin], { type: 'application/pdf' })); a.download = P.nom || 'manuel.pdf'; document.body.appendChild(a); a.click(); a.remove();
+  } catch (e) { $('err').textContent = 'Ouverture impossible : ' + e.message; }
+  finally { b.disabled = false; b.textContent = t; }
 }
 if (!TOKEN && !ls.get('ag_code')) ecranCode(); else ecranDictee(false);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
