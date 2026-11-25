@@ -169,14 +169,14 @@
       (D.partage ? ' · <a href="#" onclick="changerQui();return false" style="color:inherit">changer</a>' : '') + '</small>';
     const retard = mesTaches().filter(t => t.statut !== 'Fait' && jour(t.echeance) && jour(t.echeance) <= auj).length;
     let tabs = [['taches', 'Mes tâches', retard]].concat(D.estAD ? [['clients', 'Clients'], ['installs', 'Installations']] : [], D.prets ? [['prets', 'Prêts'], ['atelier', 'Atelier']] : [], D.devis ? [['devis', 'Devis entretien']] : [], D.publier !== false ? [['publier', 'Publier']] : [], D.revisions ? [['revs', 'Révisions']] : [], D.conso ? [['conso', 'Consommables']] : [],
-      D.estAD ? [['demandes', 'Demandes des cabinets'], ['doctech', 'Doc technique']] : [], D.prospects ? [['prospects', 'Prospects']] : [], [['docs', 'Documents'], ['aide', 'Mode d\'emploi']]);
+      D.estAD ? [['demandes', 'Demandes des cabinets'], ['doctech', 'Doc technique'], ['financement', 'Financement']] : [], D.prospects ? [['prospects', 'Prospects']] : [], [['docs', 'Documents'], ['aide', 'Mode d\'emploi']]);
     // Le gérant voit tout, dans les deux applis
     if (D.voitTout) { /* tous les onglets */ }
     else if (APP === 'conso') tabs = [['taches', 'Mes tâches', retard], ['clients', 'Clients']].concat(D.publier !== false ? [['publier', 'Publier']] : [], [['conso', 'Consommables'], ['demandes', 'Demandes des cabinets']], D.prospects ? [['prospects', 'Prospects']] : [], [['docs', 'Documents'], ['aide', 'Mode d\'emploi']]);
     else if (D.estAD) tabs = tabs.filter(t => t[0] !== 'conso');
     if (!tabs.some(t => t[0] === onglet)) onglet = 'taches';
     document.getElementById('nav').innerHTML = tabs.map(t => '<button class="' + (onglet === t[0] ? 'on' : '') + '" onclick="aller(\'' + t[0] + '\')">' + t[1] + (t[2] ? '<span class="nb">' + t[2] + '</span>' : '') + '</button>').join('');
-    ({ taches: vueTaches, clients: vueClients, installs: vueInstalls, conso: vueConso, demandes: vueDemandes, orga: vueOrga, docs: vueDocs, revs: vueRevs, chantiers: vueChantiers, devis: vueDevis, prets: vuePrets, atelier: vueAtelier, publier: vuePublier, aide: vueAide, doctech: vueDocTech, prospects: vueProspects })[onglet]();
+    ({ taches: vueTaches, clients: vueClients, installs: vueInstalls, conso: vueConso, demandes: vueDemandes, orga: vueOrga, docs: vueDocs, revs: vueRevs, chantiers: vueChantiers, devis: vueDevis, prets: vuePrets, atelier: vueAtelier, publier: vuePublier, aide: vueAide, doctech: vueDocTech, prospects: vueProspects, financement: vueFinancement })[onglet]();
   }
   function aller(o) { onglet = o; PD = []; facVue = false; afficher(); }
 
@@ -694,6 +694,24 @@
       '<button class="btn-light" onclick="pratDossier(\'' + esc(p.id) + '\')">📁 Tout le dossier (' + (p.nb || 0) + ' fichiers)</button>' +
       '<a class="btn-light" style="text-decoration:none;display:inline-block" href="' + esc(p.url) + '" target="_blank">Ouvrir dans Google Drive</a></div>' +
       '<div class="meta">Dossier Drive : ' + esc(p.nom) + (p.dt ? '' : ' · pas de PDF « dossier technique » dedans') + '</div>';
+  }
+  // Onglet Financement : proposition seule (montant + nom facultatif) → PDF téléchargé
+  function vueFinancement() {
+    document.getElementById('main').innerHTML = '<h2>Financement</h2><p class="sub">Indiquez le montant TTC : la proposition Dentaire Finance (loyers identiques et 1er loyer majoré) sort en PDF aux couleurs d\'Alternative Dentaire. Pour la ranger dans le dossier d\'un praticien, passez plutôt par sa fiche client.</p>' +
+      '<div class="card"><div class="g2"><div><label>Montant du projet TTC</label><input id="fsM" type="number" inputmode="decimal" placeholder="Ex. : 24500"></div><div><label>Nom sur la proposition (facultatif)</label><input id="fsN" placeholder="Ex. : Dr Martin"></div></div>' +
+      '<p class="err" id="fsE"></p><button class="btn" onclick="finSimple(this)">📄 Créer le PDF</button><div id="fsR"></div></div>';
+  }
+  async function finSimple(b) {
+    const mt = Number(String(document.getElementById('fsM').value).replace(',', '.')), e = document.getElementById('fsE'), out = document.getElementById('fsR');
+    e.textContent = ''; if (!(mt >= 1000 && mt <= 500000)) { e.textContent = 'Montant TTC entre 1 000 et 500 000 €.'; return; }
+    b.disabled = true; b.textContent = 'Création…';
+    let r; try { r = await api('fin_simple', { montant: mt, nom: document.getElementById('fsN').value.trim() }); } catch (x) { r = { ok: false, message: 'Connexion impossible.' }; }
+    b.disabled = false; b.textContent = '📄 Créer le PDF';
+    if (!r.ok) { e.textContent = r.message; return; }
+    const bin = Uint8Array.from(atob(r.base64), c => c.charCodeAt(0)), url = URL.createObjectURL(new Blob([bin], { type: 'application/pdf' }));
+    const eu = v => v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+    out.innerHTML = '<div style="margin-top:10px">' + r.loyers.map(x => '<div class="row"><div style="flex:1">' + x.mois + ' mois</div><b>' + eu(x.loyer) + ' TTC / mois</b></div>').join('') +
+      '<div class="toolbar" style="margin-top:8px"><a class="btn" style="text-decoration:none" href="' + url + '" download="' + esc(r.nom) + '">⬇ Télécharger le PDF</a><a class="btn-light" style="text-decoration:none" href="' + url + '" target="_blank">Ouvrir</a></div></div>';
   }
   // Proposition de financement (PDF aux couleurs AD, rangé dans le dossier du praticien)
   async function finProposition(b) {
