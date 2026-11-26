@@ -426,22 +426,27 @@ async function chercherPanne() {
   if (!r.ok) { z.innerHTML = ''; $('err').textContent = r.message; return; }
   if (!r.fichiers.length) { z.innerHTML = '<div class="vide" style="color:var(--muted)">Le code ' + esc(an.code) + ' n\'apparaît dans aucun manuel ' + (r.dossiers.length ? 'de « ' + esc(r.dossiers[0].nom) + ' »' : 'trouvé pour ce modèle') + '. Précisez la marque ou le modèle, ou cherchez dans l\'onglet Doc technique de l\'Agence.</div>'; return; }
   const lettres = an.code.replace(/\d.*$/, ''), num = String(+an.code.replace(/^[A-Z]*/, '').replace(/[A-Z]$/, ''));
-  const motif = lettres ? new RegExp('(^|[^A-Z0-9])' + lettres + '\\s?[-.]?\\s?0*' + num + '(?![0-9])', 'i')
-    : new RegExp('(err(?:or|eur)?|code|alarme?|d[ée]faut|fault|message|E|n°)\\s?[-.:]?\\s?0*' + num + '(?![0-9])', 'i');
+  // Le code doit être un mot à part (« A51 », « E 06 », « erreur 6 ») : pas « cartouche 6 » ni « paragraphe 6.3 »
+  const motif = lettres ? new RegExp('(^|[^A-Za-z0-9])' + lettres + '\\s?[-.]?\\s?0*' + num + '(?![0-9]|[.,][0-9])', 'i')
+    : new RegExp('(^|[^A-Za-z0-9\u00C0-\u00FF])(?:err(?:or|eur)?|code|alarme?|alarm|d[ée]faut|fault|message|n°|[aeinwf]|al|er)\\s?[-.:°]?\\s?0*' + num + '(?![0-9]|[.,][0-9])', 'i');
+  const codesManuels = [];
   z.innerHTML = '<div class="etat" id="pEtat">Lecture de ' + r.fichiers.length + ' document(s)…</div><div id="pRes" style="display:flex;flex-direction:column;gap:10px"></div>';
-  let trouve = 0;
+  let trouve = 0, lus = 0;
   for (const f of r.fichiers) {
     let pdf; try { pdf = await api('doc_fichier', { id: f.id }); } catch (e) { continue; }
     if (!pdf.ok || !/pdf/.test(pdf.type || '')) continue;
     try {
       const lib = await pdfJs(), bin = Uint8Array.from(atob(pdf.base64), c => c.charCodeAt(0)), doc = await lib.getDocument({ data: bin.slice() }).promise;
-      const pages = [];
+      const pages = [], codesDoc = new Set();
       for (let p = 1; p <= doc.numPages && pages.length < 4; p++) {
         const txt = (await (await doc.getPage(p)).getTextContent()).items.map(i => i.str).join(' ').replace(/\s+/g, ' ');
+        // Codes présents dans le manuel (A11, N04, i01, E23…) pour proposer les bons si le code dicté n'existe pas
+        for (const c of txt.matchAll(/(?:^|\s)([AEFINW][0-9]{2,3})(?=\s|$)/gi)) codesDoc.add(c[1].toUpperCase());
         const mm = motif.exec(txt);
         if (mm) pages.push({ p, extrait: txt.slice(Math.max(0, mm.index - 100), mm.index + 420) });
       }
-      if (!pages.length) continue;
+      lus++;
+      if (!pages.length) { if (codesDoc.size >= 3) codesManuels.push({ nom: f.nom, codes: [...codesDoc].sort() }); continue; }
       trouve++; PDFS[f.id] = { doc, bin, nom: pdf.nom };
       $('pRes').insertAdjacentHTML('beforeend', '<div class="mat" style="flex-direction:column;align-items:stretch"><div class="d"><b>📕 ' + esc(f.nom) + '</b><span>' + esc(f.chemin) + '</span></div>' +
         pages.map(x => '<div data-tr="' + esc(x.extrait) + '" style="background:#FFF8E6;border-radius:8px;padding:8px;font-size:15px;line-height:1.45">' + esc(x.extrait).replace(motif, m0 => '<mark>' + m0 + '</mark>') +
@@ -449,8 +454,13 @@ async function chercherPanne() {
         '<button class="ret" style="border-color:var(--muted);color:var(--muted)" data-dl="' + esc(f.id) + '">Télécharger le PDF complet</button></div>');
     } catch (e) {}
   }
-  $('pEtat').textContent = trouve ? 'Le code ' + an.code + ' apparaît dans ' + trouve + ' document(s) :' : 'Documents trouvés, mais le texte n\'est pas lisible (manuels scannés) :';
-  if (!trouve) $('pRes').innerHTML = r.fichiers.map(f => '<div class="mat"><div class="d"><b>📕 ' + esc(f.nom) + '</b><span>' + esc(f.chemin) + '</span></div><button class="ret" data-dl="' + esc(f.id) + '">Ouvrir</button></div>').join('');
+  $('pEtat').textContent = trouve ? 'Le code ' + an.code + ' apparaît dans ' + trouve + ' document(s) :' : lus ? 'Le code ' + an.code + ' n\'existe pas dans ces manuels.' : 'Documents trouvés, mais le texte n\'est pas lisible (manuels scannés) :';
+  if (!trouve) {
+    $('pRes').innerHTML = codesManuels.map(c => '<div class="mat" style="flex-direction:column;align-items:stretch"><div class="d"><b>Codes de « ' + esc(c.nom) + ' »</b><span>Touchez le code affiché sur l\'appareil</span></div><div class="chips" style="margin-top:6px">' +
+      c.codes.slice(0, 80).map(x => '<button data-code="' + esc(x) + '">' + esc(x) + '</button>').join('') + '</div></div>').join('') +
+      r.fichiers.map(f => '<div class="mat"><div class="d"><b>📕 ' + esc(f.nom) + '</b><span>' + esc(f.chemin) + '</span></div><button class="ret" data-dl="' + esc(f.id) + '">Ouvrir</button></div>').join('');
+    z.querySelectorAll('[data-code]').forEach(b => b.onclick = () => { $('dtx').value = (an.modele ? an.modele + ' ' : '') + 'code ' + b.dataset.code; chercherPanne(); });
+  }
   z.querySelectorAll('[data-p]').forEach(b => b.onclick = () => voirPage(b));
   z.querySelectorAll('[data-dl]').forEach(b => b.onclick = () => telechargerDoc(b));
   traduireExtraits(z, motif);
