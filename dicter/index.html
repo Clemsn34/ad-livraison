@@ -444,7 +444,7 @@ async function chercherPanne() {
       if (!pages.length) continue;
       trouve++; PDFS[f.id] = { doc, bin, nom: pdf.nom };
       $('pRes').insertAdjacentHTML('beforeend', '<div class="mat" style="flex-direction:column;align-items:stretch"><div class="d"><b>📕 ' + esc(f.nom) + '</b><span>' + esc(f.chemin) + '</span></div>' +
-        pages.map(x => '<div style="background:#FFF8E6;border-radius:8px;padding:8px;font-size:15px;line-height:1.45">' + esc(x.extrait).replace(motif, m0 => '<mark>' + m0 + '</mark>') +
+        pages.map(x => '<div data-tr="' + esc(x.extrait) + '" style="background:#FFF8E6;border-radius:8px;padding:8px;font-size:15px;line-height:1.45">' + esc(x.extrait).replace(motif, m0 => '<mark>' + m0 + '</mark>') +
           '<div style="margin-top:6px"><button class="ret" style="border-color:var(--navy);color:var(--navy)" data-f="' + esc(f.id) + '" data-p="' + x.p + '">Voir la page ' + x.p + '</button></div><div class="pg"></div></div>').join('') +
         '<button class="ret" style="border-color:var(--muted);color:var(--muted)" data-dl="' + esc(f.id) + '">Télécharger le PDF complet</button></div>');
     } catch (e) {}
@@ -453,6 +453,20 @@ async function chercherPanne() {
   if (!trouve) $('pRes').innerHTML = r.fichiers.map(f => '<div class="mat"><div class="d"><b>📕 ' + esc(f.nom) + '</b><span>' + esc(f.chemin) + '</span></div><button class="ret" data-dl="' + esc(f.id) + '">Ouvrir</button></div>').join('');
   z.querySelectorAll('[data-p]').forEach(b => b.onclick = () => voirPage(b));
   z.querySelectorAll('[data-dl]').forEach(b => b.onclick = () => telechargerDoc(b));
+  traduireExtraits(z, motif);
+}
+// Traduction automatique en français des passages trouvés (manuels en anglais, italien, allemand…)
+const norm2 = x => String(x || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+async function traduireExtraits(z, motif) {
+  const els = [...z.querySelectorAll('[data-tr]')]; if (!els.length) return;
+  let r; try { r = await api('traduire', { textes: els.map(e => e.dataset.tr) }); } catch (e) { return; }
+  if (!r || !r.ok) return;
+  els.forEach((e, i) => {
+    const fr = (r.textes || [])[i]; if (!fr || norm2(fr) === norm2(e.dataset.tr)) return;
+    const bt = e.querySelector('div[style*="margin-top:6px"]');
+    const h = '<div style="margin-top:6px;padding:6px 8px;background:#EEF4FF;border-radius:6px;font-size:15px;line-height:1.45"><b style="font-size:12px;color:#1F4FA8">🇫🇷 Traduction automatique</b><br>' + esc(fr).replace(motif, m0 => '<mark>' + m0 + '</mark>') + '</div>';
+    if (bt) bt.insertAdjacentHTML('beforebegin', h); else e.insertAdjacentHTML('beforeend', h);
+  });
 }
 async function voirPage(b) {
   const zone = b.parentNode.nextElementSibling; if (zone.innerHTML) { zone.innerHTML = ''; b.textContent = 'Voir la page ' + b.dataset.p; return; }
@@ -462,6 +476,11 @@ async function voirPage(b) {
   const vp = page.getViewport({ scale: echelle }), cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height; cv.style.width = '100%'; cv.style.marginTop = '8px'; cv.style.borderRadius = '6px'; cv.style.border = '1px solid var(--line)'; cv.style.background = '#fff';
   await page.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
   zone.appendChild(cv); b.textContent = 'Masquer la page ' + b.dataset.p;
+  try {
+    const txt = (await page.getTextContent()).items.map(i => i.str).join(' ').replace(/\s+/g, ' ').trim().slice(0, 4500);
+    if (txt) { const r = await api('traduire', { textes: [txt] }), fr = r && r.ok && r.textes && r.textes[0];
+      if (fr && norm2(fr) !== norm2(txt)) zone.insertAdjacentHTML('beforeend', '<details open style="margin-top:6px;background:#EEF4FF;border-radius:6px;padding:6px 8px"><summary style="font-weight:700;color:#1F4FA8">🇫🇷 Traduction de la page</summary><div style="font-size:15px;line-height:1.5;padding-top:4px">' + esc(fr) + '</div></details>'); }
+  } catch (e) {}
 }
 async function telechargerDoc(b) {
   const t = b.textContent; b.disabled = true; b.textContent = 'Téléchargement…';
@@ -475,7 +494,7 @@ async function telechargerDoc(b) {
 // ----- Devis de projet : pièce par pièce, marque, modèle, options -----
 let CAT = null, PJ = null;
 try { CAT = JSON.parse(ls.get('dict_cat') || 'null'); } catch (e) {}
-function nouveauPJ() { return { cabinet: '', nom: '', prenom: '', tel: '', email: '', ville: '', contexte: ls.get('dict_ctx') || 'Salon', salles: [], note: '', recap: true, extrabat: true }; }
+function nouveauPJ() { return { cabinet: '', nom: '', prenom: '', tel: '', email: '', ville: '', contexte: ls.get('dict_ctx') || 'Salon', salles: [], note: '', recap: false, extrabat: true }; }
 try { PJ = JSON.parse(ls.get('dict_pj') || 'null'); } catch (e) {}
 if (!PJ) PJ = nouveauPJ();
 function sauverPJ() { ls.set('dict_pj', JSON.stringify(PJ)); }
@@ -585,7 +604,7 @@ function afficherDevis() {
     '<div class="sec">Note</div><textarea id="jnote" placeholder="Délais, budget, financement, surface… (le micro dicte ici)">' + esc(PJ.note) + '</textarea>' +
     '<label class="pj-sw"><input type="checkbox" id="jrec"' + (PJ.recap ? ' checked' : '') + '>' + (PJ.reprise ? 'Renvoyer' : 'Envoyer') + ' le récapitulatif au praticien par e-mail</label>' +
     '<label class="pj-sw"><input type="checkbox" id="jexb"' + (PJ.extrabat ? ' checked' : '') + '>' + (PJ.reprise && PJ.exbAvant ? 'Créer une nouvelle version du devis dans Extrabat' : 'Créer le devis dans Extrabat') + (CAT.extrabat ? '' : ' <small style="color:var(--muted);font-weight:500">(dès que la clé API sera posée)</small>') + '</label>' +
-    '<p class="err" id="err"></p><button class="btn" id="jgo">' + (PJ.reprise ? 'Enregistrer les modifications' : 'Envoyer la demande de devis') + '</button><div id="ok"></div>' +
+    '<p class="err" id="err"></p><button class="btn" id="jsave">💾 Enregistrer en tâche</button><small style="color:var(--muted);text-align:center;margin-top:-4px">Sans e-mail ni devis Extrabat · vous pourrez continuer à le modifier</small><button class="ret" id="jgo" style="align-self:center;border-color:var(--navy);color:var(--navy)">' + (PJ.reprise ? 'Enregistrer et envoyer (cases cochées)' : 'Envoyer (récapitulatif / Extrabat si cochés)') + '</button><div id="ok"></div>' +
     (PJ.salles.length || PJ.nom ? '<button class="ret" id="jraz" style="align-self:center;border-color:var(--muted);color:var(--muted)">Nouveau projet (tout effacer)</button>' : '');
   z.innerHTML = h;
   const champ = (id, cle) => { const el = $(id); el.oninput = () => { PJ[cle] = el.value; sauverPJ(); }; };
@@ -604,7 +623,8 @@ function afficherDevis() {
   z.querySelectorAll('[data-off]').forEach(b => b.onchange = () => { it(b.dataset.off).offert = b.checked; sauverPJ(); afficherDevis(); });
   z.querySelectorAll('[data-mod]').forEach(b => b.oninput = () => { it(b.dataset.mod).note = b.value; sauverPJ(); });
   z.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { const i = it(b.dataset.q); i.qte = Math.max(1, Math.min(99, i.qte + +b.dataset.d)); sauverPJ(); afficherDevis(); });
-  $('jgo').onclick = envoyerDevis;
+  $('jgo').onclick = () => envoyerDevis(false);
+  $('jsave').onclick = () => envoyerDevis(true);
   if ($('jfin')) { $('jfin').oninput = () => { PJ.finMontant = $('jfin').value; sauverPJ(); majFin(); }; $('jfinon').onchange = e => { PJ.finActif = e.target.checked; sauverPJ(); }; majFin(); }
   if ($('jraz')) $('jraz').onclick = () => { if (!confirm('Effacer ce projet et en commencer un nouveau ?')) return; PJ = nouveauPJ(); sauverPJ(); afficherDevis(); };
   if ($('jliste')) $('jliste').onclick = listeDevis;
@@ -652,7 +672,7 @@ function majFin() {
   if (M < 1000 || M > 500000) { z.innerHTML = '<div>Montant hors barème (1 000 à 500 000 € TTC).</div>'; return; }
   z.innerHTML = (M < 10000 ? [36, 48, 60] : [60, 72, 84, 96]).map(m => { const l = finLoyer(F, M, m); return l ? '<div style="display:flex"><span style="flex:1">' + m + ' mois</span><b>' + eur(l) + ' TTC / mois</b></div>' : ''; }).join('');
 }
-async function envoyerDevis() {
+async function envoyerDevis(enreg) {
   const lignes = [];
   PJ.salles.forEach(S => Object.entries(S.items).forEach(([eq, i]) => { if (i.on) lignes.push({ piece: S.piece, salle: S.salle, equip: eq, marque: i.marque, modele: i.modele, options: i.options, qte: i.qte, note: i.note, offert: !!i.offert }); }));
   $('err').textContent = '';
@@ -660,14 +680,16 @@ async function envoyerDevis() {
   if (!lignes.length) { $('err').textContent = 'Ajoutez une pièce et cochez le matériel.'; return; }
   if (PJ.recap && PJ.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(PJ.email.trim())) { $('err').textContent = 'E-mail invalide.'; return; }
   const cab = D && D.cabinets ? D.cabinets.find(c => c.nom === PJ.cabinet) : null;
-  const b = $('jgo'); b.disabled = true; b.textContent = 'Envoi…';
-  let r; try { r = await api('proj_envoyer', { reprise: PJ.reprise || '', etat: Object.assign({}, PJ, { reprise: '', exbAvant: '' }), cabId: cab ? cab.id : '', cabinet: PJ.cabinet, praticien: { nom: (PJ.nom || PJ.cabinet).trim(), prenom: PJ.prenom, tel: PJ.tel, email: PJ.email.trim(), ville: PJ.ville }, contexte: PJ.contexte, lignes, note: PJ.note, recap: PJ.recap && !!PJ.email.trim(), extrabat: PJ.extrabat, financement: { actif: PJ.finActif !== false && !!Number(PJ.finMontant), montantTTC: Number(String(PJ.finMontant || '').replace(',', '.')) || 0 } }); }
-  catch (e) { b.disabled = false; b.textContent = PJ.reprise ? 'Enregistrer les modifications' : 'Envoyer la demande de devis'; $('err').textContent = e.message === 'code' ? 'Session expirée.' : 'Pas de réseau : le projet reste enregistré sur le téléphone, réessayez.'; return; }
-  b.disabled = false; b.textContent = PJ.reprise ? 'Enregistrer les modifications' : 'Envoyer la demande de devis';
+  const b = $(enreg ? 'jsave' : 'jgo'), lib0 = b.textContent; b.disabled = true; b.textContent = enreg ? 'Enregistrement…' : 'Envoi…';
+  let r; try { r = await api('proj_envoyer', { reprise: PJ.reprise || '', etat: Object.assign({}, PJ, { reprise: '', exbAvant: '' }), cabId: cab ? cab.id : '', cabinet: PJ.cabinet, praticien: { nom: (PJ.nom || PJ.cabinet).trim(), prenom: PJ.prenom, tel: PJ.tel, email: PJ.email.trim(), ville: PJ.ville }, contexte: PJ.contexte, lignes, note: PJ.note, recap: !enreg && PJ.recap && !!PJ.email.trim(), extrabat: !enreg && PJ.extrabat, financement: { actif: PJ.finActif !== false && !!Number(PJ.finMontant), montantTTC: Number(String(PJ.finMontant || '').replace(',', '.')) || 0 } }); }
+  catch (e) { b.disabled = false; b.textContent = lib0; $('err').textContent = e.message === 'code' ? 'Session expirée.' : 'Pas de réseau : le projet reste enregistré sur le téléphone, réessayez.'; return; }
+  b.disabled = false; b.textContent = lib0;
   if (!r.ok) { $('err').textContent = r.message; return; }
   const nomPj = (PJ.nom || PJ.cabinet).trim();
-  PJ = nouveauPJ(); sauverPJ(); afficherDevis();
-  $('ok').innerHTML = '<div class="ok">✓ Projet ' + esc(r.n || '') + ' de ' + esc(nomPj) + (r.modifie ? ' modifié' : ' envoyé') + (r.tache ? ' · tâche ' + esc(r.tache) : '') + (r.devis ? ' · devis Extrabat créé' : '') + (r.recap ? ' · récapitulatif envoyé' : '') + '</div>' +
+  // Enregistrer : le devis reste ouvert (en modification) pour pouvoir le compléter ; Envoyer : on repart d'un projet vierge
+  if (enreg) { PJ.reprise = r.n || PJ.reprise; if (r.devis) PJ.exbAvant = r.devis; sauverPJ(); afficherDevis(); }
+  else { PJ = nouveauPJ(); sauverPJ(); afficherDevis(); }
+  $('ok').innerHTML = '<div class="ok">✓ Projet ' + esc(r.n || '') + ' de ' + esc(nomPj) + (enreg ? ' enregistré' : r.modifie ? ' modifié' : ' envoyé') + (r.tache ? ' · tâche ' + esc(r.tache) : '') + (r.devis ? ' · devis Extrabat créé' : '') + (r.recap ? ' · récapitulatif envoyé' : '') + '</div>' +
     (r.alertes && r.alertes.length ? '<div class="dern">' + r.alertes.map(a => '<div>' + esc(a) + '</div>').join('') + '</div>' : '');
   $('ok').scrollIntoView({ behavior: 'smooth' });
 }
