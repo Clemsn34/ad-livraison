@@ -483,6 +483,59 @@ async function initDevis() {
   afficherDevis();
   try { const r = await api('proj_catalogue', {}); if (r.ok) { CAT = r; ls.set('dict_cat', JSON.stringify(r)); afficherDevis(); } }
   catch (e) { if (e.message === 'code') { ecranCode('Session expirée : entrez à nouveau votre code.'); return; } if (!CAT) $('devis').innerHTML = '<p class="err">Pas de réseau : catalogue indisponible.</p>'; }
+  // Lien « Rouvrir le devis » depuis une tâche de l'Agence
+  if (DEVIS_URL && !initDevis.fait && CAT) { initDevis.fait = true; ouvrirDevis(DEVIS_URL); }
+}
+// ----- Rouvrir un devis déjà envoyé pour le modifier (même numéro, même tâche) -----
+async function listeDevis() {
+  const z = $('jlst'); z.innerHTML = '<div class="etat">Chargement…</div>';
+  let r; try { r = await api('proj_liste', {}); } catch (e) { z.innerHTML = '<p class="err">Pas de réseau.</p>'; return; }
+  if (!r.ok) { z.innerHTML = '<p class="err">' + esc(r.message) + '</p>'; return; }
+  z.innerHTML = r.devis.length ? r.devis.map(d => '<button data-dv="' + esc(d.n) + '" style="display:block;width:100%;text-align:left;background:#fff;border:1.5px solid #DCE3EE;border-radius:10px;padding:8px 10px;margin:4px 0;font:inherit;cursor:pointer"><b>' + esc(d.nom) + '</b><br><small style="color:#5A6880">' + esc(d.n + ' · ' + d.date + ' · ' + d.contexte + ' · ' + d.par + (d.modifie ? ' · modifié le ' + d.modifie : '')) + '</small></button>').join('') : '<p class="etat">Aucun devis envoyé pour l\'instant.</p>';
+  z.querySelectorAll('[data-dv]').forEach(b => b.onclick = () => ouvrirDevis(b.dataset.dv));
+}
+async function ouvrirDevis(n) {
+  if (!CAT) { try { const c = await api('proj_catalogue', {}); if (c.ok) { CAT = c; ls.set('dict_cat', JSON.stringify(c)); } } catch (e) {} }
+  if (!CAT) { alert('Catalogue indisponible : vérifiez le réseau.'); return; }
+  if ((PJ.salles.length || PJ.nom) && PJ.reprise !== n && !confirm('Le projet en cours sur le téléphone sera remplacé par le devis ' + n + '. Continuer ?')) return;
+  let r; try { r = await api('proj_ouvrir', { n }); } catch (e) { alert('Pas de réseau.'); return; }
+  if (!r.ok) { alert(r.message); return; }
+  const P = r.etat && r.etat.salles ? r.etat : reconstruirePJ(r);
+  P.reprise = r.n; P.exbAvant = r.devis || ''; P.recap = false; P.extrabat = !r.devis;
+  // Ce qui a été ajouté à la main dans la tâche après l'envoi : repris dans la note
+  if (r.tacheTexte) { const ajout = String(r.tacheTexte.titre || '').split('\n').slice(1).join('\n').trim(); if (ajout && String(P.note || '').indexOf(ajout) < 0) P.note = (P.note ? P.note + '\n' : '') + ajout; }
+  PJ = P; sauverPJ(); afficherDevis(); window.scrollTo(0, 0);
+}
+// Devis envoyés avant le 26/11 (sans l'état de l'appli) : on reconstruit le projet à partir du texte
+function reconstruirePJ(r) {
+  const P = nouveauPJ(); P.nom = r.nom; P.tel = r.tel; P.email = r.email; P.ville = r.ville; P.contexte = r.contexte || P.contexte; P.note = r.note || '';
+  const norm = x => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+  let S = null;
+  String(r.materiel || '').split('\n').forEach(l => {
+    const g = /^(\S.*?)\s*:\s*$/.exec(l);
+    if (g) {
+      const nomG = g[1].trim(), sansNum = nomG.replace(/\s+\d+$/, '');
+      const Pc = CAT.pieces.find(x => norm(x.piece) === norm(nomG)) || CAT.pieces.find(x => norm(x.piece) === norm(sansNum));
+      const piece = Pc ? Pc.piece : nomG, items = {};
+      (Pc ? Pc.equipements : []).forEach(e => { items[e.equip] = { on: false, marque: '', modele: '', options: [], qte: 1, note: '', offert: false }; });
+      S = { piece, salle: P.salles.filter(x => x.piece === piece).length + 1, items, ouvert: true }; P.salles.push(S); return;
+    }
+    const b = /^\s*•\s*(.+)$/.exec(l); if (!b || !S) return;
+    let s = b[1].trim(); const it = { on: true, marque: '', modele: '', options: [], qte: 1, note: '', offert: false };
+    if (/ – OFFERT$/.test(s)) { it.offert = true; s = s.replace(/ – OFFERT$/, ''); }
+    const q = /^(\d+) × (.+)$/.exec(s); if (q) { it.qte = +q[1]; s = q[2]; }
+    const no = /^(.*?) \((.*)\)$/.exec(s); if (no) { it.note = no[2].trim(); s = no[1]; }
+    const op = /^(.*?), options : (.+)$/.exec(s); if (op) { it.options = op[2].split(', '); s = op[1]; }
+    const Pc = CAT.pieces.find(x => x.piece === S.piece), k = s.indexOf(' – '), nomE = k >= 0 ? s.slice(0, k) : s, reste = k >= 0 ? s.slice(k + 3).trim() : '';
+    const E = (Pc ? Pc.equipements : []).find(e => norm(e.equip) === norm(nomE));
+    if (reste) {
+      const M = E && E.marques.find(x => norm(reste).indexOf(norm(x.marque)) === 0);
+      if (M) { it.marque = M.marque; it.modele = reste.slice(M.marque.length).trim(); if (it.modele && !M.modeles.some(x => x.modele === it.modele)) { it.note = [it.modele, it.note].filter(Boolean).join(' – '); it.modele = ''; } }
+      else it.note = [reste, it.note].filter(Boolean).join(' – ');
+    }
+    S.items[E ? E.equip : nomE] = it;
+  });
+  return P;
 }
 const eqDe = (piece, nom) => { const P = CAT.pieces.find(x => x.piece === piece); return P ? P.equipements.find(e => e.equip === nom) : null; };
 function ajouterSalle(piece) {
@@ -495,7 +548,8 @@ function afficherDevis() {
   const z = $('devis'); if (!z) return;
   if (!CAT) { z.innerHTML = '<div class="etat">Chargement du catalogue…</div>'; return; }
   const ctx = (CAT.contextes || ['Salon', 'Installation', 'Autre']);
-  let h = '<div class="sec">Praticien</div>' +
+  let h = (PJ.reprise ? '<div style="background:#FFF8E8;border:1.5px solid #E3A72F;border-radius:10px;padding:8px 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="flex:1">✎ Modification du devis <b>' + esc(PJ.reprise) + '</b></span><button class="ret" id="jrepx" style="margin:0">Abandonner</button></div>' : '<button class="ret" id="jliste" style="align-self:flex-start">📂 Rouvrir un devis envoyé</button><div id="jlst"></div>') +
+    '<div class="sec">Praticien</div>' +
     '<input id="jcab" list="cabs" placeholder="Cabinet déjà client (ou laisser vide)" value="' + esc(PJ.cabinet) + '">' +
     '<datalist id="cabs">' + CABS.slice(0, 4000).map(c => '<option value="' + esc(c) + '">').join('') + '</datalist>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input id="jnom" placeholder="Nom (Dr …)" value="' + esc(PJ.nom) + '"><input id="jpre" placeholder="Prénom" value="' + esc(PJ.prenom) + '"></div>' +
@@ -529,9 +583,9 @@ function afficherDevis() {
   h += '<div class="pj-add">' + CAT.pieces.map(P => '<button data-add="' + esc(P.piece) + '">+ ' + esc(P.piece) + '</button>').join('') + '</div>' +
     zoneFinancement() +
     '<div class="sec">Note</div><textarea id="jnote" placeholder="Délais, budget, financement, surface… (le micro dicte ici)">' + esc(PJ.note) + '</textarea>' +
-    '<label class="pj-sw"><input type="checkbox" id="jrec"' + (PJ.recap ? ' checked' : '') + '>Envoyer le récapitulatif au praticien par e-mail</label>' +
-    '<label class="pj-sw"><input type="checkbox" id="jexb"' + (PJ.extrabat ? ' checked' : '') + '>Créer le devis dans Extrabat' + (CAT.extrabat ? '' : ' <small style="color:var(--muted);font-weight:500">(dès que la clé API sera posée)</small>') + '</label>' +
-    '<p class="err" id="err"></p><button class="btn" id="jgo">Envoyer la demande de devis</button><div id="ok"></div>' +
+    '<label class="pj-sw"><input type="checkbox" id="jrec"' + (PJ.recap ? ' checked' : '') + '>' + (PJ.reprise ? 'Renvoyer' : 'Envoyer') + ' le récapitulatif au praticien par e-mail</label>' +
+    '<label class="pj-sw"><input type="checkbox" id="jexb"' + (PJ.extrabat ? ' checked' : '') + '>' + (PJ.reprise && PJ.exbAvant ? 'Créer une nouvelle version du devis dans Extrabat' : 'Créer le devis dans Extrabat') + (CAT.extrabat ? '' : ' <small style="color:var(--muted);font-weight:500">(dès que la clé API sera posée)</small>') + '</label>' +
+    '<p class="err" id="err"></p><button class="btn" id="jgo">' + (PJ.reprise ? 'Enregistrer les modifications' : 'Envoyer la demande de devis') + '</button><div id="ok"></div>' +
     (PJ.salles.length || PJ.nom ? '<button class="ret" id="jraz" style="align-self:center;border-color:var(--muted);color:var(--muted)">Nouveau projet (tout effacer)</button>' : '');
   z.innerHTML = h;
   const champ = (id, cle) => { const el = $(id); el.oninput = () => { PJ[cle] = el.value; sauverPJ(); }; };
@@ -553,6 +607,8 @@ function afficherDevis() {
   $('jgo').onclick = envoyerDevis;
   if ($('jfin')) { $('jfin').oninput = () => { PJ.finMontant = $('jfin').value; sauverPJ(); majFin(); }; $('jfinon').onchange = e => { PJ.finActif = e.target.checked; sauverPJ(); }; majFin(); }
   if ($('jraz')) $('jraz').onclick = () => { if (!confirm('Effacer ce projet et en commencer un nouveau ?')) return; PJ = nouveauPJ(); sauverPJ(); afficherDevis(); };
+  if ($('jliste')) $('jliste').onclick = listeDevis;
+  if ($('jrepx')) $('jrepx').onclick = () => { if (!confirm('Abandonner la modification ? Le devis envoyé reste tel quel.')) return; PJ = nouveauPJ(); sauverPJ(); afficherDevis(); };
 }
 // ----- Financement (barème Dentaire Finance lu par le serveur) -----
 function finLoyer(b, M, mois) {
@@ -605,16 +661,18 @@ async function envoyerDevis() {
   if (PJ.recap && PJ.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(PJ.email.trim())) { $('err').textContent = 'E-mail invalide.'; return; }
   const cab = D && D.cabinets ? D.cabinets.find(c => c.nom === PJ.cabinet) : null;
   const b = $('jgo'); b.disabled = true; b.textContent = 'Envoi…';
-  let r; try { r = await api('proj_envoyer', { cabId: cab ? cab.id : '', cabinet: PJ.cabinet, praticien: { nom: (PJ.nom || PJ.cabinet).trim(), prenom: PJ.prenom, tel: PJ.tel, email: PJ.email.trim(), ville: PJ.ville }, contexte: PJ.contexte, lignes, note: PJ.note, recap: PJ.recap && !!PJ.email.trim(), extrabat: PJ.extrabat, financement: { actif: PJ.finActif !== false && !!Number(PJ.finMontant), montantTTC: Number(String(PJ.finMontant || '').replace(',', '.')) || 0 } }); }
-  catch (e) { b.disabled = false; b.textContent = 'Envoyer la demande de devis'; $('err').textContent = e.message === 'code' ? 'Session expirée.' : 'Pas de réseau : le projet reste enregistré sur le téléphone, réessayez.'; return; }
-  b.disabled = false; b.textContent = 'Envoyer la demande de devis';
+  let r; try { r = await api('proj_envoyer', { reprise: PJ.reprise || '', etat: Object.assign({}, PJ, { reprise: '', exbAvant: '' }), cabId: cab ? cab.id : '', cabinet: PJ.cabinet, praticien: { nom: (PJ.nom || PJ.cabinet).trim(), prenom: PJ.prenom, tel: PJ.tel, email: PJ.email.trim(), ville: PJ.ville }, contexte: PJ.contexte, lignes, note: PJ.note, recap: PJ.recap && !!PJ.email.trim(), extrabat: PJ.extrabat, financement: { actif: PJ.finActif !== false && !!Number(PJ.finMontant), montantTTC: Number(String(PJ.finMontant || '').replace(',', '.')) || 0 } }); }
+  catch (e) { b.disabled = false; b.textContent = PJ.reprise ? 'Enregistrer les modifications' : 'Envoyer la demande de devis'; $('err').textContent = e.message === 'code' ? 'Session expirée.' : 'Pas de réseau : le projet reste enregistré sur le téléphone, réessayez.'; return; }
+  b.disabled = false; b.textContent = PJ.reprise ? 'Enregistrer les modifications' : 'Envoyer la demande de devis';
   if (!r.ok) { $('err').textContent = r.message; return; }
   const nomPj = (PJ.nom || PJ.cabinet).trim();
   PJ = nouveauPJ(); sauverPJ(); afficherDevis();
-  $('ok').innerHTML = '<div class="ok">✓ Projet ' + esc(r.n || '') + ' de ' + esc(nomPj) + ' envoyé' + (r.tache ? ' · tâche ' + esc(r.tache) : '') + (r.devis ? ' · devis Extrabat créé' : '') + (r.recap ? ' · récapitulatif envoyé' : '') + '</div>' +
+  $('ok').innerHTML = '<div class="ok">✓ Projet ' + esc(r.n || '') + ' de ' + esc(nomPj) + (r.modifie ? ' modifié' : ' envoyé') + (r.tache ? ' · tâche ' + esc(r.tache) : '') + (r.devis ? ' · devis Extrabat créé' : '') + (r.recap ? ' · récapitulatif envoyé' : '') + '</div>' +
     (r.alertes && r.alertes.length ? '<div class="dern">' + r.alertes.map(a => '<div>' + esc(a) + '</div>').join('') + '</div>' : '');
   $('ok').scrollIntoView({ behavior: 'smooth' });
 }
+const DEVIS_URL = new URLSearchParams(location.search).get('devis');
+if (DEVIS_URL) { MODE = 'devis'; ls.set('dict_mode', MODE); try { history.replaceState(null, '', location.pathname); } catch (e) {} }
 if (!TOKEN && !ls.get('ag_code')) ecranCode(); else ecranDictee(false);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>

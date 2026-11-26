@@ -204,10 +204,11 @@
         (t.techs || t.duree ? '<div style="margin-top:4px">' + (t.techs ? '<span class="bdg t">👷 ' + esc(t.techs) + ' technicien' + (t.techs > 1 ? 's' : '') + '</span>' : '') + (t.duree ? '<span class="bdg t">⏱ ' + esc(t.duree) + '</span>' : '') + '</div>' : '') +
         '<div class="meta">' + bd + (t.install && t.cabinet ? 'Installation ' + esc(t.install) + ' · ' : '') + (filtreTaches !== 'moi' || pourDe(t).length > 1 ? 'pour ' + esc(t.pour) : '') + (fait ? ' · fait par ' + esc(t.faitPar) + ' le ' + esc(t.faitLe) : '') + '</div>' +
         (t.detail ? '<div class="meta">' + esc(t.detail) + '</div>' : '') +
+        (t.projet ? '<div style="margin-top:6px"><a class="bdg" style="text-decoration:none" href="https://clemsn34.github.io/ad-livraison/dicter/?devis=' + encodeURIComponent(t.projet) + '" target="_blank">📋 Rouvrir le devis ' + esc(t.projet) + ' pour le modifier</a></div>' : '') +
         (infosEdit === t.n ? '<div style="margin-top:8px"><div class="g2"><div><label>Client / cabinet (vide = interne)</label><input id="ie_c" list="cabs" value="' + esc(k && t.cabinet ? t.cabinet : (k && !t.install ? k.c : '')) + '"></div><div><label>Tâche</label><textarea id="ie_t" rows="2">' + esc(t.cabinet || !k || t.install ? t.titre : k.t) + '</textarea></div></div>' +
           '<label>Détail</label><input id="ie_dt" value="' + esc(t.detail || '') + '">' +
           '<div class="g3"><div><label>Techniciens à prévoir</label><select id="ie_n">' + optTechs(t.techs) + '</select></div><div><label>Temps à prévoir</label><select id="ie_d">' + optDuree(t.duree) + '</select></div><div><label>Pièces</label><select id="ie_p">' + ['', 'À commander', 'Commandée', 'Reçue – RDV à prendre'].map(x => '<option value="' + esc(x) + '"' + ((t.pieces || '') === x ? ' selected' : '') + '>' + (x || 'Pas de pièce') + '</option>').join('') + '</select></div></div>' + datalistCabs() +
-          '<div class="toolbar" style="margin-top:6px"><button class="btn" onclick="enregInfos(this,\'' + esc(t.n) + '\')">Enregistrer</button><button class="btn-light" onclick="infosEdit=\'\';afficher()">Annuler</button></div></div>' : '') +
+          '<div class="toolbar" style="margin-top:6px"><button class="btn" onclick="enregInfos(this,\'' + esc(t.n) + '\')">Enregistrer</button><button class="btn-light" onclick="infosEdit=\'\';afficher()">Annuler</button>' + (D.voitTout || t.par === D.moi.prenom ? '<button class="btn-light" style="margin-left:auto;color:var(--ko)" onclick="supprTache(this,\'' + esc(t.n) + '\')">🗑 Supprimer</button>' : '') + '</div></div>' : '') +
         (rdvEdit === t.n ? formRdv(t, k) : '') +
         (attribuant === t.n ? '<div style="margin-top:8px">' + chipsPour('at_' + t.n, pourDe(t)) + '<div class="toolbar" style="margin-top:6px"><button class="btn" onclick="attribuer(this,\'' + esc(t.n) + '\')">Attribuer</button><button class="btn-light" onclick="attribuant=\'\';afficher()">Annuler</button></div></div>' : '') + '</div>' +
         (!fait && attribuant !== t.n && infosEdit !== t.n && rdvEdit !== t.n ? '<div style="display:flex;flex-direction:column;gap:6px">' + (D.extrabat && k ? '<button class="btn-light" title="Créer le rendez-vous dans l\'agenda Extrabat" onclick="rdvEdit=\'' + esc(t.n) + '\';afficher()">📅</button>' : '') + '<button class="btn-light" title="Attribuer à une ou plusieurs personnes" onclick="attribuant=\'' + esc(t.n) + '\';afficher()">👥</button><button class="btn-light" title="Modifier la tâche (texte, cabinet, techniciens, temps)" onclick="infosEdit=\'' + esc(t.n) + '\';afficher()">✎</button></div>' : '') + '</div></div>';
@@ -236,6 +237,12 @@
     if (i >= E.length - 1) return;
     const av = t.pieces; t.pieces = E[i + 1]; afficher();
     const r = await api('tache_pieces', { n, pieces: t.pieces }); if (!r.ok) { t.pieces = av; afficher(); alert(r.message); } else ecrireCache(D);
+  }
+  async function supprTache(b, n) {
+    if (!confirm('Supprimer définitivement cette tâche ?')) return;
+    b.disabled = true; const r = await api('tache_supprimer', { n });
+    if (!r.ok) { b.disabled = false; alert(r.message); return; }
+    D.taches = D.taches.filter(x => x.n !== n); infosEdit = ''; ecrireCache(D); afficher();
   }
   async function cocher(n, fait) {
     const t = D.taches.find(x => x.n === n); if (t) { t.statut = fait ? 'Fait' : 'À faire'; t.faitPar = D.moi.prenom; t.faitLe = new Date().toLocaleDateString('fr-FR'); }
