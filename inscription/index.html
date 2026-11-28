@@ -3,6 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0F2347">
+<link rel="apple-touch-icon" href="icone-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Alternative Dentaire">
 <title>Alternative Dentaire · Formations et événements</title>
 <style>
   :root { --navy: #0F2347; --gold: #E3A72F; --text: #1F2937; --muted: #5A6880; --line: #DCE3EE; --bg: #F4F6FA; }
@@ -87,12 +92,40 @@
     <p id="accroche">Essayez le matériel, rencontrez des confrères et formez-vous avec votre équipe. Choisissez votre profil : on vous montre les événements faits pour vous.</p>
     <div class="cta">
       <a class="btn btn-gold" href="#profil" id="ctaEv">Choisir mon profil</a>
+      <a class="btn btn-light" href="#devis" onclick="ouvrirDevis()">🛠 Demander un devis</a>
       <a class="btn btn-ig" href="https://www.instagram.com/alternative_dentaire/" target="_blank" rel="noopener">📸 @alternative_dentaire</a>
+      <button type="button" class="btn btn-light" id="installer" style="display:none" onclick="installer()">📲 Installer l'appli</button>
     </div>
+    <p id="iosAide" style="display:none;font-size:13px;margin:10px 0 0;opacity:.9">📲 Pour l'avoir sur votre téléphone : touchez <b>Partager</b> puis <b>Sur l'écran d'accueil</b>.</p>
   </div>
 </div>
 
 <main>
+  <section id="devis">
+    <button type="button" class="btn btn-light" id="devisOnglet" style="width:100%;justify-content:space-between" onclick="ouvrirDevis()"><span>🛠 Un matériel à changer ou en panne ? Demandez un devis</span><em style="font-style:normal">▼</em></button>
+    <div class="card" id="devisCorps" style="display:none;margin-top:8px">
+      <form id="fd" onsubmit="envoyerDevis(event)" style="padding:0;border:0;box-shadow:none">
+        <label>Le matériel concerné</label>
+        <div class="chips" id="dMat"></div>
+        <label>C'est…</label>
+        <div class="chips" id="dUrg"></div>
+        <label for="dMsg">Précisions (marque, modèle, ce qui ne va pas…)</label>
+        <textarea id="dMsg" rows="3" style="width:100%;padding:11px;border:1.5px solid var(--line);border-radius:12px;font:inherit" placeholder="Ex. : compresseur Dürr de 2012, il chauffe et fait du bruit"></textarea>
+        <div class="row">
+          <div><label for="dNom">Nom</label><input id="dNom" autocomplete="family-name" placeholder="Dr …"></div>
+          <div><label for="dTel">Téléphone</label><input id="dTel" type="tel" autocomplete="tel" placeholder="06 12 34 56 78"></div>
+        </div>
+        <div class="row">
+          <div><label for="dMail">E-mail (facultatif)</label><input id="dMail" type="email" autocomplete="email"></div>
+          <div><label for="dCab">Cabinet et ville</label><input id="dCab" autocomplete="organization" placeholder="Ex. : Cabinet du Dr Martin, Montpellier"></div>
+        </div>
+        <p class="err" id="dErr"></p>
+        <button class="btn btn-navy" id="dSend" style="width:100%;justify-content:center">Envoyer ma demande</button>
+        <p class="sub" style="font-size:12.5px;margin:8px 0 0">Réponse rapide · dépannage en moins de 3 h pour toute panne bloquante · ou appelez le 04 69 96 03 60.</p>
+      </form>
+    </div>
+  </section>
+
   <section id="profil">
     <h2>Vous êtes…</h2>
     <p class="sub">Les événements et le formulaire s'adaptent à votre profil.</p>
@@ -216,6 +249,44 @@
   const T = (tu, vous) => PROFILS[profil] && PROFILS[profil].tu ? tu : vous;
   const $ = id => document.getElementById(id);
 
+  // ----- Appli sur le téléphone -----
+  let invite = null;
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  const installee = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); invite = e; if (!installee) $('installer').style.display = 'inline-flex'; });
+  if (!installee && /iphone|ipad|ipod/i.test(navigator.userAgent)) setTimeout(() => { const a = $('iosAide'); if (a) a.style.display = 'block'; }, 600);
+  async function installer() { if (!invite) return; invite.prompt(); try { await invite.userChoice; } catch (e) {} invite = null; $('installer').style.display = 'none'; }
+  // ----- Demande de devis -----
+  const MATS = ['Compresseur', 'Aspiration', 'Fauteuil / unit', 'Autoclave', 'Radio / capteur', 'Panoramique / cône beam', 'Scialytique / éclairage', 'Bac à ultrasons', 'Informatique', 'Mobilier', 'Autre'];
+  const URG = ['En panne', 'À renouveler', 'Projet (installation, agrandissement)'];
+  let dUrg = '';
+  function ouvrirDevis() {
+    const c = $('devisCorps'); c.style.display = 'block'; $('devisOnglet').querySelector('em').textContent = '▲';
+    if (!$('dMat').innerHTML) {
+      $('dMat').innerHTML = MATS.map(t => '<label><input type="checkbox" value="' + esc(t) + '">' + esc(t) + '</label>').join('');
+      $('dUrg').innerHTML = URG.map(t => '<label><input type="radio" name="durg" value="' + esc(t) + '">' + esc(t) + '</label>').join('');
+      let p = null; try { p = JSON.parse(localStorage.getItem('ad_etudiant') || 'null'); } catch (e) {}
+      if (p) { $('dNom').value = [p.prenom, p.nom].filter(Boolean).join(' '); $('dTel').value = p.portable || ''; $('dMail').value = p.email || ''; $('dCab').value = [p.cabinet, p.ville].filter(Boolean).join(', '); }
+    }
+    setTimeout(() => $('devis').scrollIntoView({ behavior: 'smooth' }), 50);
+  }
+  async function envoyerDevis(ev) {
+    ev.preventDefault();
+    const mats = [...document.querySelectorAll('#dMat input:checked')].map(i => i.value), u = document.querySelector('input[name=durg]:checked');
+    const nomComplet = $('dNom').value.trim().replace(/^(dr\.?|docteur)\s+/i, ''), parts = nomComplet.split(/\s+/), cabv = $('dCab').value.trim().split(/\s*,\s*/);
+    const req = { action: 'devis_demande', materiel: mats, urgence: u ? u.value : '', message: $('dMsg').value.trim(), prenom: parts.length > 1 ? parts.slice(0, -1).join(' ') : '', nom: parts.length > 1 ? parts[parts.length - 1] : nomComplet,
+      portable: $('dTel').value.trim(), email: $('dMail').value.trim(), cabinet: cabv[0] || '', ville: cabv.slice(1).join(', ') };
+    const err = $('dErr');
+    if (!mats.length && req.message.length < 5) { err.textContent = 'Cochez le matériel concerné ou décrivez votre besoin.'; return; }
+    if (nomComplet.length < 2) { err.textContent = 'Indiquez votre nom.'; return; }
+    if (req.portable.replace(/\D/g, '').length < 9) { err.textContent = 'Indiquez votre numéro de téléphone.'; return; }
+    err.textContent = ''; const b = $('dSend'); b.disabled = true; b.textContent = 'Envoi…';
+    let r = null; try { r = await appel(req); } catch (e) {}
+    if (!r || !r.ok) { b.disabled = false; b.textContent = 'Envoyer ma demande'; err.textContent = (r && r.message) || 'Envoi impossible pour le moment. Appelez-nous au 04 69 96 03 60.'; return; }
+    try { const p = JSON.parse(localStorage.getItem('ad_etudiant') || 'null') || {}; localStorage.setItem('ad_etudiant', JSON.stringify(Object.assign(p, { prenom: p.prenom || req.prenom, nom: p.nom || req.nom, portable: p.portable || req.portable, email: p.email || req.email, cabinet: p.cabinet || req.cabinet, ville: p.ville || req.ville }))); } catch (e) {}
+    $('fd').innerHTML = '<div class="ok"><div class="big">✅</div><h3>Demande bien reçue</h3><p class="sub">' + (req.urgence === 'En panne' ? 'Nous vous rappelons très vite : dépannage en moins de 3 h pour toute panne bloquante.' : 'Nous revenons vers vous rapidement avec une proposition.') + '</p><a class="btn btn-light" href="tel:+33469960360">📞 04 69 96 03 60</a></div>';
+  }
+
   (function init() {
     const y = new Date().getFullYear();
     $('quand').innerHTML = '<option>Je ne sais pas encore</option>' + [0, 1, 2, 3, 4, 5, 6].map(i => '<option>' + (y + i) + '</option>').join('');
@@ -271,6 +342,7 @@
     ['prenom', 'nom', 'portable', 'email', 'insta', 'fac', 'annee', 'quand', 'type', 'dep', 'cabinet', 'ville'].forEach(k => { if (p[k]) $(k).value = p[k]; });
     (p.interets || []).forEach(t => { const i = document.querySelector('#interets input[value="' + t.replace(/"/g, '') + '"]'); if (i) i.checked = true; });
     if (p.photo) $('photo').checked = true;
+    if (p.portable && p.email) $('accord').checked = true;
   }
 
   async function appel(req) {
@@ -298,7 +370,10 @@
   async function charger() {
     chargerSimu();
     let d = null;
+    try { const c = JSON.parse(localStorage.getItem('ad_evs') || 'null'); if (c && c.ok && !tous.length) { tous = c.evenements || []; passes = c.passes || []; afficherEvs(); } } catch (e) {}
     try { d = await appel({ action: 'evenements' }); } catch (e) {}
+    if (d && d.ok) { try { localStorage.setItem('ad_evs', JSON.stringify(d)); } catch (e) {} }
+    if ((!d || !d.ok) && tous.length) return;
     if (!d || !d.ok) { $('evs').innerHTML = '<div class="vide">Les événements n\'ont pas pu être chargés. Suivez-nous sur Instagram pour ne rien rater !</div>'; return; }
     tous = d.evenements || []; passes = d.passes || [];
     afficherEvs();
@@ -336,6 +411,10 @@
     const e = evs[i];
     $('evselTxt').innerHTML = '<b>Inscription :</b> ' + esc(e.intitule) + ' · ' + esc(e.dateCourte) + (e.places === 0 ? ' (liste d\'attente)' : '');
     s.style.display = 'flex';
+    // Coordonnées déjà enregistrées sur ce téléphone : inscription en un clic
+    if ($('prenom').value && $('portable').value && $('email').value && $('accord').checked) {
+      $('evselTxt').innerHTML += '<br><button type="button" class="btn btn-gold" style="margin-top:8px;padding:9px 14px" onclick="document.getElementById(\'f\').requestSubmit()">✓ Inscrire ' + esc($('prenom').value) + ' en 1 clic</button>';
+    }
     $('send').textContent = e.places === 0 ? T('M\'inscrire sur la liste d\'attente', 'M\'inscrire sur la liste d\'attente') : T('Je participe', 'Je m\'inscris');
     $('projet').scrollIntoView({ behavior: 'smooth' });
     setTimeout(() => { const x = $('prenom'); if (x) x.focus(); }, 400);
