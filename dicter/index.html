@@ -1040,7 +1040,7 @@ async function creerInstr() {
     chargerInstr();
   } catch (e) { if (w) w.close(); b.disabled = false; b.textContent = 'Enregistrer et imprimer le bon'; $('err').textContent = e.message === 'code' ? 'Session expirée.' : 'Non enregistré : ' + e.message; }
 }
-// Bon de réparation à glisser dans le colis du fournisseur (sans le nom du cabinet : seulement notre référence)
+// Bon de réparation à glisser dans le colis du fournisseur (avec le praticien, pour le suivi)
 function bonInstr(x, w) {
   if (!x) return;
   w = w || window.open('', '_blank');
@@ -1058,7 +1058,7 @@ function bonInstr(x, w) {
     '<h2>Instrument</h2><table>' + ligne('Marque', x.marque) + ligne('Instrument', x.type) + ligne('Modèle / référence', x.modele) + ligne('N° de série', x.serie || 'non relevé') + '</table>' +
     '<h2>Panne constatée</h2><table>' + ligne('Description', x.panne) + ligne('Date de la panne', x.datePanne) + '</table>' +
     '<div class="gar ' + (x.garantieDemandee ? 'oui' : 'non') + '">' + (x.garantieDemandee ? '☑ Prise sous garantie demandée' + (achat ? ' · ' + esc(achat) : '') : '☐ Hors garantie : merci de nous adresser un devis avant toute réparation') + '</div>' +
-    '<h2>Références</h2><table>' + ligne('Notre référence', x.n) + ligne('Votre n° de dossier', x.dossier) + '</table>' +
+    '<h2>Praticien et suivi</h2><table>' + ligne('Praticien / cabinet', x.cabinet) + ligne('Contact', x.contact) + ligne('Notre référence', x.n) + ligne('Votre n° de dossier', x.dossier) + '</table>' +
     '<p class="ad" style="margin-top:14px">Merci d\'envoyer le devis et le suivi à <b>contact@alternativedentaire.fr</b> en rappelant la référence <b>' + esc(x.n) + '</b>, et de nous retourner l\'instrument à l\'adresse ci-dessus.</p>' +
     '<div class="sig"><div>Remis par Alternative Dentaire</div><div>Reçu par le fournisseur</div></div>' +
     '<div class="no"><button onclick="window.print()" style="font:inherit;font-size:16px;padding:12px 18px;border-radius:10px;border:2px solid #E3A72F;background:#0F2347;color:#fff;font-weight:700">🖨 Imprimer</button></div>' +
