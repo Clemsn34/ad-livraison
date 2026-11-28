@@ -606,62 +606,51 @@ function blocEnvoi() {
     '<textarea id="jmsg" rows="12" style="font-size:14px">' + esc(PJ.msg) + '</textarea>' +
     '<div style="display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--muted)"><span style="flex:1">Ta signature et nos coordonnées sont ajoutées. Tu reçois une copie avec le nom du praticien et la version (v1, v2…).</span>' + (PJ.msgPerso ? '<button class="ret" id="jmsgr" style="margin:0;padding:4px 8px">↺ Message type</button>' : '') + '</div>';
 }
-// ----- Devis type (création de cabinet, devis pour la banque) -----
-const SPECS = {
-  'Omnipratique': { f: ['Belmont', /S6 Standard · Complet/] },
-  'Orthodontie': { f: ['Airel Quetin', /ORTHO · Seringue, turbine, 1 micromoteur/], pano: /8100 ?SC.*c[ée]phalom[ée]trique\)$|8100 ?SC/i, sansIntra: true },
-  'Implantologie': { f: ['Belmont', /S6 Standard · Complet/], cbct: true, extra: [["Moteur d'implantologie", 'NSK', /^Moteur implantologie Surgic Pro2 lumi/i]] },
-  'Parodontie': { f: ['Belmont', /S6 Standard · Complet/], extra: [['Aéropolisseur / prophylaxie', 'EMS', /AIRFLOW/i]] },
-  'Pédodontie': { f: ['Belmont', /S6 Standard · Complet/] }
-};
-function choixCat(piece, eq, marque, re) {
+// ----- Devis type (création de cabinet, devis pour la banque) : onglet « Devis types » du tableau -----
+function specsTypes() { return [...new Set(((CAT && CAT.devisTypes) || []).map(r => r.spec).filter(x => x !== 'Tous'))]; }
+function trouverCode(piece, eq, code) {
   const P = CAT.pieces.find(x => x.piece === piece), E = P && P.equipements.find(e => e.equip === eq); if (!E) return null;
-  const M = E.marques.find(x => x.marque === marque); if (!M) return { marque: '', modele: '' };
-  const l = estConfig(M) ? M.modeles.filter(x => / · /.test(x.modele)) : modelesDe(M), m = re ? l.find(x => re.test(x.modele)) : null;
-  return { marque, modele: m ? m.modele : (re ? '' : (l[0] ? l[0].modele : '')) };
+  if (code.indexOf('|') > 0) { const [mq, mo] = code.split('|'); return { marque: mq.trim(), modele: mo.trim(), M: E.marques.find(x => x.marque === mq.trim()) }; }
+  for (const M of E.marques) { const x = M.modeles.find(y => y.code === code); if (x) return { marque: M.marque, modele: x.modele, M }; }
+  if (E.code === code) return { marque: '', modele: '' };
+  return null;
 }
-function genererDevisType(spec, n) {
-  const S = SPECS[spec]; if (!S || !CAT) return;
+function genererDevisType(spec, n, chir) {
+  const L = (CAT && CAT.devisTypes) || []; if (!L.length) { alert('Aucun devis type : remplir l\'onglet « Devis types » du tableau.'); return; }
+  const c = chir ? 1 : 0, manquants = [];
+  const qte = q => String(q || '1').split('+').reduce((a, t) => a + (t.trim() === 'n' ? n : t.trim() === 'c' ? c : (Number(t) || 0)), 0) || 1;
+  const si = x => { if (!x) return true; if (x === 'chir') return chir; const m = /^n\s*(=|>=|<=|>|<)\s*(\d+)$/.exec(x); if (!m) return true; const v = +m[2]; return { '=': n === v, '>=': n >= v, '<=': n <= v, '>': n > v, '<': n < v }[m[1]]; };
+  const specif = L.filter(r => r.spec === spec), cle = r => r.piece + '|' + r.equip;
+  const lignes = specif.concat(L.filter(r => r.spec === 'Tous' && !specif.some(x => cle(x) === cle(r)))).filter(r => si(r.si));
   const vide = piece => { const P = CAT.pieces.find(x => x.piece === piece), it = {}; if (P) P.equipements.forEach(e => { it[e.equip] = { on: false, marque: '', modele: '', options: [], qte: 1, note: '', offert: !!e.offert }; }); return it; };
-  const mettre = (items, piece, eq, marque, re, qte) => { if (!(eq in items)) return; const c = marque ? choixCat(piece, eq, marque, re) : { marque: '', modele: '' }; if (!c) return; Object.assign(items[eq], { on: true, marque: c.marque, modele: c.modele, qte: qte || 1 }); if (c.modele && / · /.test(c.modele)) items[eq].gamme = c.modele.split(' · ')[0]; };
+  const mettre = (items, r) => {
+    const t = trouverCode(r.piece, r.equip, r.code); if (!t || !(r.equip in items)) { manquants.push(r.equip + ' (' + r.code + ')'); return; }
+    const opts = r.options.map(oc => { const o = t.M && (t.M.options || []).find(x => x.code === oc); return o ? o.option : null; }).filter(Boolean);
+    Object.assign(items[r.equip], { on: true, marque: t.marque, modele: t.modele, qte: qte(r.qte), options: opts, offert: r.offert || items[r.equip].offert });
+    if (t.modele && / · /.test(t.modele)) items[r.equip].gamme = t.modele.split(' · ')[0];
+  };
+  const pieces = [...new Set(lignes.map(r => r.piece))], ordre = CAT.pieces.map(P => P.piece);
   PJ.salles = [];
-  for (let i = 1; i <= n; i++) {
-    const it = vide('Salle de soins'), SC = 'Salle de soins';
-    mettre(it, SC, 'Fauteuil / unit', S.f[0], S.f[1]);
-    mettre(it, SC, 'Scialytique', 'Belmont', /D212W/);
-    mettre(it, SC, 'Tabouret praticien', 'Support Design', /Perfect Lite en skaï standard$/);
-    mettre(it, SC, 'Tabouret assistante', 'Support Design', /Perfect Lite en skaï standard$/);
-    if (!S.sansIntra) { mettre(it, SC, 'Générateur radio intrabuccal', 'Carestream', /^Générateur CS 2200 mural bras court 170 cm$/); if (i === 1) mettre(it, SC, 'Capteur radio', 'Carestream', /^Capteur RVG 6200/); }
-    if (i === 1) (S.extra || []).forEach(x => mettre(it, SC, x[0], x[1], x[2]));
-    PJ.salles.push({ piece: SC, salle: i, items: it, ouvert: i === 1 });
-  }
-  const st = vide('Stérilisation');
-  mettre(st, 'Stérilisation', 'Autoclave', 'Melag', /Vacuklav 44B/); mettre(st, 'Stérilisation', 'Soudeuse', 'Melag'); mettre(st, 'Stérilisation', 'Bac à ultrasons', 'Gamasonic', /SNC30 Encastrable - 30/); mettre(st, 'Stérilisation', 'Traçabilité', 'Melag');
-  PJ.salles.push({ piece: 'Stérilisation', salle: 1, items: st, ouvert: false });
-  const ra = vide('Radiologie');
-  if (S.cbct) mettre(ra, 'Radiologie', 'Cône beam 3D', 'Carestream', /CS ?8100 ?3D/i); else mettre(ra, 'Radiologie', 'Panoramique', 'Carestream', S.pano || /^Panoramique CS 8100 \+ contrat/);
-  PJ.salles.push({ piece: 'Radiologie', salle: 1, items: ra, ouvert: false });
-  const lt = vide('Local technique');
-  mettre(lt, 'Local technique', 'Compresseur', 'Dürr Dental', n <= 1 ? /TORNADO T1/i : /^NEW Tornado 2 Compresseur avec dessiccateur à membranes avec capot/);
-  mettre(lt, 'Local technique', 'Aspiration', 'Dürr Dental', n <= 1 ? (spec === 'Orthodontie' ? /VS 300S Orthodontie/ : /VS 300S Omnipratique/) : n === 2 ? /VS 600S \(2/ : /VS 900S \(3/);
-  PJ.salles.push({ piece: 'Local technique', salle: 1, items: lt, ouvert: false });
-  const inf = vide('Informatique');
-  Object.keys(inf).forEach(k => { if (/Poste accueil|NAS/.test(k)) inf[k].on = true; if (/Tour PC/.test(k)) { inf[k].on = true; inf[k].qte = n; } if (/^Écran$/.test(k)) { inf[k].on = true; inf[k].qte = n + 1; } if (/Clavier/.test(k)) { inf[k].on = true; inf[k].qte = n + 1; } });
-  PJ.salles.push({ piece: 'Informatique', salle: 1, items: inf, ouvert: false });
-  const dm = vide('Démarrage');
-  Object.keys(dm).forEach(k => { if (/Forfait clé en main|AFGSU|Contrat d'entretien/.test(k)) dm[k].on = true; });
-  PJ.salles.push({ piece: 'Démarrage', salle: 1, items: dm, ouvert: false });
-  PJ.salles = PJ.salles.filter(x => CAT.pieces.some(P => P.piece === x.piece));
+  pieces.sort((a, b) => (a === 'Salle de soins' ? -2 : a === 'Salle de chirurgie' ? -1 : ordre.indexOf(a)) - (b === 'Salle de soins' ? -2 : b === 'Salle de chirurgie' ? -1 : ordre.indexOf(b))).forEach(piece => {
+    if (!CAT.pieces.some(P => P.piece === piece)) return;
+    const lp = lignes.filter(r => r.piece === piece);
+    if (piece === 'Salle de soins') {
+      for (let i = 1; i <= n; i++) { const it = vide(piece); lp.filter(r => r.parSalle || i === 1).forEach(r => mettre(it, r)); PJ.salles.push({ piece, salle: i, items: it, ouvert: i === 1 }); }
+    } else { const it = vide(piece); lp.forEach(r => mettre(it, r)); PJ.salles.push({ piece, salle: 1, items: it, ouvert: false }); }
+  });
   PJ.contexte = (CAT.contextes || []).includes('Installation') ? 'Installation' : PJ.contexte; PJ.recap = true; PJ.docs = true; PJ.msgPerso = false; PJ.typeOuvert = false;
-  PJ.note = ('Devis type ' + spec.toLowerCase() + ' – ' + n + ' salle' + (n > 1 ? 's' : '') + ' de soins (création de cabinet, dossier banque).' + (PJ.note ? '\n' + PJ.note : '')).trim();
+  PJ.note = ('Devis type ' + spec.toLowerCase() + ' – ' + n + ' salle' + (n > 1 ? 's' : '') + ' de soins' + (chir ? ' + salle de chirurgie' : '') + ' (création de cabinet, dossier banque).').trim();
   const est = estimationTTC(); if (est.ttc) PJ.finMontant = Math.round(est.ttc);
   sauverPJ(); afficherDevis();
+  if (manquants.length) alert('Articles introuvables dans le catalogue (à vérifier dans l\'onglet « Devis types ») :\n' + manquants.join('\n'));
 }
+function chirType() { return PJ.typeChir != null ? PJ.typeChir : (PJ.typeSpec || 'Omnipratique') !== 'Orthodontie'; }
 function blocDevisType() {
   if (!PJ.typeOuvert) return '<button class="ret" id="jtype" style="align-self:flex-start;border-color:var(--gold)">⚡ Devis type (création de cabinet)</button>';
-  return '<div class="pj-salle" style="border-color:var(--gold)"><h3 style="margin:0 0 6px">⚡ Devis type</h3><div class="cf-t">Spécialité</div><div class="chips" id="jtsp">' + Object.keys(SPECS).map(x => '<button data-sp="' + esc(x) + '" class="' + ((PJ.typeSpec || 'Omnipratique') === x ? 'on' : '') + '">' + esc(x) + '</button>').join('') + '</div>' +
+  return '<div class="pj-salle" style="border-color:var(--gold)"><h3 style="margin:0 0 6px">⚡ Devis type</h3><div class="cf-t">Spécialité</div><div class="chips" id="jtsp">' + specsTypes().map(x => '<button data-sp="' + esc(x) + '" class="' + ((PJ.typeSpec || 'Omnipratique') === x ? 'on' : '') + '">' + esc(x) + '</button>').join('') + '</div>' +
+    '<label class="pj-sw"><input type="checkbox" id="jtchir"' + (chirType() ? ' checked' : '') + '>Avec une salle de chirurgie séparée</label>' +
     '<div class="cf-t">Nombre de salles de soins</div><div class="chips" id="jtnb">' + [1, 2, 3, 4, 5].map(x => '<button data-nb="' + x + '" class="' + ((PJ.typeNb || 1) === x ? 'on' : '') + '">' + x + '</button>').join('') + '</div>' +
-    '<p style="font-size:12.5px;color:var(--muted);margin:6px 0">Fauteuil, scialytique, tabourets, radio, stérilisation, panoramique, local technique, informatique et forfait clé en main. Tout reste modifiable ensuite. ' + (PJ.salles.length ? '<b>Le devis en cours sera remplacé.</b>' : '') + '</p>' +
+    '<p style="font-size:12.5px;color:var(--muted);margin:6px 0">Composition tirée de l\'onglet « Devis types » du tableau (modifiable). Tout reste modifiable ensuite dans le devis. ' + (PJ.salles.length ? '<b>Le devis en cours sera remplacé.</b>' : '') + '</p>' +
     '<div style="display:flex;gap:8px"><button class="btn" id="jtgo" style="flex:1">Préparer le devis type</button><button class="ret" id="jtx" style="margin:0">Annuler</button></div></div>';
 }
 const eqDe = (piece, nom) => { const P = CAT.pieces.find(x => x.piece === piece); return P ? P.equipements.find(e => e.equip === nom) : null; };
@@ -779,9 +768,10 @@ function afficherDevis() {
   if ($('jmsgr')) $('jmsgr').onclick = () => { PJ.msgPerso = false; reEnv(); };
   if ($('jtype')) $('jtype').onclick = () => { PJ.typeOuvert = true; reEnv(); };
   if ($('jtx')) $('jtx').onclick = () => { PJ.typeOuvert = false; reEnv(); };
-  if ($('jtsp')) $('jtsp').onclick = e => { const b = e.target.closest('button'); if (!b) return; PJ.typeSpec = b.dataset.sp; reEnv(); };
+  if ($('jtsp')) $('jtsp').onclick = e => { const b = e.target.closest('button'); if (!b) return; PJ.typeSpec = b.dataset.sp; PJ.typeChir = null; reEnv(); };
   if ($('jtnb')) $('jtnb').onclick = e => { const b = e.target.closest('button'); if (!b) return; PJ.typeNb = +b.dataset.nb; reEnv(); };
-  if ($('jtgo')) $('jtgo').onclick = () => genererDevisType(PJ.typeSpec || 'Omnipratique', PJ.typeNb || 1);
+  if ($('jtgo')) $('jtgo').onclick = () => genererDevisType(PJ.typeSpec || 'Omnipratique', PJ.typeNb || 1, chirType());
+  if ($('jtchir')) $('jtchir').onchange = e => { PJ.typeChir = e.target.checked; sauverPJ(); };
   
   $('jctx').onclick = e => { const b = e.target.closest('button'); if (!b) return; PJ.contexte = b.dataset.c; ls.set('dict_ctx', PJ.contexte); sauverPJ(); afficherDevis(); };
   const it = k => { const [si, eq] = [k.slice(0, k.indexOf('|')), k.slice(k.indexOf('|') + 1)]; return PJ.salles[+si].items[eq]; };
