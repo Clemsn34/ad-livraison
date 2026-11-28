@@ -894,6 +894,9 @@ const I_MODELES = {
   'EMS': ['Piezon', 'Airflow Prophylaxis Master', 'Airflow handy 3.0', 'Piezon Master 700'],
   'Dentsply Sirona': ['T1 Line', 'T2 Line', 'T3 Line', 'Cavitron', 'SiroAir'],
 };
+// Marques dont on ne fait pas les réparations : orienter le praticien ailleurs
+const I_NON_REPARE = /^(W&H|KaVo|Dentsply Sirona)$/;
+const I_MSG_NON = 'Nous ne prenons pas en charge les réparations de cette marque. Orientez le praticien vers La Clinique de l\'Instrument ou un autre réparateur.';
 const I_ETAPES = ['À récupérer chez le praticien', 'Récupéré', 'Demande de devis faite', 'Devis fait', 'Devis accepté', 'Devis refusé', 'Retour demandé', 'Retourné au client'];
 const I_SUIV = { 'À récupérer chez le praticien': ['Récupéré'], 'Récupéré': ['Demande de devis faite'], 'Demande de devis faite': ['Devis fait'], 'Devis fait': ['Devis accepté', 'Devis refusé'], 'Devis accepté': ['Retour demandé'], 'Devis refusé': ['Retour demandé'], 'Retour demandé': ['Retourné au client'] };
 let INSTR = null, IF = null, IOUV = '';
@@ -988,6 +991,7 @@ function formInstr() {
   const mods = I_MODELES[IF.marque] || [];
   $('iZone').innerHTML = '<label>Cabinet / praticien</label><input id="iCab" list="cabs" value="' + esc(IF.cabinet) + '" placeholder="Nom du cabinet">' +
     '<label>Marque</label>' + chips('iMq', I_MARQUES, IF.marque) +
+    (I_NON_REPARE.test(IF.marque) ? '<div class="err" style="text-align:left;background:#FDECEA;border-radius:10px;padding:10px 12px;font-weight:700">⛔ ' + esc(I_MSG_NON) + '</div>' : '') +
     '<label>Instrument</label>' + chips('iTy', I_TYPES, IF.type) +
     '<label>Modèle</label><input id="iMo" list="iMods" value="' + esc(IF.modele) + '" placeholder="Ex. : Ti-Max Z95L, Nano95LS…"><datalist id="iMods">' + mods.map(m => '<option value="' + esc(m) + '">').join('') + '</datalist>' +
     (mods.length ? '<div class="chips" id="iMoC">' + mods.slice(0, 12).map(m => '<button data-v="' + esc(m) + '" class="' + (IF.modele === m ? 'on' : '') + '" style="font-size:13px;padding:4px 10px">' + esc(m) + '</button>').join('') + '</div>' : '') +
@@ -1025,6 +1029,7 @@ async function creerInstr() {
   $('err').textContent = '';
   if (IF.cabinet.length < 2) { $('err').textContent = 'Indiquez le cabinet.'; return; }
   if (!IF.marque && !IF.type) { $('err').textContent = 'Choisissez la marque et l\'instrument.'; return; }
+  if (I_NON_REPARE.test(IF.marque)) { $('err').textContent = I_MSG_NON; return; }
   if (IF.panne.length < 3) { $('err').textContent = 'Décrivez la panne.'; return; }
   const c = D && D.cabinets ? D.cabinets.find(x => norm(x.nom) === norm(IF.cabinet)) : null;
   const st = (document.querySelector('#iSt button.on') || { dataset: { v: 'Récupéré' } }).dataset.v;

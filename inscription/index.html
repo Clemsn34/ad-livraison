@@ -134,6 +134,7 @@
         <p class="sub" style="margin:0 0 6px">Nous passons récupérer l'instrument, l'envoyons au fabricant et vous adressons le devis.</p>
         <label>Marque</label>
         <div class="chips" id="rMq"></div>
+        <p class="err" id="rNon" style="display:none;text-align:left;background:#FDECEA;border-radius:10px;padding:10px 12px;font-weight:700"></p>
         <label>Instrument</label>
         <div class="chips" id="rTy"></div>
         <div class="row">
@@ -324,12 +325,15 @@
   }
 
   // ----- Réparation d'instrument -----
-  const R_MQ = ['NSK', 'Bien-Air', 'W&H', 'KaVo', 'Acteon', 'EMS', 'Autre / je ne sais pas'];
+  const R_MQ = ['NSK', 'Bien-Air', 'W&H', 'KaVo', 'Sirona', 'Acteon', 'EMS', 'Autre / je ne sais pas'];
+  // Marques que nous ne réparons pas
+  const R_NON = /^(W&H|KaVo|Sirona)$/, R_MSG = 'Nous ne prenons pas en charge les réparations de cette marque. Nous vous conseillons de contacter La Clinique de l\'Instrument ou un autre réparateur.';
   const R_TY = ['Turbine', 'Contre-angle', 'Pièce à main', 'Micromoteur', 'Détartreur', 'Moteur de chirurgie', 'Autre'];
   function ouvrirRepar() {
     $('reparCorps').style.display = 'block'; $('reparOnglet').querySelector('em').textContent = '▲';
     if (!$('rMq').innerHTML) {
       $('rMq').innerHTML = R_MQ.map(t => '<label><input type="radio" name="rmq" value="' + esc(t) + '">' + esc(t) + '</label>').join('');
+      $('rMq').onchange = () => { const v = (document.querySelector('input[name=rmq]:checked') || {}).value || ''; $('rNon').style.display = R_NON.test(v) ? 'block' : 'none'; $('rNon').textContent = '⛔ ' + R_MSG; };
       $('rTy').innerHTML = R_TY.map(t => '<label><input type="radio" name="rty" value="' + esc(t) + '">' + esc(t) + '</label>').join('');
       let p = null; try { p = JSON.parse(localStorage.getItem('ad_etudiant') || 'null'); } catch (e) {}
       if (p) { $('rNom').value = [p.prenom, p.nom].filter(Boolean).join(' '); $('rTel').value = p.portable || ''; $('rMail').value = p.email || ''; $('rCab').value = [p.cabinet, p.ville].filter(Boolean).join(', '); }
@@ -345,6 +349,7 @@
       prenom: parts.length > 1 ? parts.slice(0, -1).join(' ') : '', nom: parts.length > 1 ? parts[parts.length - 1] : nomComplet, portable: $('rTel').value.trim(), email: $('rMail').value.trim(), cabinet: cabv[0] || '', ville: cabv.slice(1).join(', ') };
     const err = $('rErr');
     if (!ty && !mq) { err.textContent = 'Choisissez la marque ou l\'instrument.'; return; }
+    if (mq && R_NON.test(mq.value)) { err.textContent = R_MSG; return; }
     if (req.panne.length < 3) { err.textContent = 'Dites-nous en quelques mots ce qui ne va pas.'; return; }
     if (nomComplet.length < 2) { err.textContent = 'Indiquez votre nom.'; return; }
     if (req.portable.replace(/\D/g, '').length < 9) { err.textContent = 'Indiquez votre numéro de téléphone.'; return; }
