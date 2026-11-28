@@ -171,15 +171,15 @@
     document.getElementById('moi').innerHTML = esc(D.moi.prenom + ' ' + D.moi.nom) + '<small>' + esc(D.moi.poste || D.moi.role) + ' · ' + esc(D.moi.societe) +
       (D.partage ? ' · <a href="#" onclick="changerQui();return false" style="color:inherit">changer</a>' : '') + '</small>';
     const retard = mesTaches().filter(t => t.statut !== 'Fait' && jour(t.echeance) && jour(t.echeance) <= auj).length;
-    let tabs = [['taches', 'Mes tâches', retard]].concat(D.estAD ? [['clients', 'Clients'], ['installs', 'Installations']] : [], D.prets ? [['prets', 'Prêts'], ['atelier', 'Atelier']] : [], D.devis ? [['devis', 'Devis entretien']] : [], D.publier !== false ? [['publier', 'Publier']] : [], D.revisions ? [['revs', 'Révisions']] : [], D.conso ? [['conso', 'Consommables']] : [],
-      D.estAD ? [['demandes', 'Demandes des cabinets']] : [], [['docs', 'Documents'], ['orga', 'Organigramme'], ['aide', 'Mode d\'emploi']]);
+    let tabs = [['taches', 'Mes tâches', retard]].concat(D.estAD ? [['clients', 'Clients'], ['installs', 'Installations']] : [], D.prets ? [['prets', 'Prêts'], ['atelier', 'Atelier']] : [], D.estAD ? [['instr', 'Réparations instruments']] : [], D.devis ? [['devis', 'Devis entretien']] : [], D.publier !== false ? [['publier', 'Publier']] : [], D.revisions ? [['revs', 'Révisions']] : [], D.conso ? [['conso', 'Consommables']] : [],
+      D.estAD ? [['demandes', 'Demandes des cabinets'], ['doctech', 'Doc technique'], ['financement', 'Financement']] : [], D.prospects ? [['prospects', 'Prospects']] : [], [['docs', 'Documents'], ['aide', 'Mode d\'emploi']]);
     // Le gérant voit tout, dans les deux applis
     if (D.voitTout) { /* tous les onglets */ }
-    else if (APP === 'conso') tabs = [['taches', 'Mes tâches', retard], ['clients', 'Clients']].concat(D.publier !== false ? [['publier', 'Publier']] : [], [['conso', 'Consommables'], ['demandes', 'Demandes des cabinets'], ['docs', 'Documents'], ['orga', 'Organigramme'], ['aide', 'Mode d\'emploi']]);
+    else if (APP === 'conso') tabs = [['taches', 'Mes tâches', retard], ['clients', 'Clients']].concat(D.publier !== false ? [['publier', 'Publier']] : [], [['conso', 'Consommables'], ['demandes', 'Demandes des cabinets']], D.prospects ? [['prospects', 'Prospects']] : [], [['docs', 'Documents'], ['aide', 'Mode d\'emploi']]);
     else if (D.estAD) tabs = tabs.filter(t => t[0] !== 'conso');
     if (!tabs.some(t => t[0] === onglet)) onglet = 'taches';
     document.getElementById('nav').innerHTML = tabs.map(t => '<button class="' + (onglet === t[0] ? 'on' : '') + '" onclick="aller(\'' + t[0] + '\')">' + t[1] + (t[2] ? '<span class="nb">' + t[2] + '</span>' : '') + '</button>').join('');
-    ({ taches: vueTaches, clients: vueClients, installs: vueInstalls, conso: vueConso, demandes: vueDemandes, orga: vueOrga, docs: vueDocs, revs: vueRevs, chantiers: vueChantiers, devis: vueDevis, prets: vuePrets, atelier: vueAtelier, publier: vuePublier, aide: vueAide })[onglet]();
+    ({ taches: vueTaches, clients: vueClients, installs: vueInstalls, conso: vueConso, demandes: vueDemandes, orga: vueOrga, docs: vueDocs, revs: vueRevs, chantiers: vueChantiers, devis: vueDevis, prets: vuePrets, atelier: vueAtelier, instr: vueInstr, publier: vuePublier, aide: vueAide, doctech: vueDocTech, prospects: vueProspects, financement: vueFinancement })[onglet]();
   }
   function aller(o) { onglet = o; PD = []; facVue = false; afficher(); }
 
@@ -207,12 +207,14 @@
         (t.techs || t.duree ? '<div style="margin-top:4px">' + (t.techs ? '<span class="bdg t">👷 ' + esc(t.techs) + ' technicien' + (t.techs > 1 ? 's' : '') + '</span>' : '') + (t.duree ? '<span class="bdg t">⏱ ' + esc(t.duree) + '</span>' : '') + '</div>' : '') +
         '<div class="meta">' + bd + (t.install && t.cabinet ? 'Installation ' + esc(t.install) + ' · ' : '') + (filtreTaches !== 'moi' || pourDe(t).length > 1 ? 'pour ' + esc(t.pour) : '') + (fait ? ' · fait par ' + esc(t.faitPar) + ' le ' + esc(t.faitLe) : '') + '</div>' +
         (t.detail ? '<div class="meta">' + esc(t.detail) + '</div>' : '') +
+        (t.projet ? '<div style="margin-top:6px"><a class="bdg" style="text-decoration:none" href="https://clemsn34.github.io/ad-livraison/dicter/?devis=' + encodeURIComponent(t.projet) + '" target="_blank">📋 Rouvrir le devis ' + esc(t.projet) + ' pour le modifier</a></div>' : '') +
         (infosEdit === t.n ? '<div style="margin-top:8px"><div class="g2"><div><label>Client / cabinet (vide = interne)</label><input id="ie_c" list="cabs" value="' + esc(k && t.cabinet ? t.cabinet : (k && !t.install ? k.c : '')) + '"></div><div><label>Tâche</label><textarea id="ie_t" rows="2">' + esc(t.cabinet || !k || t.install ? t.titre : k.t) + '</textarea></div></div>' +
           '<label>Détail</label><input id="ie_dt" value="' + esc(t.detail || '') + '">' +
           '<div class="g3"><div><label>Techniciens à prévoir</label><select id="ie_n">' + optTechs(t.techs) + '</select></div><div><label>Temps à prévoir</label><select id="ie_d">' + optDuree(t.duree) + '</select></div><div><label>Pièces</label><select id="ie_p">' + ['', 'À commander', 'Commandée', 'Reçue – RDV à prendre'].map(x => '<option value="' + esc(x) + '"' + ((t.pieces || '') === x ? ' selected' : '') + '>' + (x || 'Pas de pièce') + '</option>').join('') + '</select></div></div>' + datalistCabs() +
-          '<div class="toolbar" style="margin-top:6px"><button class="btn" onclick="enregInfos(this,\'' + esc(t.n) + '\')">Enregistrer</button><button class="btn-light" onclick="infosEdit=\'\';afficher()">Annuler</button></div></div>' : '') +
+          '<div class="toolbar" style="margin-top:6px"><button class="btn" onclick="enregInfos(this,\'' + esc(t.n) + '\')">Enregistrer</button><button class="btn-light" onclick="infosEdit=\'\';afficher()">Annuler</button>' + (D.voitTout || t.par === D.moi.prenom ? '<button class="btn-light" style="margin-left:auto;color:var(--ko)" onclick="supprTache(this,\'' + esc(t.n) + '\')">🗑 Supprimer</button>' : '') + '</div></div>' : '') +
+        (rdvEdit === t.n ? formRdv(t, k) : '') +
         (attribuant === t.n ? '<div style="margin-top:8px">' + chipsPour('at_' + t.n, pourDe(t)) + '<div class="toolbar" style="margin-top:6px"><button class="btn" onclick="attribuer(this,\'' + esc(t.n) + '\')">Attribuer</button><button class="btn-light" onclick="attribuant=\'\';afficher()">Annuler</button></div></div>' : '') + '</div>' +
-        (!fait && attribuant !== t.n && infosEdit !== t.n ? '<div style="display:flex;flex-direction:column;gap:6px"><button class="btn-light" title="Attribuer à une ou plusieurs personnes" onclick="attribuant=\'' + esc(t.n) + '\';afficher()">👥</button><button class="btn-light" title="Modifier la tâche (texte, cabinet, techniciens, temps)" onclick="infosEdit=\'' + esc(t.n) + '\';afficher()">✎</button></div>' : '') + '</div></div>';
+        (!fait && attribuant !== t.n && infosEdit !== t.n && rdvEdit !== t.n ? '<div style="display:flex;flex-direction:column;gap:6px">' + (D.extrabat && k ? '<button class="btn-light" title="Créer le rendez-vous dans l\'agenda Extrabat" onclick="rdvEdit=\'' + esc(t.n) + '\';afficher()">📅</button>' : '') + '<button class="btn-light" title="Attribuer à une ou plusieurs personnes" onclick="attribuant=\'' + esc(t.n) + '\';afficher()">👥</button><button class="btn-light" title="Modifier la tâche (texte, cabinet, techniciens, temps)" onclick="infosEdit=\'' + esc(t.n) + '\';afficher()">✎</button></div>' : '') + '</div></div>';
     };
     const af = liste.filter(t => t.statut !== 'Fait');
     [['Clients', af.filter(t => cli(t))], ['Interne', af.filter(t => !cli(t))], ['Faites ces 14 derniers jours', liste.filter(t => t.statut === 'Fait')]].forEach(([titre, l]) => {
@@ -239,6 +241,12 @@
     const av = t.pieces; t.pieces = E[i + 1]; afficher();
     const r = await api('tache_pieces', { n, pieces: t.pieces }); if (!r.ok) { t.pieces = av; afficher(); alert(r.message); } else ecrireCache(D);
   }
+  async function supprTache(b, n) {
+    if (!confirm('Supprimer définitivement cette tâche ?')) return;
+    b.disabled = true; const r = await api('tache_supprimer', { n });
+    if (!r.ok) { b.disabled = false; alert(r.message); return; }
+    D.taches = D.taches.filter(x => x.n !== n); infosEdit = ''; ecrireCache(D); afficher();
+  }
   async function cocher(n, fait) {
     const t = D.taches.find(x => x.n === n); if (t) { t.statut = fait ? 'Fait' : 'À faire'; t.faitPar = D.moi.prenom; t.faitLe = new Date().toLocaleDateString('fr-FR'); }
     afficher(); await api('tache_fait', { n, fait });
@@ -250,7 +258,11 @@
     const pour = cochés('ntP'); if (!pour.length) { document.getElementById('ntErr').textContent = 'Choisissez au moins une personne.'; return; }
     const r = await api('tache_ajouter', { titre: v('ntT'), pour, cabinet: v('ntC'), detail: v('ntD'), techs: v('ntN'), duree: v('ntDu'), pieces: v('ntPc') });
     if (!r.ok) { b.disabled = false; document.getElementById('ntErr').textContent = r.message; return; }
-    await charger();
+    // Affichée tout de suite ; la liste complète se recharge ensuite sans bloquer
+    D.taches.unshift({ n: r.n, cree: new Date().toISOString(), titre: v('ntT'), detail: v('ntD'), cabinet: v('ntC'), install: '', pour: pour.join(', '), echeance: '', statut: 'À faire', techs: v('ntN'), duree: v('ntDu'), pieces: v('ntPc') });
+    try { ecrireCache(D); } catch (e) {}
+    afficher();
+    charger();
   }
   function datalistCabs() { return '<datalist id="cabs">' + D.cabinets.map(c => '<option value="' + esc(c.nom) + '">' + esc(c.id + (c.ville ? ' · ' + c.ville : '')) + '</option>').join('') + '</datalist>'; }
 
@@ -679,7 +691,10 @@
   // Dossier « Praticiens » du Drive : dossier technique, plan, et tout le dossier (consultable sans compte Google)
   async function chargerCabPrat() {
     const z = document.getElementById('cabPrat'); if (!z) return;
-    let r; try { r = await api('client_dossiers', { cabId: z.dataset.id, cabinet: z.dataset.nom, contact: z.dataset.contact }); } catch (e) { r = { ok: false, message: 'Connexion impossible.' }; }
+    const cleP = 'prat|' + z.dataset.id;
+    let r = MEMO[cleP];
+    if (!r) { try { r = await api('client_dossiers', { cabId: z.dataset.id, cabinet: z.dataset.nom, contact: z.dataset.contact }); } catch (e) { r = { ok: false, message: 'Connexion impossible.' }; } if (r.ok) MEMO[cleP] = r; }
+    else setTimeout(() => api('client_dossiers', { cabId: z.dataset.id, cabinet: z.dataset.nom, contact: z.dataset.contact }).then(x => { if (x.ok) MEMO[cleP] = x; }).catch(() => {}), 50);
     if (!r.ok) { z.innerHTML = '<div class="meta">' + esc(r.message) + '</div>'; return; }
     const p = r.prat;
     if (!p) { z.innerHTML = '<div class="meta">Aucun dossier praticien trouvé à ce nom dans le Drive (dossier « Praticiens »).</div>'; return; }
@@ -690,11 +705,105 @@
       '<a class="btn-light" style="text-decoration:none;display:inline-block" href="' + esc(p.url) + '" target="_blank">Ouvrir dans Google Drive</a></div>' +
       '<div class="meta">Dossier Drive : ' + esc(p.nom) + (p.dt ? '' : ' · pas de PDF « dossier technique » dedans') + '</div>';
   }
-  async function chargerCabDocs() {
+  // Onglet Financement : proposition seule (montant + nom facultatif) → PDF téléchargé
+  function vueFinancement() {
+    document.getElementById('main').innerHTML = '<h2>Financement</h2><p class="sub">Indiquez le montant TTC : la proposition Dentaire Finance (loyers identiques et 1er loyer majoré) sort en PDF aux couleurs d\'Alternative Dentaire. Pour la ranger dans le dossier d\'un praticien, passez plutôt par sa fiche client.</p>' +
+      '<div class="card"><div class="g2"><div><label>Montant du projet TTC</label><input id="fsM" type="number" inputmode="decimal" placeholder="Ex. : 24500"></div><div><label>Nom sur la proposition (facultatif)</label><input id="fsN" placeholder="Ex. : Dr Martin"></div></div>' +
+      '<label>E-mail du praticien (pour lui envoyer)</label><input id="fsMail" type="email" placeholder="praticien@exemple.fr">' +
+      '<p class="err" id="fsE"></p><div class="toolbar"><button class="btn" onclick="finSimple(this, true)">✉ Envoyer par e-mail</button><button class="btn-light" onclick="finSimple(this, false)">📄 Créer le PDF seulement</button></div><div id="fsR"></div></div>';
+  }
+  async function finSimple(b, envoyer) {
+    const mt = Number(String(document.getElementById('fsM').value).replace(',', '.')), e = document.getElementById('fsE'), out = document.getElementById('fsR'), mail = document.getElementById('fsMail').value.trim();
+    e.textContent = ''; if (!(mt >= 1000 && mt <= 500000)) { e.textContent = 'Montant TTC entre 1 000 et 500 000 €.'; return; }
+    if (envoyer && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) { e.textContent = 'Indiquez l\'e-mail du praticien.'; return; }
+    const t = b.textContent; b.disabled = true; b.textContent = envoyer ? 'Envoi…' : 'Création…';
+    let r; try { r = await api('fin_simple', { montant: mt, nom: document.getElementById('fsN').value.trim(), email: envoyer ? mail : '' }); } catch (x) { r = { ok: false, message: 'Connexion impossible.' }; }
+    b.disabled = false; b.textContent = t;
+    if (!r.ok) { e.textContent = r.message; return; }
+    const bin = Uint8Array.from(atob(r.base64), c => c.charCodeAt(0)), url = URL.createObjectURL(new Blob([bin], { type: 'application/pdf' }));
+    const eu = v => v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+    out.innerHTML = '<div style="margin-top:10px">' + r.loyers.map(x => '<div class="row"><div style="flex:1">' + x.mois + ' mois</div><b>' + eu(x.loyer) + ' TTC / mois</b></div>').join('') +
+      (r.envoye ? '<div style="color:var(--ok);font-weight:700;margin-top:8px">✓ Proposition envoyée à ' + esc(r.envoye) + ' (vous êtes en copie cachée)</div>' : '') +
+      '<div class="toolbar" style="margin-top:8px"><a class="btn-light" style="text-decoration:none" href="' + url + '" download="' + esc(r.nom) + '">⬇ Télécharger</a><a class="btn-light" style="text-decoration:none" href="' + url + '" target="_blank">Ouvrir</a>' +
+      (navigator.canShare && navigator.canShare({ files: [new File([bin], r.nom, { type: 'application/pdf' })] }) ? '<button class="btn-light" id="fsPart">↗ Partager (WhatsApp, Mail…)</button>' : '') + '</div></div>';
+    const bp = document.getElementById('fsPart');
+    if (bp) bp.onclick = () => navigator.share({ files: [new File([bin], r.nom, { type: 'application/pdf' })], title: r.nom }).catch(() => {});
+  }
+  // Proposition de financement (PDF aux couleurs AD, rangé dans le dossier du praticien)
+  async function finProposition(b, envoyer) {
+    const z = document.getElementById('cabFin'), out = document.getElementById('finRes'), mt = Number(String(document.getElementById('finMt').value).replace(',', '.')), mail = document.getElementById('finMail').value.trim();
+    if (!(mt >= 1000 && mt <= 500000)) { out.innerHTML = '<p class="err">Montant TTC entre 1 000 et 500 000 €.</p>'; return; }
+    if (envoyer && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) { out.innerHTML = '<p class="err">Indiquez l\'e-mail du praticien.</p>'; return; }
+    b.disabled = true; out.innerHTML = '<div class="meta">' + (envoyer ? 'Création et envoi…' : 'Création de la proposition…') + '</div>';
+    let r; try { r = await api('fin_proposition', { cabId: z.dataset.id, cabinet: z.dataset.nom, contact: z.dataset.contact, ville: z.dataset.ville, montant: mt, email: envoyer ? mail : '' }); } catch (e) { r = { ok: false, message: 'Connexion impossible.' }; }
+    b.disabled = false;
+    if (!r.ok) { out.innerHTML = '<p class="err">' + esc(r.message) + '</p>'; return; }
+    const eu = v => v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+    out.innerHTML = (r.envoye ? '<div style="color:var(--ok);font-weight:700;margin-top:6px">✓ Proposition envoyée à ' + esc(r.envoye) + ' (vous êtes en copie cachée)</div>' : '') + (r.alerte ? '<p class="err">' + esc(r.alerte) + '</p>' : '') +
+      '<div class="card" style="background:#F7F9FC;margin-top:6px">' + r.loyers.map(x => '<div class="row"><div style="flex:1">' + x.mois + ' mois</div><b>' + eu(x.loyer) + ' TTC / mois</b></div>').join('') +
+      '<div class="toolbar" style="margin-top:8px">' + (r.id ? '<button class="btn" onclick="event.stopPropagation();pratOuvrir(this,\'' + esc(r.id) + '\')">📄 Ouvrir la proposition</button>' : '') + '</div>' +
+      '<div class="meta">' + esc(r.nom) + (r.dossier ? ' · rangée dans le dossier « ' + esc(r.dossier) + ' »' : '') + ' · avec les 1ers loyers majorés</div></div>';
+    delete MEMO['prat|' + z.dataset.id];
+  }
+  // ---------------- Extrabat (lecture à la demande, création ponctuelle : jamais de synchronisation) ----------------
+  const exbZ = () => document.getElementById('cabExb');
+  const exbData = z => ({ cabId: z.dataset.id, nom: z.dataset.nom, adresse: z.dataset.adr, cp: z.dataset.cp, ville: z.dataset.ville, tel: z.dataset.tel, email: z.dataset.email });
+  async function chargerExb() {
+    const z = exbZ(); if (!z) return;
+    z.innerHTML = '<div class="meta">Lecture dans Extrabat…</div>';
+    let r; try { r = await api('exb_fiche', exbData(z)); } catch (e) { r = { ok: false, message: 'Connexion impossible.' }; }
+    if (!r.ok) { z.innerHTML = '<div class="meta" style="color:var(--ko)">' + esc(r.message) + '</div>'; return; }
+    if (r.lie) {
+      const c = r.client;
+      z.innerHTML = '<div class="card" style="background:#F7F9FC"><b>' + esc(c.nom) + '</b> <span class="meta">· client Extrabat n° ' + esc(c.id) + '</span>' +
+        (c.adresse ? '<div class="meta">📍 ' + esc(c.adresse) + '</div>' : '') + (c.tel.length ? '<div class="meta">📞 ' + c.tel.map(esc).join(' · ') + '</div>' : '') + (c.email ? '<div class="meta">✉ ' + esc(c.email) + '</div>' : '') +
+        (c.observation ? '<div class="meta" style="margin-top:4px">' + esc(c.observation) + '</div>' : '') +
+        (r.rdv.length ? '<div class="sec" style="margin-top:8px">Derniers rendez-vous Extrabat</div>' + r.rdv.map(x => '<div class="meta">' + esc(x.debut) + ' · ' + esc(x.objet) + '</div>').join('') : '') +
+        '<div class="toolbar" style="margin-top:8px"><a class="btn-light" style="text-decoration:none" href="' + esc(r.lien) + '" target="_blank">Ouvrir Extrabat</a><button class="btn-light" onclick="exbDelier()">Délier</button></div></div>';
+      return;
+    }
+    z.innerHTML = '<div class="meta">Ce cabinet n\'est pas encore relié à Extrabat.' + (r.candidats.length ? ' Clients Extrabat au nom proche : choisissez le bon, ou créez-le.' : ' Aucun client Extrabat au nom proche.') + '</div>' +
+      r.candidats.map(c => '<div class="row" style="padding:4px 0;border-bottom:1px solid var(--line)"><div style="flex:1"><b>' + esc(c.nom) + '</b> <span class="meta">n° ' + esc(c.id) + (c.adresse ? ' · ' + esc(c.adresse) : '') + '</span></div><button class="btn-light" onclick="exbLier(' + Number(c.id) + ')">C\'est lui</button></div>').join('') +
+      '<div class="toolbar" style="margin-top:8px"><button class="btn" onclick="exbCreer(this)">+ Créer le client dans Extrabat</button></div><p class="err" id="exbErr"></p>';
+  }
+  async function exbLier(id) { const z = exbZ(); const r = await api('exb_lier', Object.assign(exbData(z), { exId: id })); if (!r.ok) { alert(r.message); return; } chargerExb(); }
+  async function exbDelier() { if (!confirm('Retirer le lien avec ce client Extrabat ? (rien n\'est supprimé dans Extrabat)')) return; await api('exb_delier', exbData(exbZ())); chargerExb(); }
+  async function exbCreer(b) {
+    const z = exbZ(); if (!confirm('Créer « ' + z.dataset.nom + ' » dans Extrabat ?')) return;
+    b.disabled = true; const r = await api('exb_creer', exbData(z));
+    if (!r.ok) { b.disabled = false; document.getElementById('exbErr').textContent = r.message; return; }
+    chargerExb();
+  }
+  // Rendez-vous d'intervention dans l'agenda Extrabat du ou des techniciens
+  let rdvEdit = '';
+  function formRdv(t, k) {
+    const cab = D.cabinets.find(c => k && c.nom === k.c) || null;
+    const dem = new Date(Date.now() + 86400000), j = dem.toISOString().slice(0, 10);
+    return '<div style="margin-top:8px">' + (cab ? '' : '<div class="meta" style="color:var(--ko)">Choisissez un cabinet de la liste pour cette tâche (✎) avant de créer le rendez-vous.</div>') +
+      '<div class="g3"><div><label>Date</label><input type="date" id="rv_d" value="' + j + '"></div><div><label>Heure</label><input type="time" id="rv_h" value="09:00"></div><div><label>Durée (h)</label><input type="number" id="rv_u" value="' + (parseFloat(t.duree) || 1) + '" min="0.25" max="12" step="0.25"></div></div>' +
+      '<label>Techniciens</label>' + chipsPour('rv_t', pourDe(t)) + '<label>Objet</label><input id="rv_o" value="' + esc(k ? k.t : t.titre) + '">' +
+      '<div class="toolbar" style="margin-top:6px"><button class="btn"' + (cab ? '' : ' disabled') + ' onclick="creerRdv(this,\'' + esc(t.n) + '\',\'' + esc(cab ? cab.id : '') + '\')">Créer le RDV dans Extrabat</button><button class="btn-light" onclick="rdvEdit=\'\';afficher()">Annuler</button></div><p class="err" id="rvErr"></p></div>';
+  }
+  async function creerRdv(b, n, cabId) {
+    const v = id => document.getElementById(id).value.trim(), t = D.taches.find(x => x.n === n) || {}, cab = D.cabinets.find(c => c.id === cabId) || {};
+    if (!v('rv_d') || !v('rv_h')) { document.getElementById('rvErr').textContent = 'Indiquez la date et l\'heure.'; return; }
+    const techs = cochés('rv_t'); if (!techs.length) { document.getElementById('rvErr').textContent = 'Choisissez au moins un technicien.'; return; }
+    b.disabled = true;
+    const r = await api('exb_rdv', { cabId, nom: cab.nom, ville: cab.ville || '', debut: v('rv_d') + ' ' + v('rv_h'), duree: v('rv_u'), techs, objet: v('rv_o'), observation: [t.detail, t.pieces ? 'Pièces : ' + t.pieces : ''].filter(Boolean).join('\n') });
+    if (!r.ok) { b.disabled = false; document.getElementById('rvErr').textContent = r.message; return; }
+    alert('Rendez-vous créé dans Extrabat' + (r.manquants && r.manquants.length ? ' (non trouvés dans Extrabat : ' + r.manquants.join(', ') + ')' : '') + '.');
+    rdvEdit = ''; afficher();
+  }
+
+  const MEMO = {};
+  async function chargerCabDocs(frais) {
     const z = document.getElementById('cabDocs'); if (!z) return;
+    const cle = 'docs|' + z.dataset.id;
+    if (MEMO[cle] && !frais) { CD = MEMO[cle]; afficherCabDocs(); }
     let r; try { r = await api('cab_docs', { id: z.dataset.id, nom: z.dataset.nom }); } catch (e) { r = { ok: false, message: 'Connexion impossible.' }; }
-    if (!r.ok) { z.innerHTML = '<div class="meta">' + esc(r.message) + '</div>'; return; }
-    CD = r; afficherCabDocs();
+    const z2 = document.getElementById('cabDocs'); if (!z2 || z2.dataset.id !== z.dataset.id) return;
+    if (!r.ok) { if (!MEMO[cle]) z2.innerHTML = '<div class="meta">' + esc(r.message) + '</div>'; return; }
+    MEMO[cle] = r; CD = r; afficherCabDocs();
   }
   function afficherCabDocs() {
     const z = document.getElementById('cabDocs'); if (!z || !CD) return;
@@ -711,7 +820,7 @@
     const b64 = await new Promise(ok => { const rd = new FileReader(); rd.onload = () => ok(String(rd.result).split(',')[1]); rd.readAsDataURL(f); });
     const r = await api('cab_doc_ajouter', { id: z.dataset.id, nom: z.dataset.nom, cat: cdOnglet, nomFichier: f.name, mime: f.type || 'application/octet-stream', base64: b64 });
     if (!r.ok) { document.getElementById('cdEtat').textContent = r.message; return; }
-    chargerCabDocs();
+    chargerCabDocs(true);
   }
   async function cabDocOuvrir(b, doc) {
     const z = document.getElementById('cabDocs'), t = b.textContent; b.disabled = true; b.textContent = '…';
@@ -744,11 +853,11 @@
     const liste = facFiltre === 'aassocier' ? null : l.filter(f => f.cab);
     const opts = '<option value="">— choisir le cabinet —</option><option value="AUCUN">Ne pas afficher (pas un cabinet suivi)</option>' + (CL || []).map(c => '<option value="' + esc(c.id) + '">' + esc(c.nom) + ' · ' + esc(c.ville) + '</option>').join('');
     main.innerHTML = '<div class="toolbar"><button class="btn-light" onclick="facVue=false;vueClients()">← Clients</button></div>' +
-      '<h2>Factures en attente de règlement</h2><p class="sub">' + l.length + ' factures · ' + eurF(tot) + ' TTC dû' + (FAC.maj ? ' · mis à jour le ' + esc(FAC.maj) : '') + '. Mise à jour automatique chaque matin depuis le dernier export Extrabat enregistré dans le dossier Drive « ' + esc(FAC.dossierNom) + ' » (en attendant l\'API Extrabat). Jamais de prix d\'achat ni de marge côté praticien.</p>' +
+      '<h2>Factures en attente de règlement</h2><p class="sub">' + l.length + ' factures · ' + eurF(tot) + ' TTC dû' + (FAC.maj ? ' · mis à jour le ' + esc(FAC.maj) : '') + '. ' + (FAC.api ? 'Lu directement dans Extrabat chaque matin (plus aucun export à faire).' : 'En attendant l\'activation de l\'API Extrabat : mise à jour chaque matin depuis le dernier export enregistré dans le dossier Drive « ' + esc(FAC.dossierNom) + ' ».') + ' Jamais de prix d\'achat ni de marge côté praticien.</p>' +
       '<div class="card"><label style="display:flex;gap:8px;align-items:center;font-weight:700;cursor:pointer"><input type="checkbox" style="width:18px;height:18px"' + (FAC.visible ? ' checked' : '') + ' onchange="facVisible(this)">Afficher aux praticiens (« Mes documents » de leur Assistance : relevé PDF de leurs factures en attente)</label>' +
-      '<div class="toolbar" style="margin-top:8px"><button class="btn-light" onclick="facImport(this)">↻ Mettre à jour maintenant</button>' + (FAC.dossier ? '<a class="btn-light" style="text-decoration:none" href="' + esc(FAC.dossier) + '" target="_blank">📁 Dossier de l\'export</a>' : '') + '<span class="meta" id="facEtat"></span></div></div>' +
-      '<div class="toolbar"><button class="' + (facFiltre === 'aassocier' ? 'btn' : 'btn-light') + '" onclick="facFiltre=\'aassocier\';vueFactures()">À associer (' + Object.keys(parCli).length + ' clients)</button><button class="' + (facFiltre === 'ok' ? 'btn' : 'btn-light') + '" onclick="facFiltre=\'ok\';vueFactures()">Associées (' + l.filter(f => f.cab).length + ')</button></div>' +
-      (liste ? (liste.length ? liste.map(f => '<div class="card" style="padding:8px 12px"><div class="row"><div style="flex:1"><b>' + esc(f.cabNom || f.cab) + '</b> <span class="meta">← ' + esc(f.client) + ' · ' + esc(f.how) + '</span><div class="meta">' + esc(f.code) + ' du ' + esc(f.date) + ' · ' + esc(f.titre) + '</div></div><b>' + eurF(f.reste) + '</b></div><details style="margin-top:4px"><summary class="meta" style="cursor:pointer">Pas le bon cabinet ? Changer (toutes les factures de ce client Extrabat)</summary><select style="width:100%;margin-top:4px" onchange="facAssocier(this,\'' + esc(f.codeCli) + '\')">' + opts + '</select></details></div>').join('') : '<div class="vide">Aucune.</div>')
+      '<div class="toolbar" style="margin-top:8px"><button class="btn-light" onclick="facImport(this)">↻ Mettre à jour maintenant</button>' + (FAC.dossier && !FAC.api ? '<a class="btn-light" style="text-decoration:none" href="' + esc(FAC.dossier) + '" target="_blank">📁 Dossier de l\'export</a>' : '') + '<span class="meta" id="facEtat"></span></div></div>' +
+      '<div class="toolbar"><button class="' + (facFiltre === 'aassocier' ? 'btn' : 'btn-light') + '" onclick="facFiltre=\'aassocier\';vueFactures()">À associer (' + Object.keys(parCli).length + ' clients)</button><button class="' + (facFiltre === 'ok' ? 'btn' : 'btn-light') + '" onclick="facFiltre=\'ok\';vueFactures()">Associées (' + l.filter(f => f.cab).length + ')</button><button class="' + (facFiltre === 'relances' ? 'btn' : 'btn-light') + '" onclick="facFiltre=\'relances\';vueFactures()">⏰ Relances (' + relGroupes().length + ')</button></div>' +
+      (facFiltre === 'relances' ? vueRelances() : liste ? (liste.length ? liste.map(f => '<div class="card" style="padding:8px 12px"><div class="row"><div style="flex:1"><b>' + esc(f.cabNom || f.cab) + '</b> <span class="meta">← ' + esc(f.client) + ' · ' + esc(f.how) + '</span><div class="meta">' + esc(f.code) + ' du ' + esc(f.date) + ' · ' + esc(f.titre) + '</div></div><b>' + eurF(f.reste) + '</b></div><details style="margin-top:4px"><summary class="meta" style="cursor:pointer">Pas le bon cabinet ? Changer (toutes les factures de ce client Extrabat)</summary><select style="width:100%;margin-top:4px" onchange="facAssocier(this,\'' + esc(f.codeCli) + '\')">' + opts + '</select></details></div>').join('') : '<div class="vide">Aucune.</div>')
       : (Object.keys(parCli).length ? Object.keys(parCli).map(k => { const fs = parCli[k]; return '<div class="card" style="padding:8px 12px"><b>' + esc(fs[0].client) + '</b> <span class="meta">' + esc(k) + ' · ' + fs.length + ' facture(s) · ' + eurF(fs.reduce((a, f) => a + f.reste, 0)) + (fs[0].how && fs[0].how !== 'À associer' ? ' · ' + esc(fs[0].how) : '') + '</span>' +
           '<div class="toolbar" style="margin-top:6px"><select style="flex:1;min-width:200px" onchange="facAssocier(this,\'' + esc(k) + '\')">' + opts + '</select></div></div>'; }).join('') : '<div class="vide">Toutes les factures sont associées à un cabinet. ✓</div>'));
   }
@@ -758,6 +867,77 @@
     if (!r.ok) { sel.disabled = false; alert(r.message); return; }
     vueFactures(true);
   }
+  // ---------------- Relances des factures en retard (rien ne part sans validation) ----------------
+  let relOuvert = '';
+  const jourFR = s => { const m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(s || ''); return m ? new Date(+m[3], m[2] - 1, +m[1]) : null; };
+  const retardJ = f => { const d = jourFR(f.ech); return d ? Math.floor((Date.now() - d.getTime()) / 86400000) : 0; };
+  function relGroupes() {
+    if (!FAC) return [];
+    const g = {};
+    FAC.factures.filter(f => f.reste > 0.01 && retardJ(f) > 0 && f.how !== 'Ignoré (manuel)').forEach(f => { (g[f.codeCli] = g[f.codeCli] || []).push(f); });
+    return Object.keys(g).map(k => {
+      const fs = g[k].sort((a, b) => retardJ(b) - retardJ(a)), dern = (FAC.relances || {})[k] || null;
+      const niv = dern ? Math.min(3, dern.niveau + 1) : 1;
+      return { code: k, nom: fs[0].cabNom || fs[0].client, client: fs[0].client, email: fs[0].email || '', fs, reste: fs.reduce((a, f) => a + f.reste, 0), retard: retardJ(fs[0]), dern, niv };
+    }).sort((a, b) => b.retard - a.retard);
+  }
+  const NIV = { 1: 'Rappel courtois', 2: 'Relance', 3: 'Dernière relance' };
+  function relModele(g, niv) {
+    const lignes = g.fs.map(f => '- Facture ' + f.code + ' du ' + f.date + ' (échéance ' + f.ech + ') : ' + eurF(f.reste) + ' restant dû').join('\n');
+    const sujet = (niv === 3 ? 'Dernière relance avant mise en demeure' : niv === 2 ? 'Relance' : 'Rappel') + ' : facture' + (g.fs.length > 1 ? 's' : '') + ' en attente de règlement - Alternative Dentaire';
+    const intro = niv === 1
+      ? 'Sauf erreur de notre part, ' + (g.fs.length > 1 ? 'les factures suivantes restent' : 'la facture suivante reste') + ' en attente de règlement :'
+      : niv === 2
+      ? 'Malgré notre précédent rappel, nous constatons que ' + (g.fs.length > 1 ? 'les factures suivantes restent impayées' : 'la facture suivante reste impayée') + ' :'
+      : 'Malgré nos précédentes relances, ' + (g.fs.length > 1 ? 'les factures suivantes restent impayées' : 'la facture suivante reste impayée') + ' à ce jour :';
+    const suite = niv === 1
+      ? 'Il s\'agit peut-être d\'un simple oubli. Pourriez-vous procéder au règlement dès que possible ?\nSi le paiement a été effectué entre-temps, merci de ne pas tenir compte de ce message.'
+      : niv === 2
+      ? 'Nous vous remercions de bien vouloir procéder au règlement sous 8 jours. En cas de difficulté, n\'hésitez pas à nous appeler : nous pouvons convenir ensemble d\'un échéancier.'
+      : 'Sans règlement de votre part sous 8 jours, nous serons contraints de vous adresser une mise en demeure, avec application des pénalités de retard et de l\'indemnité forfaitaire de recouvrement de 40 € prévues par nos conditions générales (art. L441-10 du Code de commerce).\nSi un règlement est en cours, merci de nous le signaler.';
+    return { sujet, corps: 'Bonjour,\n\n' + intro + '\n' + lignes + '\nTotal : ' + eurF(g.reste) + ' TTC\n\n' + suite + '\n\nNous restons à votre disposition au 04 69 96 03 60 ou à contact@alternativedentaire.fr.\n\nBien cordialement,\n' + (D.moi && D.moi.prenom ? D.moi.prenom + ' - ' : '') + 'Alternative Dentaire' };
+  }
+  function vueRelances() {
+    const gs = relGroupes();
+    if (!gs.length) return '<div class="vide">Aucune facture en retard. ✓</div>';
+    return '<p class="meta">Factures dont l\'échéance est passée et qui restent dues d\'après Extrabat. Vérifiez qu\'un règlement n\'est pas arrivé depuis avant d\'envoyer. Rien ne part sans votre clic.</p>' +
+      gs.map(g => {
+        const recent = g.dern && (Date.now() - jourFR(g.dern.date)) < 7 * 86400000;
+        const coul = g.retard >= 45 ? 'var(--ko)' : g.retard >= 30 ? '#B45309' : 'var(--text)';
+        let h = '<div class="card" style="padding:8px 12px"><div class="row"><div style="flex:1"><b>' + esc(g.nom) + '</b>' + (g.nom !== g.client ? ' <span class="meta">← ' + esc(g.client) + '</span>' : '') +
+          '<div class="meta">' + g.fs.length + ' facture(s) · <span style="color:' + coul + ';font-weight:700">' + g.retard + ' j de retard</span>' + (g.email ? ' · ✉ ' + esc(g.email) : ' · <span style="color:var(--ko)">pas d\'e-mail dans Extrabat</span>') + '</div>' +
+          (g.dern ? '<div class="meta">Dernière relance : ' + esc(g.dern.date) + ' (' + esc(NIV[g.dern.niveau] || '') + ', par ' + esc(g.dern.par) + ')</div>' : '') +
+          '</div><b>' + eurF(g.reste) + '</b></div>' +
+          g.fs.map(f => '<div class="meta">• ' + esc(f.code) + ' du ' + esc(f.date) + ' · échéance ' + esc(f.ech) + ' · ' + eurF(f.reste) + ' · ' + esc(f.titre) + '</div>').join('');
+        if (relOuvert === g.code) {
+          const md = relModele(g, g.niv);
+          h += '<div style="margin-top:8px">' + (recent ? '<div class="meta" style="color:#B45309">⚠ Déjà relancé il y a moins de 7 jours.</div>' : '') +
+            '<div class="g2"><div><label>Niveau</label><select id="rl_n" onchange="relNiveau(\'' + esc(g.code) + '\')">' + [1, 2, 3].map(n => '<option value="' + n + '"' + (n === g.niv ? ' selected' : '') + '>' + n + ' - ' + NIV[n] + '</option>').join('') + '</select></div>' +
+            '<div><label>Destinataire</label><input id="rl_to" value="' + esc(g.email) + '" placeholder="e-mail du cabinet"></div></div>' +
+            '<label>Objet</label><input id="rl_s" value="' + esc(md.sujet) + '"><label>Message</label><textarea id="rl_c" rows="14">' + esc(md.corps) + '</textarea>' +
+            '<div class="toolbar" style="margin-top:6px"><button class="btn" onclick="relEnvoyer(this,\'' + esc(g.code) + '\')">Envoyer la relance</button><button class="btn-light" onclick="relOuvert=\'\';vueFactures()">Annuler</button></div><p class="err" id="rl_err"></p></div>';
+        } else {
+          h += '<div class="toolbar" style="margin-top:6px"><button class="btn-light" onclick="relOuvert=\'' + esc(g.code) + '\';vueFactures()">✉ Préparer la relance (' + esc(NIV[g.niv]) + ')</button></div>';
+        }
+        return h + '</div>';
+      }).join('');
+  }
+  function relNiveau(code) {
+    const g = relGroupes().find(x => x.code === code); if (!g) return;
+    const md = relModele(g, +document.getElementById('rl_n').value);
+    document.getElementById('rl_s').value = md.sujet; document.getElementById('rl_c').value = md.corps;
+  }
+  async function relEnvoyer(b, code) {
+    const g = relGroupes().find(x => x.code === code), v = id => document.getElementById(id).value.trim(), err = document.getElementById('rl_err');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v('rl_to'))) { err.textContent = 'Indiquez une adresse e-mail valide.'; return; }
+    if (!confirm('Envoyer la relance à ' + v('rl_to') + ' ?')) return;
+    b.disabled = true; b.textContent = 'Envoi…';
+    const r = await api('fact_relancer', { codeCli: code, niveau: +v('rl_n'), to: v('rl_to'), sujet: v('rl_s'), corps: document.getElementById('rl_c').value, factures: g.fs.map(f => f.code) });
+    if (!r.ok) { b.disabled = false; b.textContent = 'Envoyer la relance'; err.textContent = r.message; return; }
+    alert('Relance envoyée à ' + v('rl_to') + (r.de ? ' (depuis ' + r.de + ')' : '') + '.');
+    relOuvert = ''; vueFactures(true);
+  }
+
   async function facVisible(cb) {
     const r = await api('fact_visible', { visible: cb.checked });
     if (!r.ok) { cb.checked = !cb.checked; alert(r.message); return; }
@@ -822,6 +1002,8 @@
           (c.installs.length ? '<div class="sec" style="margin-top:10px">Installations</div>' + c.installs.map(i => '<div class="meta" style="padding:2px 0">' + esc(i.date || 'Date à fixer') + ' · ' + esc(i.materiel) + ' · ' + esc(i.statut) + '</div>').join('') : '') +
           (c.notes ? '<div class="sec" style="margin-top:10px">Notes</div><div class="meta">' + esc(c.notes) + '</div>' : '') +
           (D.chantiers ? '<div class="sec" style="margin-top:10px">Dossier technique et Drive du praticien</div><div id="cabPrat" data-id="' + esc(c.id) + '" data-nom="' + esc(c.nom) + '" data-contact="' + esc((c.personnes[0] || {}).nom || '') + '"><div class="meta">Chargement…</div></div>' : '') +
+          (D.chantiers ? '<div class="sec" style="margin-top:10px">Financement</div><div id="cabFin" data-id="' + esc(c.id) + '" data-nom="' + esc(c.nom) + '" data-contact="' + esc((c.personnes[0] || {}).nom || '') + '" data-ville="' + esc(c.ville || '') + '"><div class="toolbar"><input id="finMt" type="number" inputmode="decimal" placeholder="Montant du projet TTC" style="max-width:220px" onclick="event.stopPropagation()"><input id="finMail" type="email" placeholder="E-mail du praticien" value="' + esc(c.email || '') + '" style="max-width:260px" onclick="event.stopPropagation()"></div><div class="toolbar"><button class="btn" onclick="event.stopPropagation();finProposition(this, true)">✉ Créer et envoyer par e-mail</button><button class="btn-light" onclick="event.stopPropagation();finProposition(this, false)">💶 Créer seulement</button></div><div id="finRes"></div></div>' : '') +
+          (D.extrabat ? '<div class="sec" style="margin-top:10px">Extrabat</div><div id="cabExb" data-id="' + esc(c.id) + '" data-nom="' + esc(c.nom) + '" data-adr="' + esc(c.adresse || '') + '" data-cp="' + esc(c.cp || '') + '" data-ville="' + esc(c.ville || '') + '" data-tel="' + esc(c.tel || '') + '" data-email="' + esc(c.email || '') + '"><button class="btn-light" onclick="event.stopPropagation();chargerExb()">🔗 Voir dans Extrabat</button></div>' : '') +
           '<div class="sec" style="margin-top:10px">Documents du cabinet</div><div id="cabDocs" data-id="' + esc(c.id) + '" data-nom="' + esc(c.nom) + '"><div class="meta">Chargement…</div></div>' + '</div>' : '') + '</div>';
     }).join('') + (l.length > 150 ? '<div class="vide">' + (l.length - 150) + ' autres : affinez la recherche.</div>' : '') + (!l.length ? '<div class="vide">Aucun cabinet trouvé.</div>' : '');
     main.innerHTML = h;
@@ -872,6 +1054,10 @@
     b.disabled = false; b.textContent = 'Envoyer le devis dans Mon Cabinet AD du cabinet';
     if (!r.ok) { err.textContent = r.message; return; }
     alert('Devis ' + r.numero + ' (' + eur(r.mois) + ' TTC / mois) ' + (r.pdf ? 'envoyé dans Mon Cabinet AD du cabinet.' : 'enregistré. ' + (r.message || '')));
+    if (D.extrabat && confirm('Créer aussi ce devis dans Extrabat (client relié dans l\'onglet Clients) ?')) {
+      const x = await api('exb_devis', { cabId: cab.id, numero: r.numero });
+      alert(x.ok ? 'Devis ' + r.numero + ' créé dans Extrabat.' : 'Extrabat : ' + x.message);
+    }
     DV = null; vueDevis();
   }
 
@@ -985,6 +1171,39 @@
   }
   async function atStatut(sel, n) { sel.disabled = true; const r = await api('atelier_maj', { n, statut: sel.value }); if (!r.ok) alert(r.message); AT = null; vueAtelier(); }
   async function atMaj(b, n) { const v = id => document.getElementById(id).value.trim(); b.disabled = true; const r = await api('atelier_maj', { n, reparation: v('aeR'), panne: v('aeP'), serie: v('aeS'), notes: v('aeN') }); if (!r.ok) { b.disabled = false; alert(r.message); return; } atEdit = ''; AT = null; vueAtelier(); }
+
+  // ---------------- Réparations d'instruments (fournisseur) ----------------
+  let IN = null, inEdit = '';
+  const IN_SUIV = { 'À récupérer chez le praticien': ['Récupéré'], 'Récupéré': ['Demande de devis faite'], 'Demande de devis faite': ['Devis fait'], 'Devis fait': ['Devis accepté', 'Devis refusé'], 'Devis accepté': ['Retour demandé'], 'Devis refusé': ['Retour demandé'], 'Retour demandé': ['Retourné au client'] };
+  async function vueInstr() {
+    const main = document.getElementById('main');
+    if (!IN) { main.innerHTML = '<h2>Réparations d\'instruments</h2><p class="sub">Chargement…</p>'; const d = await api('instr_liste'); if (!d.ok) { main.innerHTML = '<div class="vide">' + esc(d.message) + '</div>'; return; } IN = d; }
+    const gb = g => g === 'Sous garantie' ? '<span class="bdg v">Sous garantie</span>' : g === 'Hors garantie' ? '<span class="bdg r">Hors garantie</span>' : '<span class="bdg o">Garantie à vérifier</span>';
+    const carte = o => '<div class="card"><div class="row" style="align-items:flex-start"><div style="flex:1"><b style="color:var(--navy)">' + esc([o.type, o.marque, o.modele].filter(Boolean).join(' · ')) + '</b> ' + gb(o.garantie) + (o.origine === 'Appli praticien' ? ' <span class="bdg">📱 demandé par le praticien</span>' : '') +
+      '<div class="meta"><b style="color:var(--text)">' + esc(o.cabinet) + '</b>' + (o.contact ? ' · ' + esc(o.contact) : '') + (o.tel ? ' · ' + esc(o.tel) : '') + (o.serie ? ' · N° de série ' + esc(o.serie) : '') + ' · ' + esc(o.n) + '</div>' +
+      '<div class="meta">🔧 Panne du ' + esc(o.datePanne || o.cree) + ' : ' + esc(o.panne || '—') + '</div>' +
+      (o.garantieInfo || o.garantieDemandee ? '<div class="meta">' + esc(o.garantieInfo) + (o.garantieDemandee ? ' · <b>prise sous garantie demandée</b>' : '') + '</div>' : '') +
+      '<div class="meta">' + Object.keys(o.etapes).filter(k => o.etapes[k]).map(k => esc(k) + ' le ' + esc(o.etapes[k])).join(' · ') + (o.montant ? ' · devis ' + esc(o.montant) + ' €' : '') + (o.dossier ? ' · dossier ' + esc(o.dossier) : '') + '</div>' +
+      (o.notes ? '<div class="meta">' + esc(o.notes) + '</div>' : '') +
+      (inEdit === o.n ? '<div style="margin-top:8px"><div class="g3"><div><label>N° de dossier / RMA</label><input id="ieD" value="' + esc(o.dossier) + '"></div><div><label>Montant du devis (€ TTC)</label><input id="ieM" value="' + esc(o.montant) + '"></div><div><label>Garantie</label><select id="ieG">' + ['À vérifier', 'Sous garantie', 'Hors garantie'].map(x => '<option' + (x === o.garantie ? ' selected' : '') + '>' + x + '</option>').join('') + '</select></div></div>' +
+        '<div class="g2"><div><label>N° de série</label><input id="ieS" value="' + esc(o.serie) + '"></div><div><label>Notes</label><input id="ieN" value="' + esc(o.notes) + '"></div></div>' +
+        '<div class="toolbar" style="margin-top:6px"><button class="btn" onclick="inMaj(this,\'' + esc(o.n) + '\')">Enregistrer</button><button class="btn-light" onclick="inEdit=\'\';vueInstr()">Annuler</button></div></div>' : '') + '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">' + (IN_SUIV[o.statut] || []).map(s => '<button class="btn-light" onclick="inEtape(this,\'' + esc(o.n) + '\',\'' + esc(s).replace(/'/g, '\\\'') + '\')">› ' + esc(s) + '</button>').join('') +
+      (o.statut !== 'Retourné au client' ? '<button class="btn-light" onclick="inEdit=\'' + esc(o.n) + '\';vueInstr()">✎ Détails</button>' : '') + '<button class="btn-light" style="color:var(--ko)" onclick="inSuppr(this,\'' + esc(o.n) + '\')">🗑 Supprimer</button></div></div></div>';
+    let h = '<h2>Réparations d\'instruments</h2><p class="sub">Turbines, contre-angles, détartreurs… envoyés chez le fournisseur. Les nouvelles fiches se créent dans Dicter (onglet 🔩 Instruments, avec le bon de réparation à imprimer) ou par le praticien depuis son appli. W&amp;H, KaVo et Sirona : on ne fait pas, orienter vers La Clinique de l\'Instrument.</p>' +
+      '<div class="toolbar"><a class="btn" style="text-decoration:none" href="https://clemsn34.github.io/ad-livraison/dicter/" target="_blank">+ Nouvel instrument (Dicter)</a><span class="bdg">' + IN.enCours.length + ' en cours</span><button class="btn-light" onclick="IN=null;vueInstr()">↻ Actualiser</button></div>';
+    IN.statuts.filter(st => st !== 'Retourné au client').forEach(st => { const l = IN.enCours.filter(o => o.statut === st); if (l.length) h += '<div class="sec">' + esc(st) + ' (' + l.length + ')</div>' + l.map(carte).join(''); });
+    if (!IN.enCours.length) h += '<div class="vide">Aucun instrument en réparation.</div>';
+    if (IN.finis.length) h += '<div class="sec">Derniers retournés au client</div>' + IN.finis.map(carte).join('');
+    main.innerHTML = h;
+  }
+  async function inEtape(b, n, st) {
+    const data = { n, statut: st };
+    if (st === 'Devis fait') { const mt = prompt('Montant du devis (€ TTC) ? Laissez vide si vous ne l\'avez pas encore.', ''); if (mt === null) return; if (mt.trim()) data.montant = mt.trim(); }
+    b.disabled = true; const r = await api('instr_maj', data); if (!r.ok) { b.disabled = false; alert(r.message); return; } IN = null; vueInstr();
+  }
+  async function inSuppr(b, n) { if (!confirm('Supprimer définitivement la fiche ' + n + ' ?')) return; b.disabled = true; const r = await api('instr_suppr', { n }); if (!r.ok) { b.disabled = false; alert(r.message); return; } IN = null; vueInstr(); }
+  async function inMaj(b, n) { const v = id => document.getElementById(id).value.trim(); b.disabled = true; const r = await api('instr_maj', { n, dossier: v('ieD'), montant: v('ieM'), garantie: v('ieG'), serie: v('ieS'), notes: v('ieN') }); if (!r.ok) { b.disabled = false; alert(r.message); return; } inEdit = ''; IN = null; vueInstr(); }
 
   // ---------------- Publier pour tous les cabinets ----------------
   let PB = null, pbType = 'actu', pbFic = null;
@@ -1210,6 +1429,203 @@
   }
 
   // ---------------- Documents de la société ----------------
+  // ---------------- Documentation technique (Drive « Materiel » : manuels, plans de montage, bulletins…) ----------------
+  let DT = { q: '', res: null, dossier: null, pile: [] };
+  const tailleF = n => n > 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' Mo' : Math.max(1, Math.round(n / 1024)) + ' ko';
+  const iconeF = m => /pdf/.test(m) ? '📕' : /image/.test(m) ? '🖼' : /video/.test(m) ? '🎬' : /sheet|excel/.test(m) ? '📊' : /word|document/.test(m) ? '📄' : '📎';
+  function vueDocTech() {
+    const main = document.getElementById('main');
+    let h = '<h2>Documentation technique</h2><p class="sub">Tapez ou dictez 🎤 la marque, le modèle et, pour une panne, le code d\'erreur : « Melag 23 erreur 12 », « Stern Weber S 200 code E 23 ». Sans code d\'erreur, vous obtenez les dossiers du modèle (manuels, plans de montage, bulletins…).</p>' +
+      '<div class="toolbar"><input id="dtq" style="flex:1;min-width:200px" placeholder="Marque, modèle, code d\'erreur…" value="' + esc(DT.q) + '" onkeydown="if(event.key===\'Enter\')docChercher()">' + (window.SpeechRecognition || window.webkitSpeechRecognition ? '<button class="btn-light" id="dtmic" title="Dicter" onclick="docDicter()">🎤</button>' : '') + '<button class="btn" onclick="docChercher()">Rechercher</button></div><div id="dtpanne"></div><div id="dtres"></div>';
+    main.innerHTML = h;
+    if (DT.dossier) docAfficherDossier(); else if (DT.res) docAfficherRes();
+    else { const el = document.getElementById('dtq'); if (el) el.focus(); docAccueil(); }
+  }
+  async function docAccueil() {
+    const z = document.getElementById('dtres'); z.innerHTML = '<div class="meta">Chargement…</div>';
+    const r = await api('doc_recherche', { q: '' });
+    if (!r.ok) { z.innerHTML = '<div class="vide">' + esc(r.message) + '</div>'; return; }
+    z.innerHTML = (r.etat ? '<p class="meta">' + esc(r.etat) + '</p>' : '') + '<div class="sec">Parcourir</div>' + r.dossiers.map(d => '<div class="card" style="padding:8px 12px;cursor:pointer" onclick="docOuvrir(\'' + esc(d.id) + '\')">📁 <b>' + esc(d.nom) + '</b></div>').join('');
+  }
+  // Dictée (reconnaissance vocale du navigateur, en français)
+  function docDicter() {
+    const R = window.SpeechRecognition || window.webkitSpeechRecognition, b = document.getElementById('dtmic'); if (!R) return;
+    const rec = new R(); rec.lang = 'fr-FR'; rec.interimResults = true; rec.maxAlternatives = 1;
+    b.textContent = '⏺'; b.style.color = 'var(--ko)';
+    rec.onresult = e => { const t = Array.from(e.results).map(r => r[0].transcript).join(' '); document.getElementById('dtq').value = t; if (e.results[e.results.length - 1].isFinal) { rec.stop(); docChercher(); } };
+    rec.onerror = e => { b.textContent = '🎤'; b.style.color = ''; if (e.error === 'not-allowed') alert('Autorisez le micro pour dicter.'); };
+    rec.onend = () => { b.textContent = '🎤'; b.style.color = ''; };
+    rec.start();
+  }
+  // « … erreur 12 », « code E 23 », « défaut A04 » -> code cherché dans les manuels du modèle
+  function nombresFr(t) {
+    const N = { zero: 0, un: 1, une: 1, deux: 2, trois: 3, quatre: 4, cinq: 5, six: 6, sept: 7, huit: 8, neuf: 9, dix: 10, onze: 11, douze: 12, treize: 13, quatorze: 14, quinze: 15, seize: 16, vingt: 20, vingts: 20, trente: 30, quarante: 40, cinquante: 50, soixante: 60, cent: 100, cents: 100 };
+    t = t.replace(/\b(zero|une?|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingts?|trente|quarante|cinquante|soixante|cents?)\b/g, m => N[m]).replace(/(\d)-(?=\d)/g, '$1 ').replace(/\b(\d+) et (\d+)\b/g, '$1 $2');
+    t = t.replace(/\b4 20\b/g, '80').replace(/\b([1-9]) 100\b/g, (m, a) => a * 100);
+    t = t.replace(/\b(100|[2-9]00)(?: (\d{1,2}))?(?: (\d{1,2}))?\b/g, (m, c, a, b) => +c + (+a || 0) + (+b || 0));
+    for (let k = 0; k < 2; k++) t = t.replace(/\b([2-9]0) (1?\d)\b/g, (m, a, b) => +b < 20 ? +a + +b : m);
+    return t;
+  }
+  function docAnalyse(q) {
+    let t = ' ' + q.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() + ' ';
+    t = nombresFr(t);
+    const m = /\b(?:erreur|error|err|code|alarme|defaut|panne|message|affiche)\s*(?:numero|n°|no|n)?\s*([a-z]{0,3})\s*[-.]?\s*(\d{1,4}[a-z]?)\b/.exec(t);
+    if (!m) return { modele: q.trim(), code: '' };
+    const code = (m[1] + m[2]).toUpperCase();
+    return { modele: (t.slice(0, m.index) + ' ' + t.slice(m.index + m[0].length)).replace(/\s+/g, ' ').trim(), code };
+  }
+  async function docChercher() {
+    DT.q = document.getElementById('dtq').value.trim(); DT.dossier = null; DT.pile = [];
+    const an = docAnalyse(DT.q), zp = document.getElementById('dtpanne'); zp.innerHTML = '';
+    if (an.code) { docPanne(an); return; }
+    if (DT.q.length < 2) { DT.res = null; return docAccueil(); }
+    document.getElementById('dtres').innerHTML = '<div class="meta">Recherche…</div>';
+    const r = await api('doc_recherche', { q: DT.q });
+    if (!r.ok) { document.getElementById('dtres').innerHTML = '<div class="vide">' + esc(r.message) + '</div>'; return; }
+    DT.res = r; docAfficherRes();
+  }
+  function docAfficherRes() {
+    const r = DT.res, z = document.getElementById('dtres');
+    z.innerHTML = (r.etat ? '<p class="meta">' + esc(r.etat) + '</p>' : '') + (r.dossiers.length ? r.dossiers.map(d => '<div class="card" style="padding:8px 12px;cursor:pointer" onclick="docOuvrir(\'' + esc(d.id) + '\')"><b>📁 ' + esc(d.nom) + '</b><div class="meta">' + esc(d.chemin) + '</div></div>').join('') : '<div class="vide">Rien trouvé pour « ' + esc(DT.q) + ' ». Essayez la marque seule, ou un autre mot.</div>');
+  }
+  async function docOuvrir(id) {
+    if (DT.dossier && DT.dossier.id !== id) DT.pile.push(DT.dossier.id);
+    const z = document.getElementById('dtres'); z.innerHTML = '<div class="meta">Ouverture…</div>';
+    const r = await api('doc_dossier', { id });
+    if (!r.ok) { z.innerHTML = '<div class="vide">' + esc(r.message) + '</div>'; return; }
+    DT.dossier = r; docAfficherDossier();
+  }
+  // Affiche une page du manuel dans l'appli (sur téléphone, le lien PDF ne fait que télécharger)
+  const DOCPDF = {};
+  async function docVoirPage(b, id, p) {
+    const zone = b.parentNode.nextElementSibling; if (zone.innerHTML) { zone.innerHTML = ''; b.textContent = 'Voir la page ' + p; return; }
+    const doc = DOCPDF[id]; if (!doc) return; b.textContent = 'Affichage…';
+    const page = await doc.getPage(p), w = Math.min(zone.parentNode.clientWidth || 340, 900), v0 = page.getViewport({ scale: 1 });
+    const vp = page.getViewport({ scale: (w / v0.width) * (window.devicePixelRatio || 1) }), cv = document.createElement('canvas');
+    cv.width = vp.width; cv.height = vp.height; cv.style.cssText = 'width:100%;margin-top:8px;border:1px solid var(--line);border-radius:6px;background:#fff';
+    await page.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+    zone.appendChild(cv); b.textContent = 'Masquer la page ' + p;
+  }
+  // Panne : le code d'erreur cherché dans le texte des manuels du modèle (lus dans le navigateur)
+  async function docPanne(an) {
+    const zp = document.getElementById('dtpanne'), z = document.getElementById('dtres'); z.innerHTML = '';
+    zp.innerHTML = '<div class="card"><b>🔧 Code ' + esc(an.code) + '</b>' + (an.modele ? ' · ' + esc(an.modele) : '') + '<div class="meta" id="dpEtat">Recherche dans les manuels…</div><div id="dpRes"></div></div>';
+    const r = await api('doc_panne', { q: an.modele, code: an.code });
+    const etat = document.getElementById('dpEtat'), res = document.getElementById('dpRes');
+    if (!r.ok) { etat.textContent = r.message; return; }
+    if (r.dossiers && r.dossiers.length) { DT.res = { dossiers: r.dossiers }; docAfficherRes(); }
+    if (!r.fichiers.length) { etat.textContent = 'Le code ' + an.code + ' n\'apparaît dans aucun manuel de ce modèle. Ouvrez les dossiers ci-dessous ou précisez le modèle.'; return; }
+    etat.textContent = 'Lecture de ' + r.fichiers.length + ' document(s)…';
+    const lettres = an.code.replace(/\d.*$/, ''), num = String(+an.code.replace(/^[A-Z]*/, '').replace(/[A-Z]$/, ''));
+    // Code sans lettre (« erreur 12 ») : exiger un mot d'erreur devant, sinon tous les numéros de page sortiraient
+    const motif = lettres ? new RegExp('(^|[^A-Z0-9])' + lettres + '\\s?[-.]?\\s?0*' + num + '(?![0-9])', 'i')
+      : new RegExp('(err(?:or|eur)?|code|alarme?|d[ée]faut|fault|message|E|n°)\\s?[-.:]?\\s?0*' + num + '(?![0-9])', 'i');
+    let trouve = 0;
+    for (const f of r.fichiers) {
+      let pdf; try { pdf = await api('doc_fichier', { id: f.id }); } catch (e) { continue; }
+      if (!pdf.ok || !/pdf/.test(pdf.type || '')) continue;
+      try {
+        const lib = await pdfJs(), bin = Uint8Array.from(atob(pdf.base64), c => c.charCodeAt(0)), doc = await lib.getDocument({ data: bin.slice() }).promise;
+        const pages = [];
+        for (let p = 1; p <= doc.numPages && pages.length < 4; p++) {
+          const txt = (await (await doc.getPage(p)).getTextContent()).items.map(i => i.str).join(' ').replace(/\s+/g, ' ');
+          const mm = motif.exec(txt);
+          if (mm) { const d = Math.max(0, mm.index - 120); pages.push({ p, extrait: txt.slice(d, mm.index + 480) }); }
+        }
+        if (!pages.length) continue;
+        trouve++; DOCPDF[f.id] = doc;
+        const url = URL.createObjectURL(new Blob([bin], { type: 'application/pdf' }));
+        res.innerHTML += '<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px"><b>📕 ' + esc(f.nom) + '</b><div class="meta">' + esc(f.chemin) + '</div>' +
+          pages.map(x => '<div style="margin-top:6px;padding:8px;background:#FFF8E6;border-radius:8px;font-size:14px;line-height:1.45">' + esc(x.extrait).replace(motif, m0 => '<mark>' + m0 + '</mark>') +
+            '<div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn-light" onclick="docVoirPage(this,\'' + esc(f.id) + '\',' + x.p + ')">Voir la page ' + x.p + '</button><a class="btn-light" style="text-decoration:none" target="_blank" href="' + url + '#page=' + x.p + '">Ouvrir le PDF à la page ' + x.p + '</a></div><div class="pg"></div></div>').join('') + '</div>';
+      } catch (e) {}
+    }
+    etat.textContent = trouve ? 'Le code apparaît dans ' + trouve + ' document(s) :' : 'Code trouvé par Google Drive mais illisible dans ces PDF (scan) : ouvrez-les ci-dessous.';
+    if (!trouve) res.innerHTML = r.fichiers.map(f => '<div class="row" style="margin-top:6px"><div style="flex:1">📕 ' + esc(f.nom) + '</div><button class="btn-light" onclick="docFichier(this,\'' + esc(f.id) + '\')">Ouvrir</button></div>').join('');
+  }
+  function docRetour() { const p = DT.pile.pop(); if (p) { DT.dossier = null; docOuvrir(p); } else { DT.dossier = null; DT.res ? docAfficherRes() : docAccueil(); } }
+  function docAfficherDossier() {
+    const r = DT.dossier, z = document.getElementById('dtres');
+    z.innerHTML = '<div class="toolbar"><button class="btn-light" onclick="docRetour()">← Retour</button></div><h3 style="margin:6px 0">📁 ' + esc(r.nom) + '</h3><div class="meta" style="margin-bottom:8px">' + esc(r.chemin) + '</div>' +
+      r.dossiers.map(d => '<div class="card" style="padding:8px 12px;cursor:pointer" onclick="docOuvrir(\'' + esc(d.id) + '\')">📁 <b>' + esc(d.nom) + '</b></div>').join('') +
+      r.fichiers.map(f => '<div class="card" style="padding:8px 12px"><div class="row"><div style="flex:1">' + iconeF(f.type) + ' <b>' + esc(f.nom) + '</b><div class="meta">' + tailleF(f.taille) + ' · ' + esc(f.date) + '</div></div><button class="btn-light" onclick="docFichier(this,\'' + esc(f.id) + '\')">Ouvrir</button></div></div>').join('') +
+      (!r.dossiers.length && !r.fichiers.length ? '<div class="vide">Dossier vide.</div>' : '') + (r.plus ? '<p class="meta">Seuls les 150 premiers fichiers sont affichés.</p>' : '');
+  }
+  async function docFichier(b, id) {
+    b.disabled = true; const t = b.textContent; b.textContent = 'Téléchargement…';
+    const r = await api('doc_fichier', { id });
+    b.disabled = false; b.textContent = t;
+    if (!r.ok) { if (r.lien) { window.open(r.lien, '_blank'); return; } alert(r.message); return; }
+    const bin = atob(r.base64), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    const url = URL.createObjectURL(new Blob([u8], { type: r.type || 'application/octet-stream' }));
+    const a = document.createElement('a'); a.href = url; a.target = '_blank';
+    if (!/pdf|image/.test(r.type || '')) a.download = r.nom;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+
+  // ---------------- Prospects (fichier « Vivier installation » : vivier RPPS + contacts chauds des formations) ----------------
+  let PR = null, prVue = 'lot', prFiltre = { q: '', dep: '', suivi: '' }, prOuvert = '';
+  const PR_SUIVIS = ['À contacter', 'Invitation LinkedIn envoyée', 'Échange en cours', 'Projet identifié', 'RDV pris', 'Devenu client', 'Pas intéressé'];
+  const prLinkedIn = p => 'https://www.linkedin.com/search/results/people/?keywords=' + encodeURIComponent(p.nom + ' dentiste');
+  const prGoogle = p => 'https://www.google.com/search?q=' + encodeURIComponent(p.nom + ' dentiste ' + (p.ville || p.cp || ''));
+  const prWhatsApp = t => { let d = String(t || '').replace(/\D/g, ''); if (d.startsWith('0')) d = '33' + d.slice(1); return 'https://wa.me/' + d; };
+  async function vueProspects(recharger) {
+    const main = document.getElementById('main');
+    if (!PR || recharger) { main.innerHTML = '<h2>Prospects</h2><p class="sub">Chargement…</p>'; const r = await api('prospects'); if (!r.ok) { main.innerHTML = '<div class="vide">' + esc(r.message) + '</div>'; return; } PR = r; }
+    const ordreDep = { '34': 1, '30': 2, '11': 3, '84': 4, '13': 5 };
+    const aContacter = p => !p.suivi || p.suivi === 'À contacter';
+    const lot = PR.vivier.filter(p => p.priorite === 'A' && aContacter(p)).sort((a, b) => (ordreDep[a.dep] || 9) - (ordreDep[b.dep] || 9)).slice(0, 20);
+    const enCours = PR.vivier.filter(p => p.suivi && !['À contacter', 'Pas intéressé', 'Devenu client'].includes(p.suivi));
+    const f = prFiltre, nq = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const tous = PR.vivier.filter(p => (!f.dep || p.dep === f.dep) && (!f.suivi || (p.suivi || 'À contacter') === f.suivi) && (!f.q || nq(p.nom + ' ' + p.lieu + ' ' + p.ville).includes(nq(f.q))));
+    const bt = (v, l) => '<button class="' + (prVue === v ? 'btn' : 'btn-light') + '" onclick="prVue=\'' + v + '\';prOuvert=\'\';vueProspects()">' + l + '</button>';
+    let h = '<h2>Prospects</h2><p class="sub">Vivier des chirurgiens-dentistes de la zone (11, 30, 34, 84, 13 jusqu\'à Aix) et contacts venus des formations. Le suivi est enregistré dans le fichier « Vivier installation » du Drive.</p>' +
+      '<div class="toolbar">' + bt('lot', '🎯 Lot du jour (' + lot.length + ')') + bt('suivi', '🔥 En cours (' + enCours.length + ')') + bt('chauds', '📩 Contacts formations (' + PR.chauds.filter(c => !c.suivi || c.suivi === 'À contacter').length + ')') + bt('tous', 'Tout le vivier (' + PR.vivier.length + ')') + '</div>';
+    if (prVue === 'tous') h += '<div class="toolbar"><input style="flex:1;min-width:160px" placeholder="Nom, cabinet, ville…" value="' + esc(f.q) + '" onchange="prFiltre.q=this.value;vueProspects()"><select onchange="prFiltre.dep=this.value;vueProspects()"><option value="">Tous dép.</option>' + ['34', '30', '11', '84', '13'].map(d => '<option' + (f.dep === d ? ' selected' : '') + '>' + d + '</option>').join('') + '</select><select onchange="prFiltre.suivi=this.value;vueProspects()"><option value="">Tous suivis</option>' + PR_SUIVIS.map(s => '<option' + (f.suivi === s ? ' selected' : '') + '>' + esc(s) + '</option>').join('') + '</select></div>';
+    if (prVue === 'lot') h += '<p class="meta">20 prospects priorité A pas encore contactés, Hérault d\'abord. Vérifiez le profil LinkedIn, invitez avec la note, puis passez le suivi à « Invitation LinkedIn envoyée » : un nouveau prospect arrive.</p>';
+    const liste = prVue === 'lot' ? lot : prVue === 'suivi' ? enCours : prVue === 'tous' ? tous.slice(0, 150) : null;
+    if (liste) h += (liste.length ? liste.map(prCarte).join('') : '<div class="vide">Personne ici pour le moment.</div>') + (prVue === 'tous' && tous.length > 150 ? '<p class="meta">150 premiers sur ' + tous.length + ' : affinez la recherche.</p>' : '');
+    else h += PR.chauds.length ? PR.chauds.map(prCarteChaud).join('') : '<div class="vide">Aucun contact.</div>';
+    main.innerHTML = h;
+  }
+  function prSuiviForm(cle, p, chaud) {
+    return '<div style="margin-top:8px"><div class="g2"><div><label>Suivi</label><select id="ps_s">' + PR_SUIVIS.map(s => '<option' + ((p.suivi || 'À contacter') === s ? ' selected' : '') + '>' + esc(s) + '</option>').join('') + '</select></div>' +
+      (chaud ? '' : '<div><label>Canal</label><select id="ps_c">' + ['LinkedIn', 'Téléphone', 'E-mail', 'Instagram', 'Visite', 'Formation agence', 'Info terrain', 'Autre'].map(s => '<option' + (p.canal === s ? ' selected' : '') + '>' + esc(s) + '</option>').join('') + '</select></div>') + '</div>' +
+      '<label>Notes</label><textarea id="ps_n" rows="3" placeholder="Projet, échéance, matériel, à rappeler le…">' + esc(p.notes || '') + '</textarea>' +
+      '<div class="toolbar" style="margin-top:6px"><button class="btn" onclick="prEnregistrer(this,\'' + esc(cle) + '\')">Enregistrer</button><button class="btn-light" onclick="prOuvert=\'\';vueProspects()">Fermer</button></div><p class="err" id="ps_err"></p></div>';
+  }
+  function prCarte(p) {
+    const cle = 'V' + p.ligne, coul = p.suivi === 'Projet identifié' || p.suivi === 'RDV pris' ? 'var(--ok)' : p.suivi && p.suivi !== 'À contacter' ? '#B45309' : 'var(--muted)';
+    return '<div class="card" style="padding:8px 12px"><div class="row"><div style="flex:1"><b>' + esc(p.nom) + '</b> <span class="meta">' + esc([p.statut, p.specialite].filter(Boolean).join(' · ')) + (p.priorite ? ' · priorité ' + esc(p.priorite) : '') + '</span>' +
+      '<div class="meta">' + esc([p.lieu, [p.cp, p.ville].filter(Boolean).join(' ')].filter(Boolean).join(' · ')) + '</div>' +
+      '<div class="meta" style="color:' + coul + ';font-weight:700">' + esc(p.suivi || 'À contacter') + (p.date ? ' · ' + esc(p.date) : '') + (p.canal ? ' · ' + esc(p.canal) : '') + '</div>' + (p.notes && prOuvert !== cle ? '<div class="meta">' + esc(p.notes) + '</div>' : '') + '</div></div>' +
+      '<div class="toolbar" style="margin-top:6px"><a class="btn-light" style="text-decoration:none" target="_blank" href="' + prLinkedIn(p) + '">in LinkedIn</a><a class="btn-light" style="text-decoration:none" target="_blank" href="' + prGoogle(p) + '">🔎 Google</a>' +
+      (p.tel ? '<a class="btn-light" style="text-decoration:none" href="tel:' + esc(p.tel.replace(/\s/g, '')) + '">📞 ' + esc(p.tel) + '</a>' : '') + (p.email ? '<a class="btn-light" style="text-decoration:none" href="mailto:' + esc(p.email) + '">✉</a>' : '') +
+      (p.invitation ? '<button class="btn-light" onclick="prCopier(this,' + p.ligne + ')">📋 Note d\'invitation</button>' : '') + (prOuvert !== cle ? '<button class="btn-light" onclick="prOuvert=\'' + cle + '\';vueProspects()">✎ Suivi</button>' : '') + '</div>' +
+      (prOuvert === cle ? prSuiviForm(cle, p, false) : '') + '</div>';
+  }
+  function prCarteChaud(c) {
+    const cle = 'C' + c.ligne;
+    return '<div class="card" style="padding:8px 12px"><b>' + esc(c.nom) + '</b> <span class="meta">' + esc([c.profil, c.origine].filter(Boolean).join(' · ')) + '</span>' +
+      (c.formations ? '<div class="meta">Formations : ' + esc(c.formations) + '</div>' : '') + '<div class="meta" style="font-weight:700">' + esc(c.suivi || 'À contacter') + '</div>' + (c.notes && prOuvert !== cle ? '<div class="meta">' + esc(c.notes) + '</div>' : '') +
+      '<div class="toolbar" style="margin-top:6px">' + (c.tel ? '<a class="btn-light" style="text-decoration:none" target="_blank" href="' + prWhatsApp(c.tel) + (c.message ? '?text=' + encodeURIComponent(c.message) : '') + '">💬 WhatsApp</a><a class="btn-light" style="text-decoration:none" href="tel:' + esc(c.tel.replace(/\s/g, '')) + '">📞 ' + esc(c.tel) + '</a>' : '') +
+      (c.email ? '<a class="btn-light" style="text-decoration:none" href="mailto:' + esc(c.email) + '?subject=' + encodeURIComponent('Formations Alternative Dentaire') + (c.message ? '&body=' + encodeURIComponent(c.message) : '') + '">✉ E-mail</a>' : '') +
+      (prOuvert !== cle ? '<button class="btn-light" onclick="prOuvert=\'' + cle + '\';vueProspects()">✎ Suivi</button>' : '') + '</div>' + (prOuvert === cle ? prSuiviForm(cle, c, true) : '') + '</div>';
+  }
+  async function prCopier(b, ligne) {
+    const p = PR.vivier.find(x => x.ligne === ligne); if (!p) return;
+    try { await navigator.clipboard.writeText(p.invitation); b.textContent = '✓ Copiée'; } catch (e) { prompt('Note à copier :', p.invitation); }
+  }
+  async function prEnregistrer(b, cle) {
+    const chaud = cle[0] === 'C', ligne = +cle.slice(1), p = (chaud ? PR.chauds : PR.vivier).find(x => x.ligne === ligne);
+    const suivi = document.getElementById('ps_s').value, canal = chaud ? '' : document.getElementById('ps_c').value, notes = document.getElementById('ps_n').value.trim();
+    b.disabled = true;
+    const r = await api('prospect_maj', { feuille: chaud ? 'chauds' : 'vivier', ligne, nom: p.nom, suivi, canal, notes });
+    if (!r.ok) { b.disabled = false; document.getElementById('ps_err').textContent = r.message; return; }
+    Object.assign(p, { suivi, canal: canal || p.canal, notes, date: r.date || p.date });
+    prOuvert = ''; vueProspects();
+  }
+
   async function vueDocs() {
     const main = document.getElementById('main');
     main.innerHTML = '<h2>Documents</h2><p class="sub">Chargement…</p>';

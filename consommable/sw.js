@@ -1,5 +1,5 @@
 // Coquille de l'appli gardée sur le téléphone (jamais les données ni les appels au serveur)
-const CACHE = 'ad-consommable-v1';
+const CACHE = 'ad-consommable-v2';
 self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(CACHE).then(c => c.addAll(['./', 'index.html', 'logo.png', 'manifest.json']).catch(() => {}))); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== CACHE).map(x => caches.delete(x)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
