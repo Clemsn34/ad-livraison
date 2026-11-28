@@ -46,10 +46,10 @@ function ctrLignes_(items, zone, descs, nomencs) {
   };
   var n = 0;
   items.forEach(function (x) {
-    var ttc = r2(Number(x.prix) || 0), ht = ttc / 1.2, ops = descs[x.code] || '', comp = nomencs[x.code] || [], nid = comp.length ? Utilities.getUuid().replace(/-/g, '') : '';
+    var ttc = r2(Number(x.prix) || 0), ht = ttc / 1.2, ops = descs[x.code] || '', comp = nomencs[x.code] || [], nid = comp.length ? n + 1 : null; // Extrabat veut un nombre
     var info = [x.repere, x.serie ? 'N° de série ' + x.serie : ''].filter(String);
     var p = ligne(x.code, '<mep style="font-weight: bold; color: navy;">' + (x.modele || x.appareil) + '</mep>' + (info.length ? '<br>' + info.join(' · ') : '') + (ops ? '<br>' + ops : ''), 1, ht,
-      { numLigne: String(++n), nomenclature: comp.length > 0, nomenclatureId: nid });
+      nid ? { numLigne: String(++n), nomenclature: true, nomenclatureId: nid } : { numLigne: String(++n) });
     p.totalTtc = ttc; p.totalTva = r2(ttc - p.totalHt);
     comp.forEach(function (c) { ligne(c.code, c.d, Number(c.q) || 1, Number(c.puht) || 0, { nomenclatureId: nid, totalNet: 0 }); });
   });
@@ -96,7 +96,7 @@ function contratsAProposer_(seul) {
         dvInfo = 'Devis Extrabat ' + codeDv + ' ' + (exist ? 'déjà existant' : 'créé (brouillon)') + '.' + (zone ? '' : ' Adresse du cabinet introuvable : ajouter le déplacement à la main.');
         try { log_('Extrabat', p.cab, id, '', 'Claude', '', 'DEVIS CONTRAT', codeDv + ' · ' + eur(total) + ' TTC / an'); } catch (e2) {}
       }
-    } catch (e) { dvInfo = 'Devis Extrabat non créé : ' + e.message; }
+    } catch (e) { try { log_('Extrabat', p.cab, id, '', 'Claude', '', 'DEVIS CONTRAT ✗', String(e.message).slice(0, 300)); } catch (e4) {} return; } // réessayé la nuit suivante
     var detail = dvInfo + '\nEnvoyer : devis, mandat SEPA, conditions générales. Récupérer : devis signé, RIB, mandat SEPA signé, CG signées. Puis saisir RIB et mandat à la banque, lancer les prélèvements, passer les appareils de RAPPEL à OUI (Contrats matériel).' +
       '\nRévision prévue le ' + fmt_(p.prochaine, 'dd/MM/yyyy') + ' :\n' +
       p.items.map(function (x) { return '- ' + String(x.modele || x.appareil).replace(/R[ée]vision annuelle\s*/i, '') + (x.repere ? ' (' + x.repere + ')' : '') + (x.prix ? ' : ' + eur(x.prix) : ''); }).join('\n') +
