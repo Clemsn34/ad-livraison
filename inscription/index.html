@@ -164,6 +164,10 @@
           <div><label for="dep">Où ?</label><select id="dep"><option value="">Je ne sais pas encore</option><option>Hérault (34)</option><option>Gard (30)</option><option>Aude (11)</option><option>Vaucluse (84)</option><option>Bouches-du-Rhône (13)</option><option>Ailleurs</option></select></div>
         </div>
       </div>
+      <div id="blocSitu" class="masque">
+        <label>Votre situation</label>
+        <div class="chips" id="situ"><label><input type="radio" name="situ" value="Installé(e)" onchange="majConfid()">Installé(e)</label><label><input type="radio" name="situ" value="Associé(e)" onchange="majConfid()">Associé(e)</label><label><input type="radio" name="situ" value="Collaborateur(trice)" onchange="majConfid()">Collaborateur(trice)</label></div>
+      </div>
       <label id="lInt">Ce qui vous intéresse</label>
       <div class="chips" id="interets"></div>
       <label class="check"><input type="checkbox" id="accord"> <span id="tAccord"></span></label>
@@ -194,7 +198,7 @@
       <div><b>Plus de <span class="annees-exp">25</span> ans d'expérience</b>Conseil indépendant multimarque, entreprise locale.</div>
       <div><b>Dépannage en moins de 3 h</b>Pour toute panne bloquante.</div>
     </div>
-    <p style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-size:14px;margin:0 0 14px">🔒 <b>Collaborateur, remplaçant ou jeune diplômé avec un projet d'installation ?</b> <a href="https://script.google.com/macros/s/AKfycbylyfquDSMq2V5u_fq6L0a8N-MNIRzZhmXa1vGSX_h-k6lBg0w4P-QcrAjZzz_y7pw2hQ/exec?page=projet&src=formations" style="color:var(--navy);font-weight:700">Votre espace confidentiel →</a><br><span style="color:var(--muted)">Clément vous rappelle personnellement. Nous n'en parlons jamais au cabinet où vous travaillez.</span></p>
+    <p id="confid" style="display:none;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-size:14px;margin:0 0 14px">🔒 <b>Collaborateur, remplaçant ou jeune diplômé avec un projet d'installation ?</b> <a href="https://script.google.com/macros/s/AKfycbylyfquDSMq2V5u_fq6L0a8N-MNIRzZhmXa1vGSX_h-k6lBg0w4P-QcrAjZzz_y7pw2hQ/exec?page=projet&src=formations" style="color:var(--navy);font-weight:700">Votre espace confidentiel →</a><br><span style="color:var(--muted)">Clément vous rappelle personnellement. Nous n'en parlons jamais au cabinet où vous travaillez.</span></p>
     </div>
   </section>
 
@@ -334,14 +338,22 @@
     const coches = [...document.querySelectorAll('#interets input:checked')].map(i => i.value);
     $('interets').innerHTML = (P ? P.interets : []).map(t => '<label><input type="checkbox" value="' + esc(t) + '"' + (coches.includes(t) ? ' checked' : '') + '>' + esc(t) + '</label>').join('');
     if (choix >= 0 && P && !P.publics.includes(evs[choix] && evs[choix].public)) choisir(-1);
-    afficherEvs();
+    afficherEvs(); majConfid();
     if (!sansDefiler && P) $('projet').scrollIntoView({ behavior: 'smooth' });
   }
 
+  // Espace confidentiel : seulement pour les étudiants et les praticiens collaborateurs (jamais installés, associés ni assistantes)
+  function situation() { const r = document.querySelector('input[name=situ]:checked'); return r ? r.value : ''; }
+  function majConfid() {
+    const prat = CUMUL.includes(profil), b = $('blocSitu'); if (b) b.classList.toggle('masque', !prat);
+    const c = $('confid'); if (c) c.style.display = (profil === 'etudiant' || (prat && situation() === 'Collaborateur(trice)')) ? 'block' : 'none';
+  }
   function remplir(p) {
     ['prenom', 'nom', 'portable', 'email', 'insta', 'fac', 'annee', 'quand', 'type', 'dep', 'cabinet', 'ville'].forEach(k => { if (p[k]) $(k).value = p[k]; });
     (p.interets || []).forEach(t => { const i = document.querySelector('#interets input[value="' + t.replace(/"/g, '') + '"]'); if (i) i.checked = true; });
     if (p.photo) $('photo').checked = true;
+    if (p.situation) { const r = document.querySelector('input[name=situ][value="' + p.situation + '"]'); if (r) r.checked = true; }
+    majConfid();
     if (p.portable && p.email) $('accord').checked = true;
   }
 
@@ -426,7 +438,8 @@
     const p = { profil, profils: profilsChoisis.slice(), prenom: v('prenom'), nom: v('nom'), portable: v('portable'), email: v('email'), insta: v('insta'),
       interets: [...document.querySelectorAll('#interets input:checked')].map(i => i.value), photo: $('photo').checked };
     if (etu) Object.assign(p, { fac: v('fac'), annee: v('annee'), quand: v('quand'), type: v('type'), dep: v('dep') });
-    else Object.assign(p, { cabinet: v('cabinet'), ville: v('ville') });
+    else Object.assign(p, { cabinet: v('cabinet'), ville: v('ville'), situation: CUMUL.includes(profil) ? situation() : '' });
+    if (p.situation) p.interets = p.interets.concat('Situation : ' + p.situation);
     if (p.portable.replace(/\D/g, '').length < 9) { err.textContent = T('Indique ton numéro de portable.', 'Indiquez votre numéro de portable.'); return; }
     if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(p.email)) { err.textContent = T('Vérifie ton adresse e-mail.', 'Vérifiez votre adresse e-mail.'); return; }
     if (!$('accord').checked) { err.textContent = T('Coche la case d\'accord pour qu\'on puisse te recontacter.', 'Cochez la case d\'accord pour que nous puissions vous recontacter.'); return; }
