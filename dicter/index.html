@@ -583,10 +583,12 @@ function blocModeles(M, it, k) {
     l.map(x => '<option value="' + esc(x.modele) + '"' + (it.modele === x.modele ? ' selected' : '') + '>' + esc(lib(x)) + '</option>').join('') + '</select>';
 }
 const eqDe = (piece, nom) => { const P = CAT.pieces.find(x => x.piece === piece); return P ? P.equipements.find(e => e.equip === nom) : null; };
-function ajouterSalle(piece) {
+function ajouterSalle(piece, copie) {
   const P = CAT.pieces.find(x => x.piece === piece); if (!P) return;
   const n = PJ.salles.filter(s => s.piece === piece).length + 1, items = {};
   P.equipements.forEach(e => { items[e.equip] = { on: !!e.defaut, marque: '', modele: '', options: [], qte: 1, note: '', offert: !!e.offert }; });
+  const S1 = copie ? PJ.salles.find(s => s.piece === piece) : null;
+  if (S1) { Object.keys(S1.items).forEach(k => { items[k] = JSON.parse(JSON.stringify(S1.items[k])); }); PJ.salles.forEach(s => { if (s.piece === piece) s.ouvert = false; }); }
   PJ.salles.push({ piece, salle: n, items, ouvert: true }); sauverPJ(); afficherDevis();
 }
 
@@ -672,7 +674,9 @@ function afficherDevis() {
     }
     h += '</div>';
   });
-  h += '<div class="pj-add">' + CAT.pieces.map(P => '<button data-add="' + esc(P.piece) + '">+ ' + esc(P.piece) + '</button>').join('') + '</div>' +
+  h += '<div class="pj-add">' + CAT.pieces.map(P => { const S1 = PJ.salles.find(s => s.piece === P.piece);
+      // Salle déjà faite : on propose de la recopier (même fauteuil, mêmes options), à retoucher ensuite
+      return S1 ? '<button data-cop="' + esc(P.piece) + '" style="border-color:var(--gold);background:#FFF8E8">⧉ ' + esc(P.piece) + ' ' + (PJ.salles.filter(s => s.piece === P.piece).length + 1) + ' = copie de la ' + esc(P.piece.toLowerCase()) + ' 1</button><button data-add="' + esc(P.piece) + '">+ ' + esc(P.piece) + ' vide</button>' : '<button data-add="' + esc(P.piece) + '">+ ' + esc(P.piece) + '</button>'; }).join('') + '</div>' +
     zoneFinancement() +
     '<div class="sec">Note</div><textarea id="jnote" placeholder="Délais, budget, financement, surface… (le micro dicte ici)">' + esc(PJ.note) + '</textarea>' +
     '<label class="pj-sw"><input type="checkbox" id="jrec"' + (PJ.recap ? ' checked' : '') + '>' + (PJ.reprise ? 'Renvoyer' : 'Envoyer') + ' le récapitulatif au praticien par e-mail</label>' +
@@ -687,6 +691,7 @@ function afficherDevis() {
   $('jctx').onclick = e => { const b = e.target.closest('button'); if (!b) return; PJ.contexte = b.dataset.c; ls.set('dict_ctx', PJ.contexte); sauverPJ(); afficherDevis(); };
   const it = k => { const [si, eq] = [k.slice(0, k.indexOf('|')), k.slice(k.indexOf('|') + 1)]; return PJ.salles[+si].items[eq]; };
   z.querySelectorAll('[data-add]').forEach(b => b.onclick = () => ajouterSalle(b.dataset.add));
+  z.querySelectorAll('[data-cop]').forEach(b => b.onclick = () => ajouterSalle(b.dataset.cop, true));
   z.querySelectorAll('[data-tog]').forEach(b => b.onclick = () => { const S = PJ.salles[+b.dataset.tog]; S.ouvert = !S.ouvert; sauverPJ(); afficherDevis(); });
   z.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { if (!confirm('Retirer cette pièce du projet ?')) return; PJ.salles.splice(+b.dataset.del, 1); sauverPJ(); afficherDevis(); });
   z.querySelectorAll('[data-on]').forEach(b => b.onchange = () => { it(b.dataset.on).on = b.checked; sauverPJ(); afficherDevis(); });
