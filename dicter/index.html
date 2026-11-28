@@ -37,6 +37,9 @@
   .dern b { color: #1F4FA8; }
   .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(62px, 1fr)); gap: 6px; background: #E4E9F2; border-radius: 12px; padding: 4px; }
   .modes button { font: inherit; font-size: 14.5px; font-weight: 700; border: 0; border-radius: 9px; padding: 10px; background: transparent; color: var(--muted); }
+  .modes.m5 { grid-template-columns: repeat(5, 1fr); }
+  .modes.m5 button { padding: 10px 3px; font-size: 13.5px; hyphens: manual; }
+  .modes .devis { grid-column: 1 / -1; justify-self: center; min-width: 40%; }
   .modes button.on { background: #fff; color: var(--navy); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
   .mat { display: flex; gap: 12px; align-items: center; background: #fff; border: 1.5px solid var(--line); border-radius: 12px; padding: 11px 12px; }
   .mat input { width: 24px; height: 24px; flex-shrink: 0; accent-color: var(--navy); }
@@ -148,7 +151,7 @@ const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let reco = null, ecoute = false, texteBase = '';
 function ecranDictee(auto) {
   if (MODE === 'devis' && !DEVIS_OK) { MODE = 'tache'; ls.set('dict_mode', MODE); }
-  $('main').innerHTML = '<div class="modes"><button id="mT" class="' + (MODE === 'tache' ? 'on' : '') + '">📝 Tâche</button><button id="mP" class="' + (MODE === 'pret' ? 'on' : '') + '">🔧 Prêt</button><button id="mF" class="' + (MODE === 'fiche' ? 'on' : '') + '">🔎 Fiche client</button>' + (D && D.estAD === false ? '' : '<button id="mD" class="' + (MODE === 'panne' ? 'on' : '') + '">🛠 Panne</button>' + (DEVIS_OK ? '<button id="mV" class="' + (MODE === 'devis' ? 'on' : '') + '">📋 Devis</button>' : '') + '<button id="mI" class="' + (MODE === 'instr' ? 'on' : '') + '">🔩 Instruments</button>') + '</div>' +
+  $('main').innerHTML = '<div class="modes' + (D && D.estAD === false ? '' : ' m5') + '"><button id="mT" class="' + (MODE === 'tache' ? 'on' : '') + '">📝 Tâche</button><button id="mP" class="' + (MODE === 'pret' ? 'on' : '') + '">🔧 Prêt</button><button id="mF" class="' + (MODE === 'fiche' ? 'on' : '') + '">🔎 Fiche client</button>' + (D && D.estAD === false ? '' : '<button id="mD" class="' + (MODE === 'panne' ? 'on' : '') + '">🛠 Panne</button><button id="mI" class="' + (MODE === 'instr' ? 'on' : '') + '">🔩 Instru&shy;ments</button>' + (DEVIS_OK ? '<button id="mV" class="devis ' + (MODE === 'devis' ? 'on' : '') + '">📋 Devis</button>' : '')) + '</div>' +
     '<button class="mic" id="mic" aria-label="Dicter"><svg width="58" height="58" viewBox="0 0 24 24" fill="none" stroke="#E3A72F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg></button>' +
     '<div class="etat" id="etat">' + (SR ? (MODE === 'pret' ? 'Dictez le cabinet et le matériel prêté' : MODE === 'devis' ? 'Le micro dicte la note du projet' : MODE === 'instr' ? 'Le micro dicte la panne de l\'instrument' : MODE === 'panne' ? 'Dites la marque, le modèle et le code d\'erreur' : MODE === 'fiche' ? 'Dites le nom du cabinet' : 'Touchez le micro et dictez la tâche') : 'Dictez avec le micro du clavier') + '</div>' +
     (MODE === 'devis' ? '<div id="devis"></div>' : MODE === 'instr' ? zoneInstr() : MODE === 'panne' ? zonePanne() : MODE === 'fiche' ? zoneFiche() : MODE === 'pret' ? zonePret() : '<label>Tâche</label><textarea id="tx" placeholder="Ex. : Dr Marty, changer le ressort du bras de la seringue"></textarea>' +
