@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Dicter : tâche, prêt, fiche, panne, devis</title>
+<title>Dicter : tâche, prêt, fiche, panne, devis, instruments</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0F2347">
 <link rel="icon" href="icone-192.png">
@@ -70,6 +70,13 @@
   .pj-add button { font: inherit; font-size: 14px; font-weight: 700; border: 1.5px dashed var(--navy); color: var(--navy); background: #fff; border-radius: 10px; padding: 8px 12px; }
   .pj-sw { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; margin: 0; color: var(--text); }
   .pj-sw input { width: 22px; height: 22px; accent-color: var(--navy); }
+  .ibdg { font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+  .ibdg.v { background: #E7F5EC; color: var(--ok); } .ibdg.r { background: #FDECEA; color: var(--ko); } .ibdg.o { background: #FFF4DC; color: #8A5A00; }
+  .ifrise { display: flex; gap: 3px; } .ifr { flex: 1; font-size: 10.5px; text-align: center; background: #EEF2F7; color: var(--muted); border-radius: 6px; padding: 4px 2px; line-height: 1.2; }
+  .ifr small { display: block; font-size: 10px; } .ifr.f { background: #DDEBFA; color: var(--navy); } .ifr.c { background: var(--navy); color: #fff; font-weight: 700; }
+  .igar { background: #fff; border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .isel { width: 100%; font: inherit; font-size: 16px; padding: 10px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; }
+  #iZone { display: flex; flex-direction: column; gap: 10px; }
 </style>
 </head>
 <body>
@@ -138,10 +145,10 @@ function decouper(txt) {
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let reco = null, ecoute = false, texteBase = '';
 function ecranDictee(auto) {
-  $('main').innerHTML = '<div class="modes"><button id="mT" class="' + (MODE === 'tache' ? 'on' : '') + '">📝 Tâche</button><button id="mP" class="' + (MODE === 'pret' ? 'on' : '') + '">🔧 Prêt</button><button id="mF" class="' + (MODE === 'fiche' ? 'on' : '') + '">🔎 Fiche client</button>' + (D && D.estAD === false ? '' : '<button id="mD" class="' + (MODE === 'panne' ? 'on' : '') + '">🛠 Panne</button><button id="mV" class="' + (MODE === 'devis' ? 'on' : '') + '">📋 Devis</button>') + '</div>' +
+  $('main').innerHTML = '<div class="modes"><button id="mT" class="' + (MODE === 'tache' ? 'on' : '') + '">📝 Tâche</button><button id="mP" class="' + (MODE === 'pret' ? 'on' : '') + '">🔧 Prêt</button><button id="mF" class="' + (MODE === 'fiche' ? 'on' : '') + '">🔎 Fiche client</button>' + (D && D.estAD === false ? '' : '<button id="mD" class="' + (MODE === 'panne' ? 'on' : '') + '">🛠 Panne</button><button id="mV" class="' + (MODE === 'devis' ? 'on' : '') + '">📋 Devis</button><button id="mI" class="' + (MODE === 'instr' ? 'on' : '') + '">🔩 Instruments</button>') + '</div>' +
     '<button class="mic" id="mic" aria-label="Dicter"><svg width="58" height="58" viewBox="0 0 24 24" fill="none" stroke="#E3A72F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg></button>' +
-    '<div class="etat" id="etat">' + (SR ? (MODE === 'pret' ? 'Dictez le cabinet et le matériel prêté' : MODE === 'devis' ? 'Le micro dicte la note du projet' : MODE === 'panne' ? 'Dites la marque, le modèle et le code d\'erreur' : MODE === 'fiche' ? 'Dites le nom du cabinet' : 'Touchez le micro et dictez la tâche') : 'Dictez avec le micro du clavier') + '</div>' +
-    (MODE === 'devis' ? '<div id="devis"></div>' : MODE === 'panne' ? zonePanne() : MODE === 'fiche' ? zoneFiche() : MODE === 'pret' ? zonePret() : '<label>Tâche</label><textarea id="tx" placeholder="Ex. : Dr Marty, changer le ressort du bras de la seringue"></textarea>' +
+    '<div class="etat" id="etat">' + (SR ? (MODE === 'pret' ? 'Dictez le cabinet et le matériel prêté' : MODE === 'devis' ? 'Le micro dicte la note du projet' : MODE === 'instr' ? 'Le micro dicte la panne de l\'instrument' : MODE === 'panne' ? 'Dites la marque, le modèle et le code d\'erreur' : MODE === 'fiche' ? 'Dites le nom du cabinet' : 'Touchez le micro et dictez la tâche') : 'Dictez avec le micro du clavier') + '</div>' +
+    (MODE === 'devis' ? '<div id="devis"></div>' : MODE === 'instr' ? zoneInstr() : MODE === 'panne' ? zonePanne() : MODE === 'fiche' ? zoneFiche() : MODE === 'pret' ? zonePret() : '<label>Tâche</label><textarea id="tx" placeholder="Ex. : Dr Marty, changer le ressort du bras de la seringue"></textarea>' +
     '<label>Client / cabinet (vide = interne)</label><input id="cab" list="cabs" placeholder="Reconnu automatiquement">' +
     '<datalist id="cabs">' + CABS.slice(0, 4000).map(c => '<option value="' + esc(c) + '">').join('') + '</datalist>' +
     '<label>Pour</label><div class="chips" id="pour">' + EQUIPE.map(p => '<button data-p="' + esc(p) + '" class="' + (p === MOI ? 'on' : '') + '">' + esc(p) + '</button>').join('') + '</div>' +
@@ -150,12 +157,14 @@ function ecranDictee(auto) {
   $('mP').onclick = () => { MODE = 'pret'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
   $('mF').onclick = () => { MODE = 'fiche'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
   if ($('mV')) $('mV').onclick = () => { MODE = 'devis'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
+  if ($('mI')) $('mI').onclick = () => { MODE = 'instr'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
   if ($('mD')) $('mD').onclick = () => { MODE = 'panne'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
   $('mic').onclick = () => ecoute ? arreter() : demarrer();
   if (MODE === 'pret') { initPret(); if (PRE_CAB) { $('pcab').value = PRE_CAB; cabManuel = true; PRE_CAB = ''; listePret(); } return; }
   if (MODE === 'fiche') { initFiche(); return; }
   if (MODE === 'panne') { initPanne(); return; }
   if (MODE === 'devis') { initDevis(); return; }
+  if (MODE === 'instr') { initInstr(); return; }
   if (PRE_CAB) { setTimeout(() => { $('cab').value = PRE_CAB; cabManuel = true; PRE_CAB = ''; }, 0); }
   $('pour').onclick = e => { const b = e.target.closest('button'); if (b) b.classList.toggle('on'); };
   $('tx').oninput = () => appliquer(false);
@@ -171,12 +180,13 @@ function appliquer(depuisDictee) {
 }
 function demarrer() {
   if (!SR) return;
+  if (MODE === 'instr' && !$('ipanne')) { document.querySelectorAll('#iVue button').forEach(x => x.classList.toggle('on', x.dataset.v === 'nouveau')); formInstr(); }
   reco = new SR(); reco.lang = 'fr-FR'; reco.interimResults = true; reco.continuous = false; reco.maxAlternatives = 1;
-  const champ = MODE === 'pret' ? 'ptx' : MODE === 'fiche' ? 'ftx' : MODE === 'panne' ? 'dtx' : MODE === 'devis' ? 'jnote' : 'tx';
+  const champ = MODE === 'instr' ? 'ipanne' : MODE === 'pret' ? 'ptx' : MODE === 'fiche' ? 'ftx' : MODE === 'panne' ? 'dtx' : MODE === 'devis' ? 'jnote' : 'tx';
   texteBase = $(champ).value ? $(champ).value.trim() + ' ' : '';
-  reco.onresult = e => { let s = ''; for (let i = 0; i < e.results.length; i++) s += e.results[i][0].transcript; $(champ).value = texteBase + s; if (MODE === 'pret') appliquerPret(); else if (MODE === 'fiche' || MODE === 'panne') { /* recherche à la fin de la phrase */ } else if (MODE === 'devis') { PJ.note = $('jnote').value; sauverPJ(); } else appliquer(true); };
+  reco.onresult = e => { let s = ''; for (let i = 0; i < e.results.length; i++) s += e.results[i][0].transcript; $(champ).value = texteBase + s; if (MODE === 'pret') appliquerPret(); else if (MODE === 'instr') { /* panne enregistrée à la fin */ } else if (MODE === 'fiche' || MODE === 'panne') { /* recherche à la fin de la phrase */ } else if (MODE === 'devis') { PJ.note = $('jnote').value; sauverPJ(); } else appliquer(true); };
   reco.onerror = e => { $('etat').textContent = e.error === 'not-allowed' ? 'Micro refusé : autorisez-le dans les réglages du navigateur.' : e.error === 'no-speech' ? 'Rien entendu. Touchez le micro pour réessayer.' : 'Dictée interrompue. Touchez le micro.'; };
-  reco.onend = () => { ecoute = false; if (MODE === 'devis') { $('mic').classList.remove('on'); $('etat').textContent = 'Note ajoutée'; return; } if (MODE === 'panne' && $('dtx') && $('dtx').value.trim()) { $('mic').classList.remove('on'); chercherPanne(); return; } if (MODE === 'fiche' && $('ftx') && $('ftx').value.trim()) { $('mic').classList.remove('on'); chercherFiche(); return; } $('mic').classList.remove('on'); if (($(MODE === 'pret' ? 'ptx' : MODE === 'fiche' ? 'ftx' : 'tx').value || '').trim() && !/Micro refusé|Rien entendu|interrompue/.test($('etat').textContent)) $('etat').textContent = MODE === 'pret' ? 'Cochez le matériel prêté' : 'Vérifiez puis « Ajouter la tâche »'; };
+  reco.onend = () => { ecoute = false; if (MODE === 'devis') { $('mic').classList.remove('on'); $('etat').textContent = 'Note ajoutée'; return; } if (MODE === 'instr') { $('mic').classList.remove('on'); $('etat').textContent = 'Panne notée'; if (IF && $('ipanne')) { IF.panne = $('ipanne').value.trim(); ls.set('dict_if', JSON.stringify(IF)); } return; } if (MODE === 'panne' && $('dtx') && $('dtx').value.trim()) { $('mic').classList.remove('on'); chercherPanne(); return; } if (MODE === 'fiche' && $('ftx') && $('ftx').value.trim()) { $('mic').classList.remove('on'); chercherFiche(); return; } $('mic').classList.remove('on'); if (($(MODE === 'pret' ? 'ptx' : MODE === 'fiche' ? 'ftx' : 'tx').value || '').trim() && !/Micro refusé|Rien entendu|interrompue/.test($('etat').textContent)) $('etat').textContent = MODE === 'pret' ? 'Cochez le matériel prêté' : 'Vérifiez puis « Ajouter la tâche »'; };
   try { reco.start(); ecoute = true; $('mic').classList.add('on'); $('etat').textContent = 'Je vous écoute…'; } catch (e) {}
 }
 function arreter() { try { reco && reco.stop(); } catch (e) {} }
@@ -205,7 +215,7 @@ function derniers() {
   $('dern').innerHTML = l.length ? '<div style="border:0;font-weight:700;color:var(--navy)">Dernières tâches dictées</div>' + l.map(x => '<div>' + esc(x.d) + ' · ' + (x.c ? '<b>' + esc(x.c) + '</b> : ' : '') + esc(x.t) + (x.p !== MOI ? ' <i>(' + esc(x.p) + ')</i>' : '') + '</div>').join('') : '';
 }
 // ----- Prêt de matériel : « Thomasset, une turbine NSK et un détartreur » -----
-let MODE = ['pret', 'fiche', 'panne', 'devis'].indexOf(ls.get('dict_mode')) >= 0 ? ls.get('dict_mode') : 'tache', PRETS = null, PRE_CAB = '';
+let MODE = ['pret', 'fiche', 'panne', 'devis', 'instr'].indexOf(ls.get('dict_mode')) >= 0 ? ls.get('dict_mode') : 'tache', PRETS = null, PRE_CAB = '';
 try { PRETS = JSON.parse(ls.get('dict_prets') || 'null'); } catch (e) {}
 function zonePret() {
   return '<label>Ce que vous avez dicté</label><textarea id="ptx" style="min-height:64px" placeholder="Ex. : Dr Marty, une turbine NSK et un détartreur"></textarea>' +
@@ -872,6 +882,190 @@ async function envoyerDevis(enreg) {
     (r.alertes && r.alertes.length ? '<div class="dern">' + r.alertes.map(a => '<div>' + esc(a) + '</div>').join('') + '</div>' : '');
   $('ok').scrollIntoView({ behavior: 'smooth' });
 }
+// ----- Instruments en réparation chez le fournisseur (turbines, contre-angles, détartreurs…) -----
+const I_MARQUES = ['NSK', 'Bien-Air', 'W&H', 'KaVo', 'Acteon', 'EMS', 'Dentsply Sirona', 'Autre'];
+const I_TYPES = ['Turbine', 'Contre-angle', 'Pièce à main', 'Micromoteur', 'Détartreur', 'Moteur de chirurgie', 'Contre-angle de chirurgie', 'Aéropolisseur', 'Lampe à polymériser', 'Autre'];
+const I_MODELES = {
+  'NSK': ['Ti-Max Z95L', 'Ti-Max Z25L', 'Ti-Max Z45L', 'Ti-Max Z900L', 'Ti-Max Z800L', 'Ti-Max X95L', 'Ti-Max X25L', 'Ti-Max X57L', 'Ti-Max X-SG20L', 'Nano95LS', 'Nano25LS', 'S-Max M95L', 'S-Max M25L', 'S-Max M600L', 'S-Max M900L', 'Pana-Max', 'Varios 170', 'Varios 970', 'Surgic Pro', 'NLX Nano', 'iCare+'],
+  'Bien-Air': ['CA 1:5 L Micro-Series', 'CA 1:1 L Micro-Series', 'EVO.15 1:5 L', 'Tornado X', 'Tornado S', 'Bora L', 'Prestige L', 'MX2', 'MCX', 'PM 1:1', 'CA 20:1 L'],
+  'W&H': ['Synea Fusion TK-98 L', 'Synea Vision TK-100 L', 'Synea Fusion WK-99 LT', 'Synea Vision WK-99 LT', 'Proxeo', 'Primea', 'WS-75 L'],
+  'KaVo': ['MASTERmatic LUX M25 L', 'MASTERmatic LUX M05 L', 'EXPERTmatic E25 L', 'MASTERtorque M9000 L', 'EXPERTtorque E680 L', 'GENTLEsilence', 'SONICflex'],
+  'Acteon': ['Newtron Slim', 'Newtron P5', 'Newtron LED', 'Suprasson P5', 'Piezotome', 'Mini LED'],
+  'EMS': ['Piezon', 'Airflow Prophylaxis Master', 'Airflow handy 3.0', 'Piezon Master 700'],
+  'Dentsply Sirona': ['T1 Line', 'T2 Line', 'T3 Line', 'Cavitron', 'SiroAir'],
+};
+const I_ETAPES = ['À récupérer chez le praticien', 'Récupéré', 'Demande de devis faite', 'Devis fait', 'Devis accepté', 'Devis refusé', 'Retour demandé', 'Retourné au client'];
+const I_SUIV = { 'À récupérer chez le praticien': ['Récupéré'], 'Récupéré': ['Demande de devis faite'], 'Demande de devis faite': ['Devis fait'], 'Devis fait': ['Devis accepté', 'Devis refusé'], 'Devis accepté': ['Retour demandé'], 'Devis refusé': ['Retour demandé'], 'Retour demandé': ['Retourné au client'] };
+let INSTR = null, IF = null, IOUV = '';
+try { INSTR = JSON.parse(ls.get('dict_instr') || 'null'); } catch (e) {}
+function nouvelIF() { return { cabinet: '', cabId: '', marque: '', type: '', modele: '', serie: '', panne: '', datePanne: ymd(new Date()), garantie: 'À vérifier', garantieInfo: '', garantieDemandee: false }; }
+function zoneInstr() {
+  return '<div class="chips" id="iVue"><button data-v="liste" class="on">📋 En cours</button><button data-v="nouveau">+ Nouvel instrument</button><button data-v="finis">✓ Retournés</button></div>' +
+    '<p class="err" id="err"></p><div id="ok"></div><div id="iZone"></div>' +
+    '<datalist id="cabs">' + CABS.slice(0, 4000).map(c => '<option value="' + esc(c) + '">').join('') + '</datalist>';
+}
+function initInstr() {
+  $('iVue').onclick = e => { const b = e.target.closest('button'); if (!b) return; document.querySelectorAll('#iVue button').forEach(x => x.classList.toggle('on', x === b)); vueInstr(b.dataset.v); };
+  vueInstr('liste'); chargerInstr();
+}
+const vueCourante = () => { const b = document.querySelector('#iVue button.on'); return b ? b.dataset.v : 'liste'; };
+async function chargerInstr() {
+  try { const r = await api('instr_liste'); if (r.ok) { INSTR = r; ls.set('dict_instr', JSON.stringify(r)); if ($('iVue') && vueCourante() !== 'nouveau') vueInstr(vueCourante()); } else if (!INSTR && $('iZone')) $('iZone').innerHTML = '<p class="err">' + esc(r.message) + '</p>'; }
+  catch (e) { if (e.message === 'code') ecranCode('Session expirée : entrez à nouveau votre code.'); else if (!INSTR && $('iZone')) $('iZone').innerHTML = '<p class="err">Liste indisponible (réseau).</p>'; }
+}
+function vueInstr(v) {
+  if (v === 'nouveau') { formInstr(); return; }
+  const z = $('iZone'); if (!z) return;
+  if (!INSTR) { z.innerHTML = '<div class="etat">Chargement des instruments…</div>'; return; }
+  const l = v === 'finis' ? INSTR.finis : INSTR.enCours;
+  if (!l.length) { z.innerHTML = '<div class="etat">' + (v === 'finis' ? 'Aucun instrument retourné récemment.' : 'Aucun instrument en réparation. Touchez « + Nouvel instrument ».') + '</div>'; return; }
+  let h = '';
+  if (v === 'liste') I_ETAPES.filter(x => x !== 'Retourné au client').forEach(et => { const g = l.filter(x => x.statut === et); if (g.length) h += '<div class="sec">' + esc(et) + ' (' + g.length + ')</div>' + g.map(carteInstr).join(''); });
+  else h = l.map(carteInstr).join('');
+  z.innerHTML = h;
+  z.querySelectorAll('[data-et]').forEach(b => b.onclick = () => etapeInstr(b.dataset.n, b.dataset.et, b));
+  z.querySelectorAll('[data-bon]').forEach(b => b.onclick = () => bonInstr(trouverInstr(b.dataset.bon)));
+  z.querySelectorAll('[data-ouv]').forEach(b => b.onclick = () => { IOUV = IOUV === b.dataset.ouv ? '' : b.dataset.ouv; vueInstr(v); });
+  z.querySelectorAll('[data-enr]').forEach(b => b.onclick = () => enregInstr(b.dataset.enr, b));
+}
+const trouverInstr = n => INSTR ? INSTR.enCours.concat(INSTR.finis).find(x => x.n === n) : null;
+const garBadge = g => g === 'Sous garantie' ? '<span class="ibdg v">Sous garantie</span>' : g === 'Hors garantie' ? '<span class="ibdg r">Hors garantie</span>' : '<span class="ibdg o">Garantie à vérifier</span>';
+function carteInstr(x) {
+  const nom = [x.type, x.marque, x.modele].filter(Boolean).join(' · ');
+  const suiv = I_SUIV[x.statut] || [];
+  const frise = ['Récupéré', 'Demande de devis faite', 'Devis fait', x.statut === 'Devis refusé' ? 'Devis refusé' : 'Devis accepté', 'Retour demandé', 'Retourné au client']
+    .map(e => '<span class="ifr' + (x.etapes[e] ? ' f' : '') + (x.statut === e ? ' c' : '') + '" title="' + esc(e) + '">' + esc(e.replace('Demande de devis faite', 'Devis demandé').replace('Retourné au client', 'Retourné')) + (x.etapes[e] ? '<small>' + esc(x.etapes[e].slice(0, 5)) + '</small>' : '') + '</span>').join('');
+  const ouv = IOUV === x.n;
+  return '<div class="mat" style="flex-direction:column;align-items:stretch;gap:6px">' +
+    '<div style="display:flex;gap:8px;align-items:flex-start"><div class="d"><b>' + esc(x.cabinet || '—') + '</b><span>' + esc(nom) + (x.serie ? ' · N° ' + esc(x.serie) : '') + '</span><span>' + esc(x.n) + ' · panne du ' + esc(x.datePanne || x.cree) + (x.origine === 'Appli praticien' ? ' · 📱 demandé par le praticien' : '') + '</span></div>' + garBadge(x.garantie) + '</div>' +
+    (x.panne ? '<div style="font-size:14px">🔧 ' + esc(x.panne) + '</div>' : '') +
+    (x.garantieInfo || x.garantieDemandee ? '<div class="dern">' + esc(x.garantieInfo) + (x.garantieDemandee ? ' · <b>prise sous garantie demandée</b>' : '') + '</div>' : '') +
+    (x.montant ? '<div class="dern">Devis : <b>' + esc(x.montant) + ' €</b>' + (x.dossier ? ' · dossier ' + esc(x.dossier) : '') + '</div>' : (x.dossier ? '<div class="dern">Dossier fournisseur ' + esc(x.dossier) + '</div>' : '')) +
+    '<div class="ifrise">' + frise + '</div>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap">' + suiv.map(s => '<button class="ret" data-n="' + esc(x.n) + '" data-et="' + esc(s) + '"' + (s === 'Devis refusé' ? ' style="border-color:var(--ko);color:var(--ko)"' : '') + '>› ' + esc(s) + '</button>').join('') +
+    '<button class="ret" style="border-color:var(--navy);color:var(--navy)" data-bon="' + esc(x.n) + '">🖨 Bon</button><button class="ret" style="border-color:var(--line);color:var(--muted)" data-ouv="' + esc(x.n) + '">' + (ouv ? 'Fermer' : '✎ Détails') + '</button></div>' +
+    (ouv ? '<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:8px">' +
+      '<label>N° de dossier / RMA fournisseur</label><input id="iD_' + esc(x.n) + '" value="' + esc(x.dossier) + '">' +
+      '<label>Montant du devis (€ TTC)</label><input id="iM_' + esc(x.n) + '" inputmode="decimal" value="' + esc(x.montant) + '">' +
+      '<label>Garantie</label><select id="iG_' + esc(x.n) + '" class="isel">' + ['À vérifier', 'Sous garantie', 'Hors garantie'].map(g => '<option' + (x.garantie === g ? ' selected' : '') + '>' + g + '</option>').join('') + '</select>' +
+      '<label class="pj-sw"><input type="checkbox" id="iGD_' + esc(x.n) + '"' + (x.garantieDemandee ? ' checked' : '') + '>Demander la prise sous garantie</label>' +
+      '<label>N° de série</label><input id="iS_' + esc(x.n) + '" value="' + esc(x.serie) + '">' +
+      '<label>Notes</label><textarea id="iN_' + esc(x.n) + '" style="min-height:60px">' + esc(x.notes) + '</textarea>' +
+      (x.contact || x.tel ? '<div class="dern">Contact : ' + esc([x.contact, x.tel, x.email].filter(Boolean).join(' · ')) + '</div>' : '') +
+      (x.historique ? '<div class="dern" style="white-space:pre-line">' + esc(x.historique) + '</div>' : '') +
+      '<button class="btn" style="font-size:16px;padding:11px" data-enr="' + esc(x.n) + '">Enregistrer</button></div>' : '') +
+    '</div>';
+}
+async function etapeInstr(n, et, b) {
+  const x = trouverInstr(n); if (!x) return;
+  const data = { n, statut: et };
+  if (et === 'Devis fait') { const mt = prompt('Montant du devis (€ TTC) ? Laissez vide si vous ne l\'avez pas encore.', x.montant || ''); if (mt === null) return; if (mt.trim()) data.montant = mt.trim(); }
+  if (et === 'Retourné au client' && !confirm('Instrument rendu au cabinet ' + (x.cabinet || '') + ' ?')) return;
+  b.disabled = true; b.textContent = '…'; $('err').textContent = '';
+  try { const r = await api('instr_maj', data); if (!r.ok) throw new Error(r.message); majLocale(r.fiche); if (navigator.vibrate) navigator.vibrate(40);
+    $('ok').innerHTML = '<div class="ok">✓ ' + esc(n) + ' : ' + esc(et) + '</div>'; }
+  catch (e) { $('err').textContent = e.message === 'code' ? 'Session expirée.' : 'Non enregistré : ' + e.message; }
+  vueInstr(vueCourante());
+}
+function majLocale(f) {
+  if (!INSTR || !f) return;
+  INSTR.enCours = INSTR.enCours.filter(x => x.n !== f.n); INSTR.finis = INSTR.finis.filter(x => x.n !== f.n);
+  if (f.statut === 'Retourné au client') INSTR.finis.unshift(f); else INSTR.enCours.unshift(f);
+  ls.set('dict_instr', JSON.stringify(INSTR));
+}
+async function enregInstr(n, b) {
+  const v = id => ($(id + '_' + n) || {}).value || '';
+  b.disabled = true; b.textContent = 'Enregistrement…';
+  try { const r = await api('instr_maj', { n, dossier: v('iD').trim(), montant: v('iM').trim(), garantie: v('iG'), garantieDemandee: $('iGD_' + n).checked, serie: v('iS').trim(), notes: v('iN').trim() });
+    if (!r.ok) throw new Error(r.message); majLocale(r.fiche); IOUV = ''; $('ok').innerHTML = '<div class="ok">✓ ' + esc(n) + ' enregistré</div>'; }
+  catch (e) { $('err').textContent = e.message === 'code' ? 'Session expirée.' : 'Non enregistré : ' + e.message; }
+  vueInstr(vueCourante());
+}
+// Formulaire : marque → instrument → modèle → n° de série → panne + date → garantie
+function formInstr() {
+  if (!IF) { try { IF = JSON.parse(ls.get('dict_if') || 'null'); } catch (e) {} } if (!IF) IF = nouvelIF();
+  const chips = (id, l, cur) => '<div class="chips" id="' + id + '">' + l.map(x => '<button data-v="' + esc(x) + '" class="' + (cur === x ? 'on' : '') + '">' + esc(x) + '</button>').join('') + '</div>';
+  const mods = I_MODELES[IF.marque] || [];
+  $('iZone').innerHTML = '<label>Cabinet / praticien</label><input id="iCab" list="cabs" value="' + esc(IF.cabinet) + '" placeholder="Nom du cabinet">' +
+    '<label>Marque</label>' + chips('iMq', I_MARQUES, IF.marque) +
+    '<label>Instrument</label>' + chips('iTy', I_TYPES, IF.type) +
+    '<label>Modèle</label><input id="iMo" list="iMods" value="' + esc(IF.modele) + '" placeholder="Ex. : Ti-Max Z95L, Nano95LS…"><datalist id="iMods">' + mods.map(m => '<option value="' + esc(m) + '">').join('') + '</datalist>' +
+    (mods.length ? '<div class="chips" id="iMoC">' + mods.slice(0, 12).map(m => '<button data-v="' + esc(m) + '" class="' + (IF.modele === m ? 'on' : '') + '" style="font-size:13px;padding:4px 10px">' + esc(m) + '</button>').join('') + '</div>' : '') +
+    '<label>N° de série</label><input id="iSe" value="' + esc(IF.serie) + '" autocapitalize="characters" placeholder="Gravé sur l\'instrument">' +
+    '<label>Panne (dictez avec le micro)</label><textarea id="ipanne" style="min-height:72px" placeholder="Ex. : bruit au démarrage, plus de spray, la tête chauffe">' + esc(IF.panne) + '</textarea>' +
+    '<label>Date de la panne</label><input id="iDt" type="date" value="' + esc(IF.datePanne) + '">' +
+    '<div class="igar"><div style="display:flex;align-items:center;gap:8px"><b style="flex:1;color:var(--navy)">Garantie</b>' + garBadge(IF.garantie) + '</div>' +
+    '<div class="dern" id="iGi">' + esc(IF.garantieInfo || 'Touchez « Vérifier » : je cherche l\'achat dans les factures Extrabat du cabinet.') + '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="ret" id="iGv" style="border-color:var(--navy);color:var(--navy)">🔎 Vérifier la garantie</button>' + ['Sous garantie', 'Hors garantie'].map(g => '<button class="ret" data-g="' + g + '" style="border-color:var(--line);color:var(--muted)">' + g + '</button>').join('') + '</div>' +
+    '<label class="pj-sw"><input type="checkbox" id="iGd"' + (IF.garantieDemandee ? ' checked' : '') + '>Demander la prise sous garantie au fournisseur</label>' +
+    '<div class="dern">⚠ Un choc sur la tête ou une chute n\'est jamais pris sous garantie.</div></div>' +
+    '<label>Étape</label><div class="chips" id="iSt">' + ['Récupéré', 'Demande de devis faite'].map((s, i) => '<button data-v="' + s + '" class="' + (i === 0 ? 'on' : '') + '">' + (i === 0 ? 'Récupéré aujourd\'hui' : 'Récupéré + devis déjà demandé') + '</button>').join('') + '</div>' +
+    '<button class="btn" id="iGo">Enregistrer et imprimer le bon</button><button class="ret" id="iRaz" style="align-self:center;border-color:var(--line);color:var(--muted)">Effacer le formulaire</button>';
+  const sauve = () => { IF.cabinet = $('iCab').value.trim(); IF.modele = $('iMo').value.trim(); IF.serie = $('iSe').value.trim(); IF.panne = $('ipanne').value.trim(); IF.datePanne = $('iDt').value; IF.garantieDemandee = $('iGd').checked; ls.set('dict_if', JSON.stringify(IF)); };
+  ['iCab', 'iMo', 'iSe', 'ipanne', 'iDt'].forEach(id => $(id).oninput = sauve); $('iGd').onchange = sauve;
+  const pick = (id, k) => $(id).onclick = e => { const b = e.target.closest('button'); if (!b) return; sauve(); IF[k] = IF[k] === b.dataset.v ? '' : b.dataset.v; if (k !== 'modele') { IF.garantie = 'À vérifier'; IF.garantieInfo = ''; } ls.set('dict_if', JSON.stringify(IF)); formInstr(); };
+  pick('iMq', 'marque'); pick('iTy', 'type'); if ($('iMoC')) pick('iMoC', 'modele');
+  $('iSt').onclick = e => { const b = e.target.closest('button'); if (b) document.querySelectorAll('#iSt button').forEach(x => x.classList.toggle('on', x === b)); };
+  document.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { sauve(); IF.garantie = b.dataset.g; IF.garantieInfo = 'Indiqué à la main'; if (b.dataset.g === 'Sous garantie') IF.garantieDemandee = true; ls.set('dict_if', JSON.stringify(IF)); formInstr(); });
+  $('iGv').onclick = verifGarantie;
+  $('iRaz').onclick = () => { if (confirm('Effacer le formulaire ?')) { IF = nouvelIF(); ls.del('dict_if'); formInstr(); } };
+  $('iGo').onclick = creerInstr;
+}
+async function verifGarantie() {
+  const b = $('iGv'); b.disabled = true; b.textContent = 'Recherche…';
+  IF.cabinet = $('iCab').value.trim(); IF.modele = $('iMo').value.trim(); IF.serie = $('iSe').value.trim(); IF.panne = $('ipanne').value.trim();
+  const c = D && D.cabinets ? D.cabinets.find(x => norm(x.nom) === norm(IF.cabinet)) : null;
+  try { const r = await api('instr_garantie', { marque: IF.marque, type: IF.type, modele: IF.modele, serie: IF.serie, cabinet: IF.cabinet, cabId: c ? c.id : '' });
+    if (!r.ok) throw new Error(r.message); IF.garantie = r.garantie; IF.garantieInfo = r.info; if (r.garantie === 'Sous garantie') IF.garantieDemandee = true; }
+  catch (e) { IF.garantieInfo = e.message === 'code' ? 'Session expirée.' : 'Vérification impossible : ' + e.message; }
+  ls.set('dict_if', JSON.stringify(IF)); formInstr();
+}
+async function creerInstr() {
+  IF.cabinet = $('iCab').value.trim(); IF.modele = $('iMo').value.trim(); IF.serie = $('iSe').value.trim(); IF.panne = $('ipanne').value.trim(); IF.datePanne = $('iDt').value; IF.garantieDemandee = $('iGd').checked;
+  $('err').textContent = '';
+  if (IF.cabinet.length < 2) { $('err').textContent = 'Indiquez le cabinet.'; return; }
+  if (!IF.marque && !IF.type) { $('err').textContent = 'Choisissez la marque et l\'instrument.'; return; }
+  if (IF.panne.length < 3) { $('err').textContent = 'Décrivez la panne.'; return; }
+  const c = D && D.cabinets ? D.cabinets.find(x => norm(x.nom) === norm(IF.cabinet)) : null;
+  const st = (document.querySelector('#iSt button.on') || { dataset: { v: 'Récupéré' } }).dataset.v;
+  const w = window.open('', '_blank'); // ouverte tout de suite (sinon bloquée par le téléphone), remplie après l'enregistrement
+  arreter(); const b = $('iGo'); b.disabled = true; b.textContent = 'Enregistrement…';
+  try { const r = await api('instr_ajouter', Object.assign({}, IF, { cabId: c ? c.id : '', statut: st })); if (!r.ok) throw new Error(r.message);
+    let f = r.fiche;
+    if (st === 'Demande de devis faite') { try { const r2 = await api('instr_maj', { n: r.n, statut: st }); if (r2.ok) f = r2.fiche; } catch (e) {} }
+    if (INSTR) majLocale(f);
+    bonInstr(f, w); IF = nouvelIF(); ls.del('dict_if');
+    document.querySelectorAll('#iVue button').forEach(x => x.classList.toggle('on', x.dataset.v === 'liste')); vueInstr('liste');
+    $('ok').innerHTML = '<div class="ok">✓ ' + esc(r.n) + ' enregistré · bon de réparation ouvert pour impression</div>';
+    chargerInstr();
+  } catch (e) { if (w) w.close(); b.disabled = false; b.textContent = 'Enregistrer et imprimer le bon'; $('err').textContent = e.message === 'code' ? 'Session expirée.' : 'Non enregistré : ' + e.message; }
+}
+// Bon de réparation à glisser dans le colis du fournisseur (sans le nom du cabinet : seulement notre référence)
+function bonInstr(x, w) {
+  if (!x) return;
+  w = w || window.open('', '_blank');
+  if (!w) { alert('Autorisez les fenêtres pour imprimer le bon.'); return; }
+  const logo = new URL('icone-192.png', location.href).href, auj = new Date().toLocaleDateString('fr-FR');
+  const ligne = (l, v) => v ? '<tr><th>' + esc(l) + '</th><td>' + esc(v) + '</td></tr>' : '';
+  const achat = x.garantieInfo && /acheté le/.test(x.garantieInfo) ? x.garantieInfo.replace(/\s*\(.*\)$/, '') : '';
+  w.document.write('<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bon de réparation ' + esc(x.n) + '</title><style>' +
+    'body{font-family:Segoe UI,Arial,sans-serif;color:#1F2937;margin:24px;font-size:14px}header{display:flex;align-items:center;gap:14px;border-bottom:3px solid #E3A72F;padding-bottom:10px}header img{width:56px;height:56px}' +
+    'h1{color:#0F2347;font-size:22px;margin:0}h2{color:#0F2347;font-size:15px;margin:20px 0 6px;text-transform:uppercase;letter-spacing:.05em}.ad{font-size:12.5px;color:#5A6880;line-height:1.5}.num{margin-left:auto;text-align:right}.num b{font-size:20px;color:#0F2347}' +
+    'table{width:100%;border-collapse:collapse}th{width:34%;text-align:left;background:#EEF2F8;color:#0F2347;padding:7px 9px;font-size:13px;border:1px solid #DCE3EE}td{padding:7px 9px;border:1px solid #DCE3EE}' +
+    '.gar{margin-top:12px;padding:10px 12px;border-radius:8px;font-weight:700}.oui{background:#E7F5EC;color:#1E8449}.non{background:#FFF4DC;color:#8A5A00}.sig{display:flex;gap:20px;margin-top:28px}.sig div{flex:1;border-top:1px solid #9AA6B8;padding-top:6px;font-size:12px;color:#5A6880;height:60px}' +
+    '.no{margin-top:22px}@media print{.no{display:none}body{margin:12mm}}</style></head><body>' +
+    '<header><img src="' + logo + '" alt=""><div><h1>Bon de réparation</h1><div class="ad"><b>Alternative Dentaire</b> · 10 rue de la Prade, 34880 Lavérune<br>04 69 96 03 60 · contact@alternativedentaire.fr</div></div><div class="num">N°<br><b>' + esc(x.n) + '</b><br><span class="ad">' + auj + '</span></div></header>' +
+    '<h2>Instrument</h2><table>' + ligne('Marque', x.marque) + ligne('Instrument', x.type) + ligne('Modèle / référence', x.modele) + ligne('N° de série', x.serie || 'non relevé') + '</table>' +
+    '<h2>Panne constatée</h2><table>' + ligne('Description', x.panne) + ligne('Date de la panne', x.datePanne) + '</table>' +
+    '<div class="gar ' + (x.garantieDemandee ? 'oui' : 'non') + '">' + (x.garantieDemandee ? '☑ Prise sous garantie demandée' + (achat ? ' · ' + esc(achat) : '') : '☐ Hors garantie : merci de nous adresser un devis avant toute réparation') + '</div>' +
+    '<h2>Références</h2><table>' + ligne('Notre référence', x.n) + ligne('Votre n° de dossier', x.dossier) + '</table>' +
+    '<p class="ad" style="margin-top:14px">Merci d\'envoyer le devis et le suivi à <b>contact@alternativedentaire.fr</b> en rappelant la référence <b>' + esc(x.n) + '</b>, et de nous retourner l\'instrument à l\'adresse ci-dessus.</p>' +
+    '<div class="sig"><div>Remis par Alternative Dentaire</div><div>Reçu par le fournisseur</div></div>' +
+    '<div class="no"><button onclick="window.print()" style="font:inherit;font-size:16px;padding:12px 18px;border-radius:10px;border:2px solid #E3A72F;background:#0F2347;color:#fff;font-weight:700">🖨 Imprimer</button></div>' +
+    '<script>setTimeout(function(){try{window.print()}catch(e){}},600)<\/script></body></html>');
+  w.document.close();
+}
+
 const DEVIS_URL = new URLSearchParams(location.search).get('devis');
 if (DEVIS_URL) { MODE = 'devis'; ls.set('dict_mode', MODE); try { history.replaceState(null, '', location.pathname); } catch (e) {} }
 if (!TOKEN && !ls.get('ag_code')) ecranCode(); else ecranDictee(false);
