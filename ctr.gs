@@ -1,6 +1,6 @@
 // Contrat d'entretien à proposer UN AN avant la révision (prélèvement mensuel qui finance la révision) :
 // appareils « RAPPEL » (sans contrat) dont la révision tombe dans les 12 mois → par cabinet, une fois par échéance :
-// devis Extrabat (révisions avec leur liste d'opérations + UN déplacement selon la zone) et tâche pour Clément.
+// devis Extrabat (chaque révision avec sa nomenclature de pièces + UN déplacement selon la zone) et tâche pour Clément.
 var AGENCE_ADRESSE = '10 rue de la Prade, 34880 Lavérune, France';
 // Zones de déplacement (distance par la route depuis l'agence, aller simple) → article Extrabat (prix HT)
 var ZONES_DEPLACEMENT = [
@@ -51,8 +51,9 @@ function ctrLignes_(items, zone, descs, nomencs) {
     var p = ligne(x.code, '<mep style="font-weight: bold; color: navy;">' + (x.modele || x.appareil) + '</mep>' + (info.length ? '<br>' + info.join(' · ') : '') + (ops ? '<br>' + ops : ''), 1, ht,
       nid ? { numLigne: String(++n), nomenclature: true, nomenclatureId: nid } : { numLigne: String(++n) });
     p.totalTtc = ttc; p.totalTva = r2(ttc - p.totalHt);
-    // composants : prix unitaire affiché, totaux à 0 (sinon l'API les ajoute au total du devis en plus du parent)
-    comp.forEach(function (c) { ligne(c.code, c.d, Number(c.q) || 1, Number(c.puht) || 0, { nomenclatureId: nid, totalHt: 0, totalNet: 0, totalTva: 0, totalTtc: 0 }); });
+    // composants (pièces changées + main-d'œuvre) listés sans prix : l'API recalcule le total avec toutes les lignes,
+    // le prix de la révision reste porté par la ligne parent (tarif)
+    comp.forEach(function (c) { ligne(c.code, c.d, Number(c.q) || 1, 0, { nomenclatureId: nid }); });
   });
   if (zone) {
     var l = ligne(zone.code, '<mep style="font-weight: bold; color: navy;">' + zone.lib + '</mep><br>Un seul déplacement pour toutes les révisions (' + zone.km + ' km de l\'agence)', 1, zone.ht, { numLigne: String(++n) });
@@ -81,7 +82,7 @@ function contratsAProposer_(seul) {
     var exId = exbLien_(id) || (/^EXB-\d+$/.test(id) ? id.slice(4) : '');
     var zone = null; if (exId) { try { zone = zoneDeplacement_(exId); } catch (e) {} }
     var totalRev = p.items.reduce(function (s, x) { return s + (Number(x.prix) || 0); }, 0), dep = zone ? r2(zone.ht * 1.2) : 0;
-    var total = totalRev + dep, mens = Math.ceil(total / 12 * 100) / 100, codeDv = 'CE-' + id + '-' + fmt_(p.prochaine, 'yyyyMM'), dvInfo = '';
+    var total = totalRev + dep, mens = Math.ceil(total / 12 * 100) / 100, codeDv = 'CONTRAT-' + id + '-' + fmt_(p.prochaine, 'yyyyMM'), dvInfo = '';
     try {
       if (!exId) { dvInfo = 'Devis non créé : cabinet pas encore relié à Extrabat (Clients › fiche › Voir dans Extrabat).'; }
       else {
