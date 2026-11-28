@@ -18,6 +18,13 @@
   nav { display: flex; gap: 4px; padding: 10px 22px 0; background: #fff; border-bottom: 1px solid var(--line); overflow-x: auto; }
   nav button { border: 0; background: none; padding: 10px 14px; font: inherit; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; }
   nav button.on { color: var(--navy); border-bottom-color: var(--gold); }
+  #sousnav { display: flex; gap: 6px; flex-wrap: wrap; padding: 8px 16px 0; max-width: 1100px; margin: 0 auto; }
+  #sousnav:empty { display: none; }
+  #sousnav button { border: 1.5px solid var(--line); background: #fff; border-radius: 18px; padding: 6px 13px; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--muted); cursor: pointer; }
+  #sousnav button.on { background: var(--navy); border-color: var(--navy); color: #fff; }
+  #sousnav .nb { background: var(--ko); color: #fff; border-radius: 10px; padding: 1px 7px; font-size: 11px; margin-left: 4px; }
+  #rech { padding: 8px 16px 0; max-width: 1100px; margin: 0 auto; }
+  #rech input { width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; padding: 10px 14px; border: 1.5px solid var(--line); border-radius: 22px; background: #fff; }
   nav button .nb { background: var(--ko); color: #fff; border-radius: 10px; padding: 1px 7px; font-size: 11px; margin-left: 4px; }
   main { max-width: 1100px; margin: 0 auto; padding: 18px 16px 50px; }
   h2 { color: var(--navy); margin: 0 0 4px; font-size: 20px; }
@@ -75,7 +82,7 @@
   <div class="brand"><b>ALTERNATIVE DENTAIRE CONSOMMABLE</b><span>Consommable</span></div>
   <div class="moi" id="moi"></div>
 </header>
-<nav id="nav"></nav>
+<nav id="nav"></nav><div id="sousnav"></div><div id="rech"><input id="rechQ" type="search" placeholder="🔎 Rechercher partout : cabinet, n° RP / RI / T, référence, n° de série, casier…" oninput="rechercher(this.value)"></div>
 <main id="main"><div class="vide">Chargement…</div></main>
 <script>
   const EXEC = 'https://script.google.com/macros/s/AKfycbylyfquDSMq2V5u_fq6L0a8N-MNIRzZhmXa1vGSX_h-k6lBg0w4P-QcrAjZzz_y7pw2hQ/exec'; let TOKEN = '';
@@ -177,9 +184,15 @@
     if (D.voitTout) { /* tous les onglets */ }
     else if (APP === 'conso') tabs = [['taches', 'Mes tâches', retard], ['clients', 'Clients']].concat(D.publier !== false ? [['publier', 'Publier']] : [], [['conso', 'Consommables'], ['demandes', 'Demandes des cabinets']], D.prospects ? [['prospects', 'Prospects']] : [], [['docs', 'Documents'], ['aide', 'Mode d\'emploi']]);
     else if (D.estAD) tabs = tabs.filter(t => t[0] !== 'conso');
-    if (!tabs.some(t => t[0] === onglet)) onglet = 'taches';
-    document.getElementById('nav').innerHTML = tabs.map(t => '<button class="' + (onglet === t[0] ? 'on' : '') + '" onclick="aller(\'' + t[0] + '\')">' + t[1] + (t[2] ? '<span class="nb">' + t[2] + '</span>' : '') + '</button>').join('');
-    ({ taches: vueTaches, clients: vueClients, installs: vueInstalls, conso: vueConso, demandes: vueDemandes, orga: vueOrga, docs: vueDocs, revs: vueRevs, chantiers: vueChantiers, devis: vueDevis, prets: vuePrets, atelier: vueAtelier, instr: vueInstr, pieces: vuePieces, publier: vuePublier, aide: vueAide, doctech: vueDocTech, prospects: vueProspects, financement: vueFinancement })[onglet]();
+    if (onglet !== 'recherche' && !tabs.some(t => t[0] === onglet)) onglet = 'taches';
+    // Rubriques (une ligne) puis sous-onglets de la rubrique ouverte
+    const dispo = RUBRIQUES.map(r => [r[0], r[1], r[2].map(k => tabs.find(t => t[0] === k)).filter(Boolean)]).filter(r => r[2].length);
+    const rubOn = (dispo.find(r => r[2].some(t => t[0] === onglet)) || [''])[0];
+    document.getElementById('nav').innerHTML = dispo.map(r => { const nb = r[2].reduce((s, t) => s + (Number(t[2]) || 0), 0); return '<button class="' + (rubOn === r[0] ? 'on' : '') + '" onclick="aller(\'' + r[2][0][0] + '\')">' + r[1] + (nb ? '<span class="nb">' + nb + '</span>' : '') + '</button>'; }).join('');
+    const sous = (dispo.find(r => r[0] === rubOn) || ['', '', []])[2];
+    document.getElementById('sousnav').innerHTML = sous.length > 1 ? sous.map(t => '<button class="' + (onglet === t[0] ? 'on' : '') + '" onclick="aller(\'' + t[0] + '\')">' + t[1] + (t[2] ? '<span class="nb">' + t[2] + '</span>' : '') + '</button>').join('') : '';
+    const rq = document.getElementById('rechQ'); if (rq && document.activeElement !== rq) rq.value = RQ;
+    ({ recherche: vueRecherche, taches: vueTaches, clients: vueClients, installs: vueInstalls, conso: vueConso, demandes: vueDemandes, orga: vueOrga, docs: vueDocs, revs: vueRevs, chantiers: vueChantiers, devis: vueDevis, prets: vuePrets, atelier: vueAtelier, instr: vueInstr, pieces: vuePieces, publier: vuePublier, aide: vueAide, doctech: vueDocTech, prospects: vueProspects, financement: vueFinancement })[onglet]();
   }
   function aller(o) { onglet = o; PD = []; facVue = false; afficher(); }
 
@@ -335,6 +348,47 @@
       : '<div class="vide">' + (L.length ? 'Aucun résultat.' : (D.chantiers && !CH ? 'Chargement…' : 'Aucune installation effectuée.')) + '</div>';
   }
   // Partie « chantier » d'une installation en cours (équipe technique)
+  // ---------------- Bon de livraison : matériel reçu (bureau) et chargé (technicien) ----------------
+  let blOuvert = '', BLD = {};
+  function blocLivraison(i, j) {
+    if (i.statut === 'Annulée') return '';
+    const s = (D.blStats || {})[i.n], ouv = blOuvert === i.n, planif = i.statut === 'Planifiée';
+    let alerte = '';
+    if (planif && j !== null && j <= 7 && (!s || s.recus < s.total)) alerte = '⚠ Installation ' + (j < 0 ? 'passée' : j === 0 ? 'aujourd\'hui' : 'dans ' + j + ' j') + (s ? ' : ' + (s.total - s.recus) + ' article' + (s.total - s.recus > 1 ? 's' : '') + ' pas encore reçu' + (s.total - s.recus > 1 ? 's' : '') : ' : bon de livraison pas encore préparé');
+    else if (planif && j !== null && j <= 1 && s && s.charges < s.total) alerte = '🚚 ' + (s.total - s.charges) + ' article' + (s.total - s.charges > 1 ? 's' : '') + ' pas encore chargé' + (s.total - s.charges > 1 ? 's' : '') + ' dans le camion';
+    const resume = s ? '📦 ' + s.recus + ' / ' + s.total + ' reçus · 🚚 ' + s.charges + ' / ' + s.total + ' chargés' : '📦 Bon de livraison';
+    let h = '<div style="border-top:1px solid var(--line);margin-top:8px;padding-top:8px">' + (alerte ? '<div class="meta" style="color:var(--ko);font-weight:700;margin-bottom:6px">' + esc(alerte) + '</div>' : '') +
+      '<button class="btn-light" onclick="blBasculer(\'' + esc(i.n) + '\')">' + resume + (s && s.recus === s.total && s.total ? ' ✓' : '') + (ouv ? ' ▲' : ' ▼') + '</button>';
+    if (ouv) {
+      const b = BLD[i.n];
+      if (!b) h += '<div class="meta">Chargement du matériel (commande Extrabat)…</div>';
+      else if (!b.ok) h += '<div class="meta" style="color:var(--ko)">' + esc(b.message) + '</div>';
+      else {
+        const k = esc(i.n), ck = (l, champ, fait) => '<label style="display:flex;align-items:center;gap:4px;font-size:12.5px;white-space:nowrap"><input type="checkbox"' + (fait ? ' checked' : '') + ' onchange="blCocher(\'' + k + '\',' + l.ligne + ',\'' + champ + '\',this.checked,this)">' + (champ === 'recu' ? 'Reçu' : 'Chargé') + '</label>';
+        h += '<div class="meta" style="margin-top:6px">Source : ' + esc(b.source) + '. Le bureau coche « Reçu » à l\'arrivée, le technicien coche « Chargé » en remplissant le camion.</div>' +
+          b.lignes.map(l => '<div class="row" style="padding:5px 0;border-bottom:1px solid var(--line);align-items:flex-start"><div style="flex:1"><b>' + esc(l.quantite && l.quantite !== '1' ? l.quantite + ' × ' : '') + esc(l.designation) + '</b>' + (l.reference ? ' <span class="meta">' + esc(l.reference) + '</span>' : '') +
+            ((l.recuLe || l.chargeLe) ? '<div class="meta">' + [l.recuLe ? 'reçu le ' + esc(l.recuLe) + ' (' + esc(l.recuPar) + ')' : '', l.chargeLe ? 'chargé le ' + esc(l.chargeLe) + ' (' + esc(l.chargePar) + ')' : ''].filter(Boolean).join(' · ') + '</div>' : '') + '</div>' +
+            '<div style="display:flex;flex-direction:column;gap:4px">' + ck(l, 'recu', !!l.recuLe) + ck(l, 'charge', !!l.chargeLe) + '</div></div>').join('') +
+          '<div class="toolbar" style="margin-top:8px"><button class="btn-light" onclick="blTout(\'' + k + '\',\'recu\',this)">✓ Tout reçu</button><button class="btn-light" onclick="blTout(\'' + k + '\',\'charge\',this)">🚚 Tout chargé</button><button class="btn-light" onclick="blImprimer(\'' + k + '\')">🖨 Imprimer le bon</button><button class="btn-light" onclick="blAjout(\'' + k + '\',this)">+ Ajouter</button><button class="btn-light" title="Reprendre la liste depuis Extrabat (les coches sont perdues)" onclick="blRefaire(\'' + k + '\',this)">↻ Extrabat</button></div>';
+      }
+    }
+    return h + '</div>';
+  }
+  function blMaj(n, r) { BLD[n] = r; if (r.ok) { D.blStats = D.blStats || {}; D.blStats[n] = { total: r.lignes.length, recus: r.lignes.filter(l => l.recuLe).length, charges: r.lignes.filter(l => l.chargeLe).length }; } }
+  async function blBasculer(n) { blOuvert = blOuvert === n ? '' : n; afficher(); if (blOuvert === n) { let r; try { r = await api('bl_get', { install: n }); } catch (e) { r = { ok: false, message: 'Connexion impossible.' }; } blMaj(n, r); if (blOuvert === n) afficher(); } }
+  async function blCocher(n, ligne, champ, val, box) { box.disabled = true; let r; try { r = await api('bl_coche', { install: n, ligne, champ, val }); } catch (e) { r = { ok: false, message: 'Connexion impossible.' }; } if (!r.ok) { box.checked = !val; box.disabled = false; alert(r.message); return; } blMaj(n, r); afficher(); }
+  async function blTout(n, champ, b) { if (!confirm(champ === 'recu' ? 'Tout le matériel est arrivé à l\'agence ?' : 'Tout le matériel est chargé dans le camion ?')) return; b.disabled = true; const r = await api('bl_coche', { install: n, ligne: 'tout', champ, val: true }); if (!r.ok) { b.disabled = false; alert(r.message); return; } blMaj(n, r); afficher(); }
+  async function blRefaire(n, b) { if (!confirm('Reprendre la liste depuis la commande Extrabat ? Les coches actuelles seront effacées.')) return; b.disabled = true; const r = await api('bl_get', { install: n, refaire: true }); blMaj(n, r); afficher(); }
+  async function blAjout(n, b) { const d = prompt('Matériel à ajouter (désignation) :'); if (!d || !d.trim()) return; const q = prompt('Quantité ?', '1'); if (q === null) return; b.disabled = true; const r = await api('bl_ajouter', { install: n, designation: d.trim(), quantite: q }); if (!r.ok) { b.disabled = false; alert(r.message); return; } blMaj(n, r); afficher(); }
+  function blImprimer(n) {
+    const b = BLD[n]; if (!b || !b.ok) return; const w = window.open('', '_blank'); if (!w) { alert('Autorisez les fenêtres pour imprimer.'); return; }
+    const i = b.install, lg = b.lignes.map(l => '<tr><td>' + esc(l.quantite || 1) + '</td><td>' + esc(l.designation) + '</td><td>' + esc(l.reference) + '</td><td class="c">' + (l.recuLe ? '☑' : '☐') + '</td><td class="c">' + (l.chargeLe ? '☑' : '☐') + '</td><td class="c">☐</td></tr>').join('');
+    w.document.write('<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Bon de livraison ' + esc(i.n) + '</title><style>body{font-family:Segoe UI,Arial,sans-serif;color:#1F2937;margin:24px;font-size:13.5px}h1{color:#0F2347;font-size:21px;margin:0}header{border-bottom:3px solid #E3A72F;padding-bottom:8px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:flex-end}.ad{font-size:12px;color:#5A6880}table{width:100%;border-collapse:collapse}th{background:#EEF2F8;color:#0F2347;text-align:left;padding:6px 8px;border:1px solid #DCE3EE;font-size:12.5px}td{padding:6px 8px;border:1px solid #DCE3EE}.c{text-align:center;font-size:17px;width:62px}.sig{display:flex;gap:20px;margin-top:26px}.sig div{flex:1;border-top:1px solid #9AA6B8;padding-top:6px;font-size:12px;color:#5A6880;height:56px}@media print{.no{display:none}body{margin:12mm}}</style></head><body>' +
+      '<header><div><h1>Bon de livraison</h1><div class="ad"><b>Alternative Dentaire</b> · 10 rue de la Prade, 34880 Lavérune · 04 69 96 03 60</div></div><div style="text-align:right"><b style="color:#0F2347;font-size:16px">' + esc(i.cabinet) + '</b><br><span class="ad">' + esc([i.praticien, 'installation ' + i.n, i.date ? 'le ' + i.date : ''].filter(Boolean).join(' · ')) + '</span></div></header>' +
+      '<p class="ad">' + esc(b.source) + '</p><table><tr><th>Qté</th><th>Désignation</th><th>Référence</th><th class="c">Reçu</th><th class="c">Chargé</th><th class="c">Livré</th></tr>' + lg + '</table>' +
+      '<div class="sig"><div>Préparé par</div><div>Livré et installé par</div><div>Reçu par le praticien (date, signature)</div></div><p class="no"><button onclick="window.print()" style="font:inherit;font-size:16px;padding:10px 16px;border-radius:10px;border:2px solid #E3A72F;background:#0F2347;color:#fff;font-weight:700">🖨 Imprimer</button></p><script>setTimeout(function(){try{window.print()}catch(e){}},500)<\/script></body></html>');
+    w.document.close();
+  }
   function blocChantierInstall(i) {
     const c = CH && CH.chantiers.find(x => x.n === i.n);
     if (!c) return '';
@@ -531,7 +585,7 @@
         (alerte ? '<div class="meta" style="color:#8A5A00;font-weight:700;margin-top:6px">⚠ Financement non validé : ne pas installer avant validation.</div>' : '') +
         (ts.length ? '<div class="meta">' + faites + ' / ' + ts.length + ' tâches faites</div><div class="prog"><i style="width:' + Math.round(100 * faites / ts.length) + '%"></i></div>' : '') + '</div>' +
         '<div style="width:180px"><label style="margin-top:0">Financement</label><select onchange="majInstall(\'' + esc(i.n) + '\',{financement:this.value})">' + D.financements.map(f => '<option' + (f === i.financement ? ' selected' : '') + '>' + esc(f) + '</option>').join('') + '</select>' +
-        '<label>Statut</label><select onchange="majInstall(\'' + esc(i.n) + '\',{statut:this.value})">' + D.statuts.map(s => '<option' + (s === i.statut ? ' selected' : '') + '>' + esc(s) + '</option>').join('') + '</select></div></div>' + blocChantierInstall(i) + '</div>';
+        '<label>Statut</label><select onchange="majInstall(\'' + esc(i.n) + '\',{statut:this.value})">' + D.statuts.map(s => '<option' + (s === i.statut ? ' selected' : '') + '>' + esc(s) + '</option>').join('') + '</select></div></div>' + blocLivraison(i, j) + blocChantierInstall(i) + '</div>';
       return h;
   }
   async function creerInstall(b) {
@@ -1000,6 +1054,7 @@
           (c.personnes.length ? '<div class="sec" style="margin-top:10px">Praticiens et équipe</div>' + c.personnes.map(p => '<div class="row" style="padding:3px 0"><div style="flex:1"><b>' + esc(p.nom) + '</b>' + (p.fonction ? ' · <span class="meta">' + esc(p.fonction) + '</span>' : '') + '</div>' + (p.tel ? '<a href="tel:' + esc(String(p.tel).replace(/\s/g, '')) + '">' + esc(p.tel) + '</a>' : '') + '</div>').join('') : (c.contact ? '<div class="meta">Contact : ' + esc(c.contact) + '</div>' : '')) +
           (c.prets.length ? '<div class="sec" style="margin-top:10px">Matériel prêté</div>' + c.prets.map(p => '<div class="meta" style="padding:2px 0">' + esc(p.materiel) + (p.serie ? ' · n° ' + esc(p.serie) : '') + (p.retour ? ' · retour ' + (p.retard ? '<b style="color:#C0392B">prévu le ' + esc(p.retour) + ' (en retard)</b>' : 'prévu le ' + esc(p.retour)) : '') + '</div>').join('') : '') +
           (c.installs.length ? '<div class="sec" style="margin-top:10px">Installations</div>' + c.installs.map(i => '<div class="meta" style="padding:2px 0">' + esc(i.date || 'Date à fixer') + ' · ' + esc(i.materiel) + ' · ' + esc(i.statut) + '</div>').join('') : '') +
+          (D.estAD ? '<div class="sec" style="margin-top:10px">En cours pour ce cabinet</div><div id="cabEnCours" data-id="' + esc(c.id) + '" data-nom="' + esc(c.nom) + '"><div class="meta">Chargement…</div></div>' : '') +
           (c.notes ? '<div class="sec" style="margin-top:10px">Notes</div><div class="meta">' + esc(c.notes) + '</div>' : '') +
           (D.chantiers ? '<div class="sec" style="margin-top:10px">Dossier technique et Drive du praticien</div><div id="cabPrat" data-id="' + esc(c.id) + '" data-nom="' + esc(c.nom) + '" data-contact="' + esc((c.personnes[0] || {}).nom || '') + '"><div class="meta">Chargement…</div></div>' : '') +
           (D.chantiers ? '<div class="sec" style="margin-top:10px">Financement</div><div id="cabFin" data-id="' + esc(c.id) + '" data-nom="' + esc(c.nom) + '" data-contact="' + esc((c.personnes[0] || {}).nom || '') + '" data-ville="' + esc(c.ville || '') + '"><div class="toolbar"><input id="finMt" type="number" inputmode="decimal" placeholder="Montant du projet TTC" style="max-width:220px" onclick="event.stopPropagation()"><input id="finMail" type="email" placeholder="E-mail du praticien" value="' + esc(c.email || '') + '" style="max-width:260px" onclick="event.stopPropagation()"></div><div class="toolbar"><button class="btn" onclick="event.stopPropagation();finProposition(this, true)">✉ Créer et envoyer par e-mail</button><button class="btn-light" onclick="event.stopPropagation();finProposition(this, false)">💶 Créer seulement</button></div><div id="finRes"></div></div>' : '') +
@@ -1008,6 +1063,7 @@
     }).join('') + (l.length > 150 ? '<div class="vide">' + (l.length - 150) + ' autres : affinez la recherche.</div>' : '') + (!l.length ? '<div class="vide">Aucun cabinet trouvé.</div>' : '');
     main.innerHTML = h;
     if (document.getElementById('cabDocs')) chargerCabDocs();
+    if (document.getElementById('cabEnCours')) chargerEnCours();
     if (document.getElementById('cabPrat')) chargerCabPrat();
     if (window.__clF) { const q = document.getElementById('clQ'); q.focus(); q.setSelectionRange(q.value.length, q.value.length); window.__clF = false; }
   }
@@ -1276,6 +1332,50 @@
   }
   async function pcSuppr(b, n) { if (!confirm('Supprimer définitivement la fiche ' + n + ' ?')) return; b.disabled = true; const r = await api('piece_suppr', { n }); if (!r.ok) { b.disabled = false; alert(r.message); return; } PCS = null; vuePieces(); }
   async function pcMaj(b, n) { const v = id => document.getElementById(id).value.trim(); b.disabled = true; const r = await api('piece_maj', { n, mode: v('peMo'), reference: v('peRf'), serie: v('peSe'), commande: v('peCm'), rma: v('peRm'), suivi: v('peSv'), montant: v('peMt'), notes: v('peNo'), casier: v('peCa') }); if (!r.ok) { b.disabled = false; alert(r.message); return; } pcEdit = ''; PCS = null; vuePieces(); }
+
+  // ---------------- Rubriques, recherche globale, liens entre onglets ----------------
+  const RUBRIQUES = [['jour', '📋 Ma journée', ['taches', 'demandes']], ['sav', '🔧 SAV', ['pieces', 'instr', 'prets', 'atelier', 'revs', 'doctech']],
+    ['cab', '👥 Cabinets', ['clients', 'installs', 'prospects']], ['com', '💶 Commercial', ['devis', 'financement', 'publier']], ['conso', '📦 Consommables', ['conso']], ['docs', '📁 Docs', ['docs', 'aide']]];
+  let RQ = '';
+  function rechercher(v) { RQ = v; clearTimeout(window.__rq); window.__rq = setTimeout(() => { if (RQ.trim().length >= 2) { onglet = 'recherche'; afficher(); } else if (onglet === 'recherche') { onglet = 'taches'; afficher(); } }, 250); }
+  async function chargerSuivis() {
+    const p = [];
+    if (D.estAD && !PCS) p.push(api('piece_liste').then(d => { if (d.ok) PCS = d; }).catch(() => {}));
+    if (D.estAD && !IN) p.push(api('instr_liste').then(d => { if (d.ok) IN = d; }).catch(() => {}));
+    await Promise.all(p);
+  }
+  function allerTache(n) { const t = D.taches.find(x => x.n === n); filtreTaches = t && mesTaches().includes(t) ? 'moi' : 'tous'; infosEdit = ''; RQ = ''; aller('taches'); setTimeout(() => { const e = [...document.querySelectorAll('.card.tache')].find(c => c.innerHTML.includes("cocher(\'' + n + '\'")); if (e) { e.scrollIntoView({ block: 'center' }); e.style.boxShadow = '0 0 0 3px var(--gold)'; } }, 50); }
+  function allerCab(id, nom) { clFiltre = nom || ''; clOuvert = id; CL = CL || null; RQ = ''; aller('clients'); }
+  function allerInstr() { RQ = ''; IN = null; aller('instr'); }
+  const lienT = t => '<div class="card" style="padding:8px 12px;cursor:pointer" onclick="allerTache(\'' + esc(t.n) + '\')"><b>📝 ' + esc(t.titre) + '</b><div class="meta">' + esc([t.n, t.cabinet, t.statut, t.pour ? 'pour ' + t.pour : '', t.echeance ? 'échéance ' + t.echeance : ''].filter(Boolean).join(' · ')) + '</div></div>';
+  const lienP = o => '<div class="card" style="padding:8px 12px;cursor:pointer" onclick="allerPiece(\'' + esc(o.n) + '\')"><b>⚙️ ' + esc([o.type, o.reference ? 'réf. ' + o.reference : ''].filter(Boolean).join(' · ') || 'Pièce') + '</b> <span class="bdg' + (o.statut === 'En casier' ? ' v' : '') + '">' + esc(o.statut === 'En casier' ? '📦 en casier' + (o.casier ? ' « ' + o.casier + ' »' : '') : o.statut) + '</span><div class="meta">' + esc([o.n, o.cabinet, o.appareil, o.mode].filter(Boolean).join(' · ')) + '</div></div>';
+  const lienI = o => '<div class="card" style="padding:8px 12px;cursor:pointer" onclick="allerInstr()"><b>🔩 ' + esc([o.type, o.marque, o.modele].filter(Boolean).join(' · ')) + '</b> <span class="bdg">' + esc(o.statut) + '</span><div class="meta">' + esc([o.n, o.cabinet, o.serie ? 'n° ' + o.serie : ''].filter(Boolean).join(' · ')) + '</div></div>';
+  async function vueRecherche() {
+    const main = document.getElementById('main'), q = pcNorm(RQ.trim()); if (!q) return;
+    main.innerHTML = '<h2>Recherche : « ' + esc(RQ) + ' »</h2><p class="sub">Recherche…</p>';
+    await chargerSuivis(); if (onglet !== 'recherche' || pcNorm(RQ.trim()) !== q) return;
+    const ok = a => pcNorm(a.join(' ')).includes(q);
+    const ts = D.taches.filter(t => ok([t.n, t.titre, t.cabinet, t.detail, t.pour])).slice(0, 30);
+    const ps = PCS ? PCS.enCours.concat(PCS.finis).filter(o => ok([o.n, o.cabinet, o.reference, o.type, o.designation, o.appareil, o.serie, o.fournisseur, o.casier, o.commande, o.tacheOrigine])) : [];
+    const is = IN ? IN.enCours.concat(IN.finis).filter(o => ok([o.n, o.cabinet, o.marque, o.type, o.modele, o.serie, o.dossier])) : [];
+    const cs = (D.cabinets || []).filter(c => ok([c.nom, c.ville, c.id])).slice(0, 20);
+    const ins = (D.installations || []).filter(i => ok([i.n, i.cabinet, i.praticien, i.materiel])).slice(0, 20);
+    const bloc = (titre, l, f) => l.length ? '<div class="sec">' + titre + ' (' + l.length + ')</div>' + l.map(f).join('') : '';
+    const h = bloc('⚙️ Pièces', ps, lienP) + bloc('📝 Tâches', ts, lienT) + bloc('🔩 Instruments', is, lienI) +
+      bloc('👥 Cabinets', cs, c => '<div class="card" style="padding:8px 12px;cursor:pointer" onclick="allerCab(\'' + esc(c.id) + '\',\'' + esc(c.nom).replace(/'/g, '') + '\')"><b>' + esc(c.nom) + '</b><div class="meta">' + esc([c.ville, c.id].filter(Boolean).join(' · ')) + '</div></div>') +
+      bloc('🏗 Installations', ins, i => '<div class="card" style="padding:8px 12px;cursor:pointer" onclick="RQ=\'\';aller(\'installs\')"><b>' + esc(i.cabinet) + '</b> <span class="bdg">' + esc(i.statut) + '</span><div class="meta">' + esc([i.n, i.date, i.materiel].filter(Boolean).join(' · ')) + '</div></div>');
+    main.innerHTML = '<h2>Recherche : « ' + esc(RQ) + ' »</h2>' + (h || '<div class="vide">Rien trouvé. Essayez un autre mot (nom du cabinet, référence, n° de fiche…).</div>');
+  }
+  // Fiche cabinet : tout ce qui est en cours pour lui (tâches, pièces, instruments)
+  async function chargerEnCours() {
+    const z = document.getElementById('cabEnCours'); if (!z) return;
+    const id = z.dataset.id, q = pcNorm(z.dataset.nom), meme = (cid, nom) => (id && cid && cid === id) || (q && pcNorm(nom) === q);
+    await chargerSuivis();
+    const z2 = document.getElementById('cabEnCours'); if (!z2 || z2.dataset.id !== id) return;
+    const ts = D.taches.filter(t => t.statut !== 'Fait' && pcNorm(t.cabinet || (t.titre || '').split(':')[0]) === q);
+    const ps = PCS ? PCS.enCours.filter(o => meme(o.cabId, o.cabinet)) : [], is = IN ? IN.enCours.filter(o => meme(o.cabId, o.cabinet)) : [];
+    z2.innerHTML = (ps.map(lienP).join('') + is.map(lienI).join('') + ts.map(lienT).join('')) || '<div class="meta">Rien en cours.</div>';
+  }
 
   // ---------------- Publier pour tous les cabinets ----------------
   let PB = null, pbType = 'actu', pbFic = null;
