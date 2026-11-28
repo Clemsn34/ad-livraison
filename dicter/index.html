@@ -644,7 +644,7 @@ function genererDevisType(spec, n, chir) {
   sauverPJ(); afficherDevis();
   if (manquants.length) alert('Articles introuvables dans le catalogue (à vérifier dans l\'onglet « Devis types ») :\n' + manquants.join('\n'));
 }
-function chirType() { return PJ.typeChir != null ? PJ.typeChir : (PJ.typeSpec || 'Omnipratique') !== 'Orthodontie'; }
+function chirType() { return PJ.typeChir === true; }
 function blocDevisType() {
   if (!PJ.typeOuvert) return '<button class="ret" id="jtype" style="align-self:flex-start;border-color:var(--gold)">⚡ Devis type (création de cabinet)</button>';
   return '<div class="pj-salle" style="border-color:var(--gold)"><h3 style="margin:0 0 6px">⚡ Devis type</h3><div class="cf-t">Spécialité</div><div class="chips" id="jtsp">' + specsTypes().map(x => '<button data-sp="' + esc(x) + '" class="' + ((PJ.typeSpec || 'Omnipratique') === x ? 'on' : '') + '">' + esc(x) + '</button>').join('') + '</div>' +
