@@ -3,7 +3,7 @@
     // 2) À défaut, le code dans les dossiers dont le nom correspond au modèle (ancienne méthode)
     var code = String(req.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
     if (!code) { return { ok: false, message: 'Code d\'erreur manquant.' }; }
-    var STOP = /^(le|la|les|de|du|des|un|une|sur|mon|ma|mes|avec|et|a|au|aux|en|pour|il|y|est|qui|fait|affiche|marque|modele|appareil|machine|dentaire|cabinet|chez|the|of)$/;
+    var STOP = /^(le|la|les|de|du|des|un|une|sur|mon|ma|mes|avec|et|a|au|aux|en|pour|il|y|est|qui|fait|affiche|marque|modele|appareil|machine|dentaire|cabinet|chez|the|of|ou|alarme|alarmes|alarm|erreur|erreurs|error|information|informations|info|infos|code|codes|message|l|litre|litres|ecran|panne)$/;
     // Mots mal dictés : « night lave plus » = iClave Plus, « vacu clave » = Vacuklav, « + » = plus
     var qm = docNorm_(String(req.q || '').replace(/\+/g, ' plus '))
       .replace(/\b(?:night|nigh|nike|naik|aie|ail|ai|i|y|hi|il)\s?(?:lave|clave|klave|clav|claves)\b/g, 'iclave')
