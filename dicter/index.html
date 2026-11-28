@@ -426,7 +426,9 @@ function nombresFr(t) {
 function analysePanne(q) {
   let t = ' ' + q.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() + ' ';
   t = nombresFr(t);
-  const m = /\b(?:erreur|error|err|code|alarme|defaut|panne|message|affiche)\s*(?:numero|n°|no|n)?\s*([a-z]{0,3})\s*[-.]?\s*(\d{1,4}[a-z]?)\b/.exec(t);
+  let m = /\b(?:erreur|error|err|code|alarme|alarm|defaut|fault|panne|message|affiche|fehler|storung)\s*(?:numero|n°|no|n)?\s*([a-z]{0,3})\s*[-.]?\s*(\d{1,4}[a-z]?)\b/.exec(t);
+  // Sans mot « erreur » : dernier code du type E10, A 51, F3, N04 dans la phrase
+  if (!m) { const l = [...t.matchAll(/\b(?:([a-z])\s?[-.]?\s?|([a-z]{2}))(\d{1,3})\b/g)].map(x => Object.assign([x[0], x[1] || x[2], x[3]], { index: x.index })).filter(x => !/^(n|no|de|le|la|vs)$/.test(x[1])); if (l.length) m = l[l.length - 1]; }
   if (!m) return { modele: q.trim(), code: '' };
   return { modele: (t.slice(0, m.index) + ' ' + t.slice(m.index + m[0].length)).replace(/\s+/g, ' ').trim(), code: (m[1] + m[2]).toUpperCase() };
 }
@@ -451,7 +453,7 @@ async function chercherPanne() {
   const lettres = an.code.replace(/\d.*$/, ''), num = String(+an.code.replace(/^[A-Z]*/, '').replace(/[A-Z]$/, ''));
   // Le code doit être un mot à part (« A51 », « E 06 », « erreur 6 ») : pas « cartouche 6 » ni « paragraphe 6.3 »
   const motif = lettres ? new RegExp('(^|[^A-Za-z0-9])' + lettres + '\\s?[-.]?\\s?0*' + num + '(?![0-9]|[.,][0-9])', 'i')
-    : new RegExp('(^|[^A-Za-z0-9\u00C0-\u00FF])(?:err(?:or|eur)?|code|alarme?|alarm|d[ée]faut|fault|message|n°|[aeinwf]|al|er)\\s?[-.:°]?\\s?0*' + num + '(?![0-9]|[.,][0-9])', 'i');
+    : new RegExp('(^|[^A-Za-z0-9\u00C0-\u00FF])(?:err(?:or|eur|ore)?|code|alarme?|alarm|allarme|d[ée]faut|fault|fehler|st[öo]rung|malfunction|panne|message|n°|[aeinwf]|al|er)\\s?[-.:°]?\\s?0*' + num + '(?![0-9]|[.,][0-9])', 'i');
   const codesManuels = [];
   z.innerHTML = '<div class="etat" id="pEtat">Lecture de ' + r.fichiers.length + ' document(s)…</div><div id="pRes" style="display:flex;flex-direction:column;gap:10px"></div>';
   let trouve = 0, lus = 0;

@@ -1466,7 +1466,9 @@
   function docAnalyse(q) {
     let t = ' ' + q.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() + ' ';
     t = nombresFr(t);
-    const m = /\b(?:erreur|error|err|code|alarme|defaut|panne|message|affiche)\s*(?:numero|n°|no|n)?\s*([a-z]{0,3})\s*[-.]?\s*(\d{1,4}[a-z]?)\b/.exec(t);
+    let m = /\b(?:erreur|error|err|code|alarme|alarm|defaut|fault|panne|message|affiche|fehler|storung)\s*(?:numero|n°|no|n)?\s*([a-z]{0,3})\s*[-.]?\s*(\d{1,4}[a-z]?)\b/.exec(t);
+    // Sans mot « erreur » : dernier code du type E10, A 51, F3, N04
+    if (!m) { const l = [...t.matchAll(/\b(?:([a-z])\s?[-.]?\s?|([a-z]{2}))(\d{1,3})\b/g)].map(x => Object.assign([x[0], x[1] || x[2], x[3]], { index: x.index })).filter(x => !/^(n|no|de|le|la|vs)$/.test(x[1])); if (l.length) m = l[l.length - 1]; }
     if (!m) return { modele: q.trim(), code: '' };
     const code = (m[1] + m[2]).toUpperCase();
     return { modele: (t.slice(0, m.index) + ' ' + t.slice(m.index + m[0].length)).replace(/\s+/g, ' ').trim(), code };
@@ -1483,7 +1485,7 @@
   }
   function docAfficherRes() {
     const r = DT.res, z = document.getElementById('dtres');
-    z.innerHTML = (r.etat ? '<p class="meta">' + esc(r.etat) + '</p>' : '') + (r.dossiers.length ? r.dossiers.map(d => '<div class="card" style="padding:8px 12px;cursor:pointer" onclick="docOuvrir(\'' + esc(d.id) + '\')"><b>📁 ' + esc(d.nom) + '</b><div class="meta">' + esc(d.chemin) + '</div></div>').join('') : '<div class="vide">Rien trouvé pour « ' + esc(DT.q) + ' ». Essayez la marque seule, ou un autre mot.</div>');
+    z.innerHTML = (r.etat ? '<p class="meta">' + esc(r.etat) + '</p>' : '') + ((r.fichiers || []).length ? '<div class="sec">Documents</div>' + r.fichiers.map(f => '<div class="card" style="padding:8px 12px"><div class="row"><div style="flex:1">' + iconeF(f.type || 'pdf') + ' <b>' + esc(f.nom) + '</b><div class="meta">' + esc(f.chemin) + ' · ' + tailleF(f.taille) + '</div></div><button class="btn-light" onclick="docFichier(this,\'' + esc(f.id) + '\')">Ouvrir</button></div></div>').join('') + '<div class="sec">Dossiers</div>' : '') + (r.dossiers.length ? r.dossiers.map(d => '<div class="card" style="padding:8px 12px;cursor:pointer" onclick="docOuvrir(\'' + esc(d.id) + '\')"><b>📁 ' + esc(d.nom) + '</b><div class="meta">' + esc(d.chemin) + '</div></div>').join('') : '<div class="vide">Rien trouvé pour « ' + esc(DT.q) + ' ». Essayez la marque seule, ou un autre mot.</div>');
   }
   async function docOuvrir(id) {
     if (DT.dossier && DT.dossier.id !== id) DT.pile.push(DT.dossier.id);
@@ -1516,7 +1518,7 @@
     const lettres = an.code.replace(/\d.*$/, ''), num = String(+an.code.replace(/^[A-Z]*/, '').replace(/[A-Z]$/, ''));
     // Code sans lettre (« erreur 12 ») : exiger un mot d'erreur devant, sinon tous les numéros de page sortiraient
     const motif = lettres ? new RegExp('(^|[^A-Z0-9])' + lettres + '\\s?[-.]?\\s?0*' + num + '(?![0-9])', 'i')
-      : new RegExp('(err(?:or|eur)?|code|alarme?|d[ée]faut|fault|message|E|n°)\\s?[-.:]?\\s?0*' + num + '(?![0-9])', 'i');
+      : new RegExp('(err(?:or|eur|ore)?|code|alarme?|alarm|allarme|d[ée]faut|fault|fehler|st[öo]rung|malfunction|panne|message|E|n°)\\s?[-.:]?\\s?0*' + num + '(?![0-9])', 'i');
     let trouve = 0;
     for (const f of r.fichiers) {
       let pdf; try { pdf = await api('doc_fichier', { id: f.id }); } catch (e) { continue; }
