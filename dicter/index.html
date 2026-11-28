@@ -595,7 +595,6 @@ function msgType() {
   const l = [b, '', M[L] || M['Autre'], '', (PJ.reprise ? (tu ? 'Comme convenu, tu trouveras ci-joint ' : 'Comme convenu, vous trouverez ci-joint ') + liste.replace('notre devis', 'notre devis mis à jour') : (tu ? 'Comme convenu, tu trouveras ci-joint ' : 'Comme convenu, vous trouverez ci-joint ') + liste) + '.',
     '', tu ? "Je reste bien sûr disponible pour l'ajuster ensemble si besoin." : "Nous restons bien sûr à votre disposition pour l'ajuster ensemble si besoin."];
   if (L !== 'Showroom') l.push('', tu ? "Et si tu veux voir et essayer le matériel, notre showroom de Lavérune (5 min de Montpellier) t'est ouvert du lundi au vendredi, de 9 h à 17 h." : "Et si vous souhaitez voir et essayer le matériel, notre showroom de Lavérune (5 min de Montpellier) vous accueille du lundi au vendredi, de 9 h à 17 h.");
-  l.push('', tu ? 'À très vite,' : 'Bien cordialement,');
   return l.join('\n');
 }
 function blocEnvoi() {
@@ -604,7 +603,7 @@ function blocEnvoi() {
     '<div class="chips" id="jlieu">' + LIEUX.map(x => '<button data-l="' + esc(x) + '" class="' + ((PJ.lieu || 'Salon ADF') === x ? 'on' : '') + '">' + esc(x) + '</button>').join('') + '</div>' +
     '<label class="pj-sw"><input type="checkbox" id="jdocs"' + (PJ.docs !== false ? ' checked' : '') + '>Joindre la documentation du fauteuil et de la panoramique</label>' +
     '<textarea id="jmsg" rows="12" style="font-size:14px">' + esc(PJ.msg) + '</textarea>' +
-    '<div style="display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--muted)"><span style="flex:1">Ta signature et nos coordonnées sont ajoutées. Tu reçois une copie avec le nom du praticien et la version (v1, v2…).</span>' + (PJ.msgPerso ? '<button class="ret" id="jmsgr" style="margin:0;padding:4px 8px">↺ Message type</button>' : '') + '</div>';
+    '<div style="display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--muted)"><span style="flex:1">« Bien à vous » (ou « À très vite » en tutoiement), ta signature et nos coordonnées sont ajoutés. Tu reçois une copie avec le nom du praticien et la version (v1, v2…).</span>' + (PJ.msgPerso ? '<button class="ret" id="jmsgr" style="margin:0;padding:4px 8px">↺ Message type</button>' : '') + '</div>';
 }
 // ----- Devis type (création de cabinet, devis pour la banque) : onglet « Devis types » du tableau -----
 function specsTypes() { return [...new Set(((CAT && CAT.devisTypes) || []).map(r => r.spec).filter(x => x !== 'Tous'))]; }
@@ -719,6 +718,7 @@ function afficherDevis() {
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input id="jnom" placeholder="Nom (Dr …)" value="' + esc(PJ.nom) + '"><input id="jpre" placeholder="Prénom" value="' + esc(PJ.prenom) + '"></div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input id="jtel" type="tel" placeholder="Téléphone" value="' + esc(PJ.tel) + '"><input id="jvil" placeholder="Ville" value="' + esc(PJ.ville) + '"></div>' +
     '<input id="jmail" type="email" placeholder="E-mail (pour envoyer le devis)" value="' + esc(PJ.email) + '">' +
+    '<div id="jcoord" style="font-size:12.5px;color:var(--ok);min-height:0"></div>' +
     '<div class="chips" id="jctx">' + ctx.map(c => '<button data-c="' + esc(c) + '" class="' + (PJ.contexte === c ? 'on' : '') + '">' + esc(c) + '</button>').join('') + '</div>' +
     '<div class="sec">Pièces et matériel</div>';
   PJ.salles.forEach((S, si) => {
@@ -758,7 +758,20 @@ function afficherDevis() {
     (PJ.salles.length || PJ.nom ? '<button class="ret" id="jraz" style="align-self:center;border-color:var(--muted);color:var(--muted)">Nouveau projet (tout effacer)</button>' : '');
   z.innerHTML = h;
   const champ = (id, cle) => { const el = $(id); el.oninput = () => { PJ[cle] = el.value; sauverPJ(); }; };
-  champ('jcab', 'cabinet'); champ('jnom', 'nom'); champ('jpre', 'prenom'); champ('jtel', 'tel'); champ('jvil', 'ville'); champ('jmail', 'email'); champ('jnote', 'note');
+  champ('jcab', 'cabinet'); champ('jnom', 'nom');
+  // Praticien déjà connu : coordonnées reprises de l'onglet Clients et de la fiche Extrabat (seulement les champs vides)
+  const reprendre = async q => {
+    if (reprendre.enCours) return; reprendre.enCours = true; const z2 = $('jcoord'); if (z2) z2.textContent = 'Recherche des coordonnées…';
+    try { const r = await api('proj_coord', q); reprendre.enCours = false; if (!r || !r.ok) { if (z2) z2.textContent = ''; return; }
+      if (!r.trouve) { if (z2) z2.textContent = r.plusieurs ? 'Plusieurs fiches Extrabat : ' + r.plusieurs.join(', ') + ' (indiquez le prénom)' : ''; return; }
+      let n = 0; [['nom', 'nom'], ['prenom', 'prenom'], ['tel', 'tel'], ['email', 'email'], ['ville', 'ville']].forEach(([k, v]) => { if (r[v] && !String(PJ[k] || '').trim()) { PJ[k] = r[v]; n++; } });
+      sauverPJ(); const y = window.scrollY; afficherDevis(); window.scrollTo(0, y);
+      const z3 = $('jcoord'); if (z3) z3.textContent = n ? '✓ Coordonnées reprises (' + r.source.join(' + ') + ')' : '';
+    } catch (e) { reprendre.enCours = false; if (z2) z2.textContent = ''; }
+  };
+  $('jcab').onchange = () => { const c = D && D.cabinets ? D.cabinets.find(x => x.nom === PJ.cabinet) : null; if (c) reprendre({ cabId: c.id }); };
+  $('jnom').onchange = () => { if (!PJ.cabinet && (!String(PJ.tel || '').trim() || !String(PJ.email || '').trim()) && String(PJ.nom || '').trim().length >= 3) reprendre({ nom: PJ.nom, prenom: PJ.prenom }); };
+  $('jpre').onchange = $('jnom').onchange; champ('jpre', 'prenom'); champ('jtel', 'tel'); champ('jvil', 'ville'); champ('jmail', 'email'); champ('jnote', 'note');
   $('jrec').onchange = e => { PJ.recap = e.target.checked; sauverPJ(); const y = window.scrollY; afficherDevis(); window.scrollTo(0, y); };
   const reEnv = () => { sauverPJ(); const y = window.scrollY; afficherDevis(); window.scrollTo(0, y); };
   if ($('jtu')) $('jtu').onclick = e => { const b = e.target.closest('button'); if (!b) return; PJ.tu = !!b.dataset.tu; reEnv(); };
