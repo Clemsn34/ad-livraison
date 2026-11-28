@@ -51,7 +51,8 @@ function ctrLignes_(items, zone, descs, nomencs) {
     var p = ligne(x.code, '<mep style="font-weight: bold; color: navy;">' + (x.modele || x.appareil) + '</mep>' + (info.length ? '<br>' + info.join(' · ') : '') + (ops ? '<br>' + ops : ''), 1, ht,
       nid ? { numLigne: String(++n), nomenclature: true, nomenclatureId: nid } : { numLigne: String(++n) });
     p.totalTtc = ttc; p.totalTva = r2(ttc - p.totalHt);
-    comp.forEach(function (c) { ligne(c.code, c.d, Number(c.q) || 1, Number(c.puht) || 0, { nomenclatureId: nid, totalNet: 0 }); });
+    // composants : prix unitaire affiché, totaux à 0 (sinon l'API les ajoute au total du devis en plus du parent)
+    comp.forEach(function (c) { ligne(c.code, c.d, Number(c.q) || 1, Number(c.puht) || 0, { nomenclatureId: nid, totalHt: 0, totalNet: 0, totalTva: 0, totalTtc: 0 }); });
   });
   if (zone) {
     var l = ligne(zone.code, '<mep style="font-weight: bold; color: navy;">' + zone.lib + '</mep><br>Un seul déplacement pour toutes les révisions (' + zone.km + ' km de l\'agence)', 1, zone.ht, { numLigne: String(++n) });
