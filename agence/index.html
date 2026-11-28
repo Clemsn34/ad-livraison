@@ -168,7 +168,7 @@
     document.getElementById('moi').innerHTML = esc(D.moi.prenom + ' ' + D.moi.nom) + '<small>' + esc(D.moi.poste || D.moi.role) + ' · ' + esc(D.moi.societe) +
       (D.partage ? ' · <a href="#" onclick="changerQui();return false" style="color:inherit">changer</a>' : '') + '</small>';
     const retard = mesTaches().filter(t => t.statut !== 'Fait' && jour(t.echeance) && jour(t.echeance) <= auj).length;
-    let tabs = [['taches', 'Mes tâches', retard]].concat(D.estAD ? [['clients', 'Clients'], ['installs', 'Installations']] : [], D.prets ? [['prets', 'Prêts'], ['atelier', 'Atelier']] : [], D.estAD ? [['instr', 'Réparations instruments']] : [], D.devis ? [['devis', 'Devis entretien']] : [], D.publier !== false ? [['publier', 'Publier']] : [], D.revisions ? [['revs', 'Révisions']] : [], D.conso ? [['conso', 'Consommables']] : [],
+    let tabs = [['taches', 'Mes tâches', retard]].concat(D.estAD ? [['clients', 'Clients'], ['installs', 'Installations']] : [], D.prets ? [['prets', 'Prêts'], ['atelier', 'Atelier']] : [], D.estAD ? [['instr', 'Réparations instruments'], ['pieces', 'Retours pièces']] : [], D.devis ? [['devis', 'Devis entretien']] : [], D.publier !== false ? [['publier', 'Publier']] : [], D.revisions ? [['revs', 'Révisions']] : [], D.conso ? [['conso', 'Consommables']] : [],
       D.estAD ? [['demandes', 'Demandes des cabinets'], ['doctech', 'Doc technique'], ['financement', 'Financement']] : [], D.prospects ? [['prospects', 'Prospects']] : [], [['docs', 'Documents'], ['aide', 'Mode d\'emploi']]);
     // Le gérant voit tout, dans les deux applis
     if (D.voitTout) { /* tous les onglets */ }
@@ -176,7 +176,7 @@
     else if (D.estAD) tabs = tabs.filter(t => t[0] !== 'conso');
     if (!tabs.some(t => t[0] === onglet)) onglet = 'taches';
     document.getElementById('nav').innerHTML = tabs.map(t => '<button class="' + (onglet === t[0] ? 'on' : '') + '" onclick="aller(\'' + t[0] + '\')">' + t[1] + (t[2] ? '<span class="nb">' + t[2] + '</span>' : '') + '</button>').join('');
-    ({ taches: vueTaches, clients: vueClients, installs: vueInstalls, conso: vueConso, demandes: vueDemandes, orga: vueOrga, docs: vueDocs, revs: vueRevs, chantiers: vueChantiers, devis: vueDevis, prets: vuePrets, atelier: vueAtelier, instr: vueInstr, publier: vuePublier, aide: vueAide, doctech: vueDocTech, prospects: vueProspects, financement: vueFinancement })[onglet]();
+    ({ taches: vueTaches, clients: vueClients, installs: vueInstalls, conso: vueConso, demandes: vueDemandes, orga: vueOrga, docs: vueDocs, revs: vueRevs, chantiers: vueChantiers, devis: vueDevis, prets: vuePrets, atelier: vueAtelier, instr: vueInstr, pieces: vuePieces, publier: vuePublier, aide: vueAide, doctech: vueDocTech, prospects: vueProspects, financement: vueFinancement })[onglet]();
   }
   function aller(o) { onglet = o; PD = []; facVue = false; afficher(); }
 
@@ -1201,6 +1201,62 @@
   }
   async function inSuppr(b, n) { if (!confirm('Supprimer définitivement la fiche ' + n + ' ?')) return; b.disabled = true; const r = await api('instr_suppr', { n }); if (!r.ok) { b.disabled = false; alert(r.message); return; } IN = null; vueInstr(); }
   async function inMaj(b, n) { const v = id => document.getElementById(id).value.trim(); b.disabled = true; const r = await api('instr_maj', { n, dossier: v('ieD'), montant: v('ieM'), garantie: v('ieG'), serie: v('ieS'), notes: v('ieN') }); if (!r.ok) { b.disabled = false; alert(r.message); return; } inEdit = ''; IN = null; vueInstr(); }
+
+  // ---------------- Retours de pièces détachées (garantie / échange standard) ----------------
+  let PCS = null, pcEdit = '', pcNouv = false;
+  const PC_SUIV = { 'À commander': ['Commandée'], 'Commandée': ['Reçue'], 'Reçue': ['Changée chez le client'], 'Changée chez le client': ['Ancienne pièce renvoyée'], 'Ancienne pièce renvoyée': ['Clôturé – avoir reçu', 'Clôturé – refusé par le fournisseur'] };
+  const PC_DELAI = { 'À commander': 2, 'Commandée': 10, 'Reçue': 7, 'Changée chez le client': 5, 'Ancienne pièce renvoyée': 30 };
+  const PC_QUI = { 'À commander': 'Bureau : commander la pièce', 'Commandée': 'Attente du fournisseur', 'Reçue': 'Technicien : changer la pièce chez le client', 'Changée chez le client': 'Bureau : renvoyer l\'ancienne pièce', 'Ancienne pièce renvoyée': 'Bureau : suivre l\'avoir' };
+  const PC_FRS = ['Airel Quetin', 'Belmont', 'Carestream', 'Dürr Dental', 'Cattani', 'Melag', 'NSK', 'Acteon', 'Bien-Air', 'EMS', 'Miglionico', 'XO Care', 'Owandy', 'Vatech', 'Euronda', 'Faro', 'Gamasonic', 'Meunier Carus', 'Autre'];
+  const PC_TYPES = ['Carte électronique', 'Alimentation', 'Moteur', 'Pompe', 'Électrovanne', 'Capteur / sonde', 'Résistance', 'Clavier / écran', 'Câble / cordon', 'Joint / filtre', 'Vérin', 'Compresseur', 'Tube RX / capteur RX', 'Autre'];
+  const pcRetard = o => PC_DELAI[o.statut] !== undefined && o.depuis !== null && o.depuis > PC_DELAI[o.statut];
+  async function vuePieces() {
+    const main = document.getElementById('main');
+    if (!PCS) { main.innerHTML = '<h2>Retours de pièces détachées</h2><p class="sub">Chargement…</p>'; const d = await api('piece_liste'); if (!d.ok) { main.innerHTML = '<div class="vide">' + esc(d.message) + '</div>'; return; } PCS = d; }
+    const opt = (l, v) => '<option value=""></option>' + l.map(x => '<option' + (x === v ? ' selected' : '') + '>' + esc(x) + '</option>').join('');
+    const mb = m => m === 'Garantie' ? '<span class="bdg v">Garantie</span>' : '<span class="bdg o">Échange standard</span>';
+    const carte = o => { const ret = pcRetard(o); return '<div class="card"' + (ret ? ' style="border-color:var(--ko);background:#FFF7F6"' : '') + '><div class="row" style="align-items:flex-start"><div style="flex:1"><b style="color:var(--navy)">' + esc([o.type, o.reference ? 'réf. ' + o.reference : ''].filter(Boolean).join(' · ')) + '</b> ' + mb(o.mode) + (o.designation ? ' <span class="meta">' + esc(o.designation) + '</span>' : '') +
+      '<div class="meta"><b style="color:var(--text)">' + esc(o.cabinet) + '</b>' + (o.appareil ? ' · ' + esc(o.appareil) : '') + (o.serie ? ' · N° de série ' + esc(o.serie) : '') + ' · ' + esc(o.fournisseur || 'fournisseur ?') + ' · ' + esc(o.n) + '</div>' +
+      '<div class="meta">🔧 ' + esc(o.panne || '—') + '</div>' +
+      '<div class="meta">Créée le ' + esc(o.cree) + ' par ' + esc(o.par) + (o.technicien && o.technicien !== o.par ? ' · technicien ' + esc(o.technicien) : '') + ' · ' + Object.keys(o.etapes).filter(k => o.etapes[k]).map(k => esc(k.replace('Clôturé – ', '')) + ' le ' + esc(o.etapes[k])).join(' · ') + '</div>' +
+      (o.commande || o.rma || o.suivi || o.montant ? '<div class="meta">' + esc([o.commande ? 'Commande ' + o.commande : '', o.rma ? 'Retour n° ' + o.rma : '', o.suivi ? 'Colis ' + o.suivi : '', o.montant ? o.montant + ' € HT' : ''].filter(Boolean).join(' · ')) + '</div>' : '') +
+      (PC_QUI[o.statut] ? '<div class="meta" style="' + (ret ? 'color:var(--ko);font-weight:700' : '') + '">' + (ret ? '⚠ En retard : ' + esc(o.statut) + ' depuis ' + o.depuis + ' jours · ' : 'À faire : ') + esc(PC_QUI[o.statut]) + '</div>' : '') +
+      (o.notes ? '<div class="meta">' + esc(o.notes) + '</div>' : '') +
+      (pcEdit === o.n ? '<div style="margin-top:8px"><div class="g3"><div><label>Mode</label><select id="peMo">' + ['Garantie', 'Échange standard'].map(x => '<option' + (x === o.mode ? ' selected' : '') + '>' + x + '</option>').join('') + '</select></div><div><label>Référence</label><input id="peRf" value="' + esc(o.reference) + '"></div><div><label>N° de série appareil</label><input id="peSe" value="' + esc(o.serie) + '"></div></div>' +
+        '<div class="g3"><div><label>N° de commande fournisseur</label><input id="peCm" value="' + esc(o.commande) + '"></div><div><label>N° de retour / RMA</label><input id="peRm" value="' + esc(o.rma) + '"></div><div><label>Suivi du colis retour</label><input id="peSv" value="' + esc(o.suivi) + '"></div></div>' +
+        '<div class="g2"><div><label>Montant (€ HT, consigne ou avoir)</label><input id="peMt" value="' + esc(o.montant) + '"></div><div><label>Notes</label><input id="peNo" value="' + esc(o.notes) + '"></div></div>' +
+        (o.historique ? '<div class="meta" style="white-space:pre-line;margin-top:6px">' + esc(o.historique) + '</div>' : '') +
+        '<div class="toolbar" style="margin-top:6px"><button class="btn" onclick="pcMaj(this,\'' + esc(o.n) + '\')">Enregistrer</button><button class="btn-light" onclick="pcEdit=\'\';vuePieces()">Annuler</button></div></div>' : '') + '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">' + (PC_SUIV[o.statut] || []).map(s => '<button class="btn-light"' + (/refusé/.test(s) ? ' style="color:var(--ko)"' : '') + ' onclick="pcEtape(this,\'' + esc(o.n) + '\',\'' + esc(s).replace(/'/g, '\\\'') + '\')">› ' + esc(s.replace('Clôturé – ', '')) + '</button>').join('') +
+      '<button class="btn-light" onclick="pcEdit=\'' + esc(o.n) + '\';vuePieces()">✎ Détails</button><button class="btn-light" style="color:var(--ko)" onclick="pcSuppr(this,\'' + esc(o.n) + '\')">🗑 Supprimer</button></div></div></div>'; };
+    const ret = PCS.enCours.filter(pcRetard).length;
+    let h = '<h2>Retours de pièces détachées</h2><p class="sub">Pièces commandées pour un praticien, sous garantie ou en échange standard, jusqu\'au renvoi de l\'ancienne pièce et à l\'avoir du fournisseur. Chaque étape crée la tâche suivante : le bureau commande, le technicien change la pièce, le bureau renvoie l\'ancienne. Les techniciens créent les fiches dans Dicter (⚙️ Pièces, avec le bon de retour à imprimer) ou ici.</p>' +
+      '<div class="toolbar"><button class="btn" onclick="pcNouv=!pcNouv;vuePieces()">' + (pcNouv ? 'Fermer' : '+ Nouvelle pièce') + '</button><span class="bdg">' + PCS.enCours.length + ' en cours</span>' + (ret ? '<span class="bdg r">⚠ ' + ret + ' en retard</span>' : '') + '<button class="btn-light" onclick="PCS=null;vuePieces()">↻ Actualiser</button></div>';
+    if (pcNouv) h += '<div class="card"><div class="g3"><div><label>Cabinet / praticien</label><input id="pnCab" list="pnCabs"><datalist id="pnCabs">' + (D.cabinets || []).slice(0, 4000).map(c => '<option value="' + esc(c.nom) + '">').join('') + '</datalist></div><div><label>Appareil (marque et modèle)</label><input id="pnApp"></div><div><label>N° de série appareil</label><input id="pnSe"></div></div>' +
+      '<div class="g3"><div><label>Fournisseur</label><select id="pnFr">' + opt(PC_FRS, '') + '</select></div><div><label>Type de pièce</label><select id="pnTy">' + opt(PC_TYPES, '') + '</select></div><div><label>Référence</label><input id="pnRf"></div></div>' +
+      '<div class="g2"><div><label>Désignation</label><input id="pnDs"></div><div><label>Nature de la panne</label><input id="pnPa"></div></div>' +
+      '<div class="g3"><div><label>Mode</label><select id="pnMo"><option value=""></option><option>Garantie</option><option>Échange standard</option></select></div><div><label>Où en est-on ?</label><select id="pnSt"><option>À commander</option><option>Commandée</option><option>Reçue</option><option>Changée chez le client</option></select></div><div><label>N° de commande fournisseur</label><input id="pnCm"></div></div>' +
+      '<div class="toolbar" style="margin-top:6px"><button class="btn" onclick="pcCreer(this)">Enregistrer la pièce</button><span class="meta" id="pnErr" style="color:var(--ko)"></span></div></div>';
+    PCS.statuts.filter(st => !/^Clôturé/.test(st)).forEach(st => { const l = PCS.enCours.filter(o => o.statut === st); if (l.length) h += '<div class="sec">' + esc(st) + ' (' + l.length + ') · ' + esc(PC_QUI[st] || '') + '</div>' + l.map(carte).join(''); });
+    if (!PCS.enCours.length) h += '<div class="vide">Aucune pièce en cours.</div>';
+    if (PCS.finis.length) h += '<div class="sec">Dernières clôturées</div>' + PCS.finis.map(carte).join('');
+    main.innerHTML = h;
+  }
+  async function pcCreer(b) {
+    const v = id => document.getElementById(id).value.trim(), e = document.getElementById('pnErr'); e.textContent = '';
+    const cab = v('pnCab'), c = (D.cabinets || []).find(x => x.nom === cab);
+    const data = { cabinet: cab, cabId: c ? c.id : '', appareil: v('pnApp'), serie: v('pnSe'), fournisseur: v('pnFr'), type: v('pnTy'), reference: v('pnRf'), designation: v('pnDs'), panne: v('pnPa'), mode: v('pnMo'), statut: v('pnSt'), commande: v('pnCm') };
+    b.disabled = true; const r = await api('piece_ajouter', data); if (!r.ok) { b.disabled = false; e.textContent = r.message; return; } pcNouv = false; PCS = null; vuePieces();
+  }
+  async function pcEtape(b, n, st) {
+    const o = PCS.enCours.concat(PCS.finis).find(x => x.n === n) || {}, data = { n, statut: st };
+    if (st === 'Commandée') { const c = prompt('N° de commande fournisseur ? (vide si vous ne l\'avez pas)', o.commande || ''); if (c === null) return; if (c.trim()) data.commande = c.trim(); }
+    if (st === 'Ancienne pièce renvoyée') { const rm = prompt('N° de retour / RMA du fournisseur ? (vide si aucun)', o.rma || ''); if (rm === null) return; if (rm.trim()) data.rma = rm.trim(); const sv = prompt('N° de suivi du colis ? (vide si aucun)', o.suivi || ''); if (sv === null) return; if (sv.trim()) data.suivi = sv.trim(); }
+    if (/^Clôturé/.test(st)) { const mt = prompt(/avoir/.test(st) ? 'Montant de l\'avoir (€ HT) ? (vide si inconnu)' : 'Montant facturé par le fournisseur (€ HT) ? (vide si inconnu)', o.montant || ''); if (mt === null) return; if (mt.trim()) data.montant = mt.trim(); }
+    b.disabled = true; const r = await api('piece_maj', data); if (!r.ok) { b.disabled = false; alert(r.message); return; } PCS = null; vuePieces();
+  }
+  async function pcSuppr(b, n) { if (!confirm('Supprimer définitivement la fiche ' + n + ' ?')) return; b.disabled = true; const r = await api('piece_suppr', { n }); if (!r.ok) { b.disabled = false; alert(r.message); return; } PCS = null; vuePieces(); }
+  async function pcMaj(b, n) { const v = id => document.getElementById(id).value.trim(); b.disabled = true; const r = await api('piece_maj', { n, mode: v('peMo'), reference: v('peRf'), serie: v('peSe'), commande: v('peCm'), rma: v('peRm'), suivi: v('peSv'), montant: v('peMt'), notes: v('peNo') }); if (!r.ok) { b.disabled = false; alert(r.message); return; } pcEdit = ''; PCS = null; vuePieces(); }
 
   // ---------------- Publier pour tous les cabinets ----------------
   let PB = null, pbType = 'actu', pbFic = null;

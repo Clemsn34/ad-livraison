@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Dicter : tâche, prêt, fiche, panne, devis, instruments</title>
+<title>Dicter : tâche, prêt, fiche, panne, devis, instruments, pièces</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0F2347">
 <link rel="icon" href="icone-192.png">
@@ -37,7 +37,7 @@
   .dern b { color: #1F4FA8; }
   .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(62px, 1fr)); gap: 6px; background: #E4E9F2; border-radius: 12px; padding: 4px; }
   .modes button { font: inherit; font-size: 14.5px; font-weight: 700; border: 0; border-radius: 9px; padding: 10px; background: transparent; color: var(--muted); }
-  .modes.m5 { grid-template-columns: repeat(5, 1fr); }
+  .modes.m5 { grid-template-columns: repeat(3, 1fr); }
   .modes.m5 button { padding: 10px 3px; font-size: 13.5px; hyphens: manual; }
   .modes .devis { grid-column: 1 / -1; justify-self: center; min-width: 40%; }
   .modes button.on { background: #fff; color: var(--navy); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
@@ -151,10 +151,10 @@ const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let reco = null, ecoute = false, texteBase = '';
 function ecranDictee(auto) {
   if (MODE === 'devis' && !DEVIS_OK) { MODE = 'tache'; ls.set('dict_mode', MODE); }
-  $('main').innerHTML = '<div class="modes' + (D && D.estAD === false ? '' : ' m5') + '"><button id="mT" class="' + (MODE === 'tache' ? 'on' : '') + '">📝 Tâche</button><button id="mP" class="' + (MODE === 'pret' ? 'on' : '') + '">🔧 Prêt</button><button id="mF" class="' + (MODE === 'fiche' ? 'on' : '') + '">🔎 Fiche client</button>' + (D && D.estAD === false ? '' : '<button id="mD" class="' + (MODE === 'panne' ? 'on' : '') + '">🛠 Panne</button><button id="mI" class="' + (MODE === 'instr' ? 'on' : '') + '">🔩 Instru&shy;ments</button>' + (DEVIS_OK ? '<button id="mV" class="devis ' + (MODE === 'devis' ? 'on' : '') + '">📋 Devis</button>' : '')) + '</div>' +
+  $('main').innerHTML = '<div class="modes' + (D && D.estAD === false ? '' : ' m5') + '"><button id="mT" class="' + (MODE === 'tache' ? 'on' : '') + '">📝 Tâche</button><button id="mP" class="' + (MODE === 'pret' ? 'on' : '') + '">🔧 Prêt</button><button id="mF" class="' + (MODE === 'fiche' ? 'on' : '') + '">🔎 Fiche client</button>' + (D && D.estAD === false ? '' : '<button id="mD" class="' + (MODE === 'panne' ? 'on' : '') + '">🛠 Panne</button><button id="mI" class="' + (MODE === 'instr' ? 'on' : '') + '">🔩 Instru&shy;ments</button><button id="mR" class="' + (MODE === 'piece' ? 'on' : '') + '">⚙️ Pièces</button>' + (DEVIS_OK ? '<button id="mV" class="devis ' + (MODE === 'devis' ? 'on' : '') + '">📋 Devis</button>' : '')) + '</div>' +
     '<button class="mic" id="mic" aria-label="Dicter"><svg width="58" height="58" viewBox="0 0 24 24" fill="none" stroke="#E3A72F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg></button>' +
-    '<div class="etat" id="etat">' + (SR ? (MODE === 'pret' ? 'Dictez le cabinet et le matériel prêté' : MODE === 'devis' ? 'Le micro dicte la note du projet' : MODE === 'instr' ? 'Le micro dicte la panne de l\'instrument' : MODE === 'panne' ? 'Dites la marque, le modèle et le code d\'erreur' : MODE === 'fiche' ? 'Dites le nom du cabinet' : 'Touchez le micro et dictez la tâche') : 'Dictez avec le micro du clavier') + '</div>' +
-    (MODE === 'devis' ? '<div id="devis"></div>' : MODE === 'instr' ? zoneInstr() : MODE === 'panne' ? zonePanne() : MODE === 'fiche' ? zoneFiche() : MODE === 'pret' ? zonePret() : '<label>Tâche</label><textarea id="tx" placeholder="Ex. : Dr Marty, changer le ressort du bras de la seringue"></textarea>' +
+    '<div class="etat" id="etat">' + (SR ? (MODE === 'pret' ? 'Dictez le cabinet et le matériel prêté' : MODE === 'devis' ? 'Le micro dicte la note du projet' : MODE === 'instr' ? 'Le micro dicte la panne de l\'instrument' : MODE === 'piece' ? 'Le micro dicte la nature de la panne' : MODE === 'panne' ? 'Dites la marque, le modèle et le code d\'erreur' : MODE === 'fiche' ? 'Dites le nom du cabinet' : 'Touchez le micro et dictez la tâche') : 'Dictez avec le micro du clavier') + '</div>' +
+    (MODE === 'devis' ? '<div id="devis"></div>' : MODE === 'instr' ? zoneInstr() : MODE === 'piece' ? zonePiece() : MODE === 'panne' ? zonePanne() : MODE === 'fiche' ? zoneFiche() : MODE === 'pret' ? zonePret() : '<label>Tâche</label><textarea id="tx" placeholder="Ex. : Dr Marty, changer le ressort du bras de la seringue"></textarea>' +
     '<label>Client / cabinet (vide = interne)</label><input id="cab" list="cabs" placeholder="Reconnu automatiquement">' +
     '<datalist id="cabs">' + CABS.slice(0, 4000).map(c => '<option value="' + esc(c) + '">').join('') + '</datalist>' +
     '<label>Pour</label><div class="chips" id="pour">' + EQUIPE.map(p => '<button data-p="' + esc(p) + '" class="' + (p === MOI ? 'on' : '') + '">' + esc(p) + '</button>').join('') + '</div>' +
@@ -164,6 +164,7 @@ function ecranDictee(auto) {
   $('mF').onclick = () => { MODE = 'fiche'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
   if ($('mV')) $('mV').onclick = () => { MODE = 'devis'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
   if ($('mI')) $('mI').onclick = () => { MODE = 'instr'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
+  if ($('mR')) $('mR').onclick = () => { MODE = 'piece'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
   if ($('mD')) $('mD').onclick = () => { MODE = 'panne'; ls.set('dict_mode', MODE); arreter(); ecranDictee(false); };
   $('mic').onclick = () => ecoute ? arreter() : demarrer();
   if (MODE === 'pret') { initPret(); if (PRE_CAB) { $('pcab').value = PRE_CAB; cabManuel = true; PRE_CAB = ''; listePret(); } return; }
@@ -171,6 +172,7 @@ function ecranDictee(auto) {
   if (MODE === 'panne') { initPanne(); return; }
   if (MODE === 'devis') { initDevis(); return; }
   if (MODE === 'instr') { initInstr(); return; }
+  if (MODE === 'piece') { initPiece(); return; }
   if (PRE_CAB) { setTimeout(() => { $('cab').value = PRE_CAB; cabManuel = true; PRE_CAB = ''; }, 0); }
   $('pour').onclick = e => { const b = e.target.closest('button'); if (b) b.classList.toggle('on'); };
   $('tx').oninput = () => appliquer(false);
@@ -186,13 +188,14 @@ function appliquer(depuisDictee) {
 }
 function demarrer() {
   if (!SR) return;
+  if (MODE === 'piece' && !$('ppanne')) { document.querySelectorAll('#pVue button').forEach(x => x.classList.toggle('on', x.dataset.v === 'nouveau')); formPiece(); }
   if (MODE === 'instr' && !$('ipanne')) { document.querySelectorAll('#iVue button').forEach(x => x.classList.toggle('on', x.dataset.v === 'nouveau')); formInstr(); }
   reco = new SR(); reco.lang = 'fr-FR'; reco.interimResults = true; reco.continuous = false; reco.maxAlternatives = 1;
-  const champ = MODE === 'instr' ? 'ipanne' : MODE === 'pret' ? 'ptx' : MODE === 'fiche' ? 'ftx' : MODE === 'panne' ? 'dtx' : MODE === 'devis' ? 'jnote' : 'tx';
+  const champ = MODE === 'piece' ? 'ppanne' : MODE === 'instr' ? 'ipanne' : MODE === 'pret' ? 'ptx' : MODE === 'fiche' ? 'ftx' : MODE === 'panne' ? 'dtx' : MODE === 'devis' ? 'jnote' : 'tx';
   texteBase = $(champ).value ? $(champ).value.trim() + ' ' : '';
-  reco.onresult = e => { let s = ''; for (let i = 0; i < e.results.length; i++) s += e.results[i][0].transcript; $(champ).value = texteBase + s; if (MODE === 'pret') appliquerPret(); else if (MODE === 'instr') { /* panne enregistrée à la fin */ } else if (MODE === 'fiche' || MODE === 'panne') { /* recherche à la fin de la phrase */ } else if (MODE === 'devis') { PJ.note = $('jnote').value; sauverPJ(); } else appliquer(true); };
+  reco.onresult = e => { let s = ''; for (let i = 0; i < e.results.length; i++) s += e.results[i][0].transcript; $(champ).value = texteBase + s; if (MODE === 'pret') appliquerPret(); else if (MODE === 'instr' || MODE === 'piece') { /* panne enregistrée à la fin */ } else if (MODE === 'fiche' || MODE === 'panne') { /* recherche à la fin de la phrase */ } else if (MODE === 'devis') { PJ.note = $('jnote').value; sauverPJ(); } else appliquer(true); };
   reco.onerror = e => { $('etat').textContent = e.error === 'not-allowed' ? 'Micro refusé : autorisez-le dans les réglages du navigateur.' : e.error === 'no-speech' ? 'Rien entendu. Touchez le micro pour réessayer.' : 'Dictée interrompue. Touchez le micro.'; };
-  reco.onend = () => { ecoute = false; if (MODE === 'devis') { $('mic').classList.remove('on'); $('etat').textContent = 'Note ajoutée'; return; } if (MODE === 'instr') { $('mic').classList.remove('on'); $('etat').textContent = 'Panne notée'; if (IF && $('ipanne')) { IF.panne = $('ipanne').value.trim(); ls.set('dict_if', JSON.stringify(IF)); } return; } if (MODE === 'panne' && $('dtx') && $('dtx').value.trim()) { $('mic').classList.remove('on'); chercherPanne(); return; } if (MODE === 'fiche' && $('ftx') && $('ftx').value.trim()) { $('mic').classList.remove('on'); chercherFiche(); return; } $('mic').classList.remove('on'); if (($(MODE === 'pret' ? 'ptx' : MODE === 'fiche' ? 'ftx' : 'tx').value || '').trim() && !/Micro refusé|Rien entendu|interrompue/.test($('etat').textContent)) $('etat').textContent = MODE === 'pret' ? 'Cochez le matériel prêté' : 'Vérifiez puis « Ajouter la tâche »'; };
+  reco.onend = () => { ecoute = false; if (MODE === 'devis') { $('mic').classList.remove('on'); $('etat').textContent = 'Note ajoutée'; return; } if (MODE === 'piece') { $('mic').classList.remove('on'); $('etat').textContent = 'Panne notée'; if (PF && $('ppanne')) { PF.panne = $('ppanne').value.trim(); ls.set('dict_pf', JSON.stringify(PF)); } return; } if (MODE === 'instr') { $('mic').classList.remove('on'); $('etat').textContent = 'Panne notée'; if (IF && $('ipanne')) { IF.panne = $('ipanne').value.trim(); ls.set('dict_if', JSON.stringify(IF)); } return; } if (MODE === 'panne' && $('dtx') && $('dtx').value.trim()) { $('mic').classList.remove('on'); chercherPanne(); return; } if (MODE === 'fiche' && $('ftx') && $('ftx').value.trim()) { $('mic').classList.remove('on'); chercherFiche(); return; } $('mic').classList.remove('on'); if (($(MODE === 'pret' ? 'ptx' : MODE === 'fiche' ? 'ftx' : 'tx').value || '').trim() && !/Micro refusé|Rien entendu|interrompue/.test($('etat').textContent)) $('etat').textContent = MODE === 'pret' ? 'Cochez le matériel prêté' : 'Vérifiez puis « Ajouter la tâche »'; };
   try { reco.start(); ecoute = true; $('mic').classList.add('on'); $('etat').textContent = 'Je vous écoute…'; } catch (e) {}
 }
 function arreter() { try { reco && reco.stop(); } catch (e) {} }
@@ -221,7 +224,7 @@ function derniers() {
   $('dern').innerHTML = l.length ? '<div style="border:0;font-weight:700;color:var(--navy)">Dernières tâches dictées</div>' + l.map(x => '<div>' + esc(x.d) + ' · ' + (x.c ? '<b>' + esc(x.c) + '</b> : ' : '') + esc(x.t) + (x.p !== MOI ? ' <i>(' + esc(x.p) + ')</i>' : '') + '</div>').join('') : '';
 }
 // ----- Prêt de matériel : « Thomasset, une turbine NSK et un détartreur » -----
-let MODE = ['pret', 'fiche', 'panne', 'devis', 'instr'].indexOf(ls.get('dict_mode')) >= 0 ? ls.get('dict_mode') : 'tache', PRETS = null, PRE_CAB = '';
+let MODE = ['pret', 'fiche', 'panne', 'devis', 'instr', 'piece'].indexOf(ls.get('dict_mode')) >= 0 ? ls.get('dict_mode') : 'tache', PRETS = null, PRE_CAB = '';
 try { PRETS = JSON.parse(ls.get('dict_prets') || 'null'); } catch (e) {}
 function zonePret() {
   return '<label>Ce que vous avez dicté</label><textarea id="ptx" style="min-height:64px" placeholder="Ex. : Dr Marty, une turbine NSK et un détartreur"></textarea>' +
@@ -1083,6 +1086,180 @@ function bonInstr(x, w) {
     '<h2>Praticien et suivi</h2><table>' + ligne('Praticien / cabinet', x.cabinet) + ligne('Contact', x.contact) + ligne('Notre référence', x.n) + ligne('Votre n° de dossier', x.dossier) + '</table>' +
     '<p class="ad" style="margin-top:14px">Merci d\'envoyer le devis et le suivi à <b>contact@alternativedentaire.fr</b> en rappelant la référence <b>' + esc(x.n) + '</b>, et de nous retourner l\'instrument à l\'adresse ci-dessus.</p>' +
     '<div class="sig"><div>Remis par Alternative Dentaire</div><div>Reçu par le fournisseur</div></div>' +
+    '<div class="no"><button onclick="window.print()" style="font:inherit;font-size:16px;padding:12px 18px;border-radius:10px;border:2px solid #E3A72F;background:#0F2347;color:#fff;font-weight:700">🖨 Imprimer</button></div>' +
+    '<script>setTimeout(function(){try{window.print()}catch(e){}},600)<\/script></body></html>');
+  w.document.close();
+}
+
+// ----- Retours de pièces détachées (garantie ou échange standard) -----
+const P_FRS = ['Airel Quetin', 'Belmont', 'Carestream', 'Dürr Dental', 'Cattani', 'Melag', 'NSK', 'Acteon', 'Bien-Air', 'EMS', 'Miglionico', 'XO Care', 'Owandy', 'Vatech', 'Euronda', 'Faro', 'Gamasonic', 'Meunier Carus', 'Autre'];
+const P_TYPES = ['Carte électronique', 'Alimentation', 'Moteur', 'Pompe', 'Électrovanne', 'Capteur / sonde', 'Résistance', 'Clavier / écran', 'Câble / cordon', 'Joint / filtre', 'Vérin', 'Compresseur', 'Tube RX / capteur RX', 'Autre'];
+const P_ETAPES = ['À commander', 'Commandée', 'Reçue', 'Changée chez le client', 'Ancienne pièce renvoyée', 'Clôturé – avoir reçu', 'Clôturé – refusé par le fournisseur'];
+const P_SUIV = { 'À commander': ['Commandée'], 'Commandée': ['Reçue'], 'Reçue': ['Changée chez le client'], 'Changée chez le client': ['Ancienne pièce renvoyée'], 'Ancienne pièce renvoyée': ['Clôturé – avoir reçu', 'Clôturé – refusé par le fournisseur'] };
+// Délais au-delà desquels la fiche passe en alerte (jours à l'étape en cours)
+const P_DELAI = { 'À commander': 2, 'Commandée': 10, 'Reçue': 7, 'Changée chez le client': 5, 'Ancienne pièce renvoyée': 30 };
+const P_QUI = { 'À commander': 'Bureau : commander', 'Commandée': 'Attente fournisseur', 'Reçue': 'Technicien : changer la pièce', 'Changée chez le client': 'Bureau : renvoyer l\'ancienne pièce', 'Ancienne pièce renvoyée': 'Bureau : suivre l\'avoir' };
+let PIECES = null, PF = null, POUV = '';
+try { PIECES = JSON.parse(ls.get('dict_pieces') || 'null'); } catch (e) {}
+function nouveauPF() { return { cabinet: '', appareil: '', serie: '', fournisseur: '', type: '', reference: '', designation: '', panne: '', mode: '', statut: 'À commander', commande: '' }; }
+function zonePiece() {
+  return '<div class="chips" id="pVue"><button data-v="liste" class="on">📋 En cours</button><button data-v="nouveau">+ Nouvelle pièce</button><button data-v="finis">✓ Clôturées</button></div>' +
+    '<p class="err" id="err"></p><div id="ok"></div><div id="pZone"></div>' +
+    '<datalist id="cabs">' + CABS.slice(0, 4000).map(c => '<option value="' + esc(c) + '">').join('') + '</datalist>';
+}
+const pVueCourante = () => { const b = document.querySelector('#pVue button.on'); return b ? b.dataset.v : 'liste'; };
+function initPiece() {
+  $('pVue').onclick = e => { const b = e.target.closest('button'); if (!b) return; document.querySelectorAll('#pVue button').forEach(x => x.classList.toggle('on', x === b)); vuePiece(b.dataset.v); };
+  vuePiece('liste'); chargerPieces();
+}
+async function chargerPieces() {
+  try { const r = await api('piece_liste'); if (r.ok) { PIECES = r; ls.set('dict_pieces', JSON.stringify(r)); if ($('pVue') && pVueCourante() !== 'nouveau') vuePiece(pVueCourante()); } else if (!PIECES && $('pZone')) $('pZone').innerHTML = '<p class="err">' + esc(r.message) + '</p>'; }
+  catch (e) { if (e.message === 'code') ecranCode('Session expirée : entrez à nouveau votre code.'); else if (!PIECES && $('pZone')) $('pZone').innerHTML = '<p class="err">Liste indisponible (réseau).</p>'; }
+}
+const pRetard = x => P_DELAI[x.statut] !== undefined && x.depuis !== null && x.depuis > P_DELAI[x.statut];
+function vuePiece(v) {
+  if (v === 'nouveau') { formPiece(); return; }
+  const z = $('pZone'); if (!z) return;
+  if (!PIECES) { z.innerHTML = '<div class="etat">Chargement des pièces…</div>'; return; }
+  const l = v === 'finis' ? PIECES.finis : PIECES.enCours;
+  if (!l.length) { z.innerHTML = '<div class="etat">' + (v === 'finis' ? 'Aucune pièce clôturée récemment.' : 'Aucune pièce en cours. Touchez « + Nouvelle pièce ».') + '</div>'; return; }
+  let h = '';
+  if (v === 'liste') {
+    const ret = l.filter(pRetard).length;
+    if (ret) h += '<div class="err" style="text-align:left;background:#FDECEA;border-radius:10px;padding:8px 12px">⚠ ' + ret + ' pièce' + (ret > 1 ? 's' : '') + ' en retard (voir en rouge)</div>';
+    P_ETAPES.slice(0, 5).forEach(et => { const g = l.filter(x => x.statut === et); if (g.length) h += '<div class="sec">' + esc(et) + ' (' + g.length + ') · ' + esc(P_QUI[et]) + '</div>' + g.map(cartePiece).join(''); });
+  } else h = l.map(cartePiece).join('');
+  z.innerHTML = h;
+  z.querySelectorAll('[data-pet]').forEach(b => b.onclick = () => etapePiece(b.dataset.n, b.dataset.pet, b));
+  z.querySelectorAll('[data-pbon]').forEach(b => b.onclick = () => bonPiece(trouverPiece(b.dataset.pbon)));
+  z.querySelectorAll('[data-pouv]').forEach(b => b.onclick = () => { POUV = POUV === b.dataset.pouv ? '' : b.dataset.pouv; vuePiece(v); });
+  z.querySelectorAll('[data-penr]').forEach(b => b.onclick = () => enregPiece(b.dataset.penr, b));
+  z.querySelectorAll('[data-psup]').forEach(b => b.onclick = async () => {
+    const n = b.dataset.psup; if (!confirm('Supprimer définitivement la fiche ' + n + ' ?')) return;
+    b.disabled = true;
+    try { const r = await api('piece_suppr', { n }); if (!r.ok) throw new Error(r.message); PIECES.enCours = PIECES.enCours.filter(x => x.n !== n); PIECES.finis = PIECES.finis.filter(x => x.n !== n); ls.set('dict_pieces', JSON.stringify(PIECES)); POUV = ''; $('ok').innerHTML = '<div class="ok">✓ Fiche ' + esc(n) + ' supprimée</div>'; }
+    catch (e) { $('err').textContent = e.message === 'code' ? 'Session expirée.' : 'Non supprimé : ' + e.message; }
+    vuePiece(pVueCourante());
+  });
+}
+const trouverPiece = n => PIECES ? PIECES.enCours.concat(PIECES.finis).find(x => x.n === n) : null;
+const modeBadge = m => m === 'Garantie' ? '<span class="ibdg v">Garantie</span>' : '<span class="ibdg o">Échange standard</span>';
+function cartePiece(x) {
+  const nom = [x.type, x.reference ? 'réf. ' + x.reference : ''].filter(Boolean).join(' · ');
+  const suiv = P_SUIV[x.statut] || [], ret = pRetard(x), ouv = POUV === x.n;
+  const frise = ['Commandée', 'Reçue', 'Changée chez le client', 'Ancienne pièce renvoyée', x.statut === 'Clôturé – refusé par le fournisseur' ? 'Clôturé – refusé par le fournisseur' : 'Clôturé – avoir reçu']
+    .map(e => '<span class="ifr' + (x.etapes[e] ? ' f' : '') + (x.statut === e ? ' c' : '') + '" title="' + esc(e) + '">' + esc(e.replace('Changée chez le client', 'Changée').replace('Ancienne pièce renvoyée', 'Renvoyée').replace('Clôturé – avoir reçu', 'Avoir reçu').replace('Clôturé – refusé par le fournisseur', 'Refusé')) + (x.etapes[e] ? '<small>' + esc(x.etapes[e].slice(0, 5)) + '</small>' : '') + '</span>').join('');
+  return '<div class="mat" style="flex-direction:column;align-items:stretch;gap:6px' + (ret ? ';border-color:var(--ko);background:#FFF7F6' : '') + '">' +
+    '<div style="display:flex;gap:8px;align-items:flex-start"><div class="d"><b>' + esc(x.cabinet || '—') + '</b><span>' + esc(nom) + (x.designation ? ' · ' + esc(x.designation) : '') + '</span><span>' + esc([x.appareil, x.serie ? 'N° ' + x.serie : '', x.fournisseur].filter(Boolean).join(' · ')) + '</span><span>' + esc(x.n + ' · créée le ' + x.cree + ' par ' + x.par + (x.technicien && x.technicien !== x.par ? ' · technicien ' + x.technicien : '')) + '</span></div>' + modeBadge(x.mode) + '</div>' +
+    (x.panne ? '<div style="font-size:14px">🔧 ' + esc(x.panne) + '</div>' : '') +
+    (x.commande || x.rma || x.suivi ? '<div class="dern">' + esc([x.commande ? 'Commande ' + x.commande : '', x.rma ? 'Retour n° ' + x.rma : '', x.suivi ? 'Colis ' + x.suivi : ''].filter(Boolean).join(' · ')) + '</div>' : '') +
+    (ret ? '<div class="err" style="text-align:left;margin:0">⚠ ' + esc(x.statut) + ' depuis ' + x.depuis + ' jours · ' + esc(P_QUI[x.statut] || '') + '</div>' : (P_QUI[x.statut] ? '<div class="dern">À faire : <b>' + esc(P_QUI[x.statut]) + '</b></div>' : '')) +
+    '<div class="ifrise">' + frise + '</div>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap">' + suiv.map(s => '<button class="ret" data-n="' + esc(x.n) + '" data-pet="' + esc(s) + '"' + (/refusé/.test(s) ? ' style="border-color:var(--ko);color:var(--ko)"' : '') + '>› ' + esc(s.replace('Clôturé – ', '')) + '</button>').join('') +
+    '<button class="ret" style="border-color:var(--navy);color:var(--navy)" data-pbon="' + esc(x.n) + '">🖨 Bon de retour</button><button class="ret" style="border-color:var(--line);color:var(--muted)" data-pouv="' + esc(x.n) + '">' + (ouv ? 'Fermer' : '✎ Détails') + '</button></div>' +
+    (ouv ? '<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:8px">' +
+      '<label>Mode</label><select id="pMo_' + esc(x.n) + '" class="isel">' + ['Garantie', 'Échange standard'].map(g => '<option' + (x.mode === g ? ' selected' : '') + '>' + g + '</option>').join('') + '</select>' +
+      '<label>Référence de la pièce</label><input id="pRf_' + esc(x.n) + '" value="' + esc(x.reference) + '" autocapitalize="characters">' +
+      '<label>N° de commande fournisseur</label><input id="pCm_' + esc(x.n) + '" value="' + esc(x.commande) + '">' +
+      '<label>N° de retour / RMA</label><input id="pRm_' + esc(x.n) + '" value="' + esc(x.rma) + '">' +
+      '<label>N° de suivi du colis retour</label><input id="pSv_' + esc(x.n) + '" value="' + esc(x.suivi) + '">' +
+      '<label>Montant (€ HT, consigne ou avoir)</label><input id="pMt_' + esc(x.n) + '" inputmode="decimal" value="' + esc(x.montant) + '">' +
+      '<label>N° de série de l\'appareil</label><input id="pSe_' + esc(x.n) + '" value="' + esc(x.serie) + '">' +
+      '<label>Notes</label><textarea id="pNo_' + esc(x.n) + '" style="min-height:60px">' + esc(x.notes) + '</textarea>' +
+      (x.historique ? '<div class="dern" style="white-space:pre-line">' + esc(x.historique) + '</div>' : '') +
+      '<button class="btn" style="font-size:16px;padding:11px" data-penr="' + esc(x.n) + '">Enregistrer</button><button class="ret" style="align-self:center;border-color:var(--ko);color:var(--ko)" data-psup="' + esc(x.n) + '">🗑 Supprimer la fiche</button></div>' : '') +
+    '</div>';
+}
+function majLocalePiece(f) {
+  if (!PIECES || !f) return;
+  PIECES.enCours = PIECES.enCours.filter(x => x.n !== f.n); PIECES.finis = PIECES.finis.filter(x => x.n !== f.n);
+  if (/^Clôturé/.test(f.statut)) PIECES.finis.unshift(f); else PIECES.enCours.unshift(f);
+  ls.set('dict_pieces', JSON.stringify(PIECES));
+}
+async function etapePiece(n, et, b) {
+  const x = trouverPiece(n); if (!x) return;
+  const data = { n, statut: et };
+  if (et === 'Commandée') { const c = prompt('N° de commande fournisseur ? (vide si vous ne l\'avez pas)', x.commande || ''); if (c === null) return; if (c.trim()) data.commande = c.trim(); }
+  if (et === 'Changée chez le client' && !confirm('Pièce changée chez ' + (x.cabinet || 'le client') + ' ? L\'ancienne pièce doit revenir à l\'agence pour être renvoyée.')) return;
+  if (et === 'Ancienne pièce renvoyée') { const rm = prompt('N° de retour / RMA du fournisseur ? (vide si aucun)', x.rma || ''); if (rm === null) return; if (rm.trim()) data.rma = rm.trim(); const sv = prompt('N° de suivi du colis ? (vide si aucun)', x.suivi || ''); if (sv === null) return; if (sv.trim()) data.suivi = sv.trim(); }
+  if (/^Clôturé/.test(et)) { const mt = prompt(/avoir/.test(et) ? 'Montant de l\'avoir (€ HT) ? (vide si inconnu)' : 'Montant facturé par le fournisseur (€ HT) ? (vide si inconnu)', x.montant || ''); if (mt === null) return; if (mt.trim()) data.montant = mt.trim(); }
+  b.disabled = true; b.textContent = '…'; $('err').textContent = '';
+  try { const r = await api('piece_maj', data); if (!r.ok) throw new Error(r.message); majLocalePiece(r.fiche); if (navigator.vibrate) navigator.vibrate(40);
+    $('ok').innerHTML = '<div class="ok">✓ ' + esc(n) + ' : ' + esc(et) + '</div>';
+    if (et === 'Ancienne pièce renvoyée' && confirm('Imprimer le bon de retour à glisser dans le colis ?')) bonPiece(r.fiche); }
+  catch (e) { $('err').textContent = e.message === 'code' ? 'Session expirée.' : 'Non enregistré : ' + e.message; }
+  vuePiece(pVueCourante());
+}
+async function enregPiece(n, b) {
+  const v = id => ($(id + '_' + n) || {}).value || '';
+  b.disabled = true; b.textContent = 'Enregistrement…';
+  try { const r = await api('piece_maj', { n, mode: v('pMo'), reference: v('pRf').trim(), commande: v('pCm').trim(), rma: v('pRm').trim(), suivi: v('pSv').trim(), montant: v('pMt').trim(), serie: v('pSe').trim(), notes: v('pNo').trim() });
+    if (!r.ok) throw new Error(r.message); majLocalePiece(r.fiche); POUV = ''; $('ok').innerHTML = '<div class="ok">✓ ' + esc(n) + ' enregistré</div>'; }
+  catch (e) { $('err').textContent = e.message === 'code' ? 'Session expirée.' : 'Non enregistré : ' + e.message; }
+  vuePiece(pVueCourante());
+}
+// Formulaire : cabinet → appareil → fournisseur → type de pièce + référence → panne → garantie / échange standard
+function formPiece() {
+  if (!PF) { try { PF = JSON.parse(ls.get('dict_pf') || 'null'); } catch (e) {} } if (!PF) PF = nouveauPF();
+  const chips = (id, l, cur) => '<div class="chips" id="' + id + '">' + l.map(x => '<button data-v="' + esc(x) + '" class="' + (cur === x ? 'on' : '') + '">' + esc(x) + '</button>').join('') + '</div>';
+  $('pZone').innerHTML = '<label>Cabinet / praticien</label><input id="pCab" list="cabs" value="' + esc(PF.cabinet) + '" placeholder="Nom du cabinet">' +
+    '<label>Appareil (marque et modèle)</label><input id="pApp" value="' + esc(PF.appareil) + '" placeholder="Ex. : autoclave Melag Vacuklav 44B, fauteuil Airel PE9">' +
+    '<label>N° de série de l\'appareil</label><input id="pSe" value="' + esc(PF.serie) + '" autocapitalize="characters" placeholder="Utile pour la garantie">' +
+    '<label>Fournisseur</label>' + chips('pFr', P_FRS, PF.fournisseur) +
+    '<label>Type de pièce</label>' + chips('pTy', P_TYPES, PF.type) +
+    '<label>Référence de la pièce</label><input id="pRf" value="' + esc(PF.reference) + '" autocapitalize="characters" placeholder="Réf. fabricant">' +
+    '<label>Désignation (facultatif)</label><input id="pDs" value="' + esc(PF.designation) + '" placeholder="Ex. : carte de puissance, électrovanne EV3">' +
+    '<label>Nature de la panne (dictez avec le micro)</label><textarea id="ppanne" style="min-height:72px" placeholder="Ex. : carte grillée après orage, plus d\'aspiration, alarme AL5">' + esc(PF.panne) + '</textarea>' +
+    '<label>Garantie ou échange standard</label><div class="chips" id="pMd">' + ['Garantie', 'Échange standard'].map(x => '<button data-v="' + x + '" class="' + (PF.mode === x ? 'on' : '') + '" style="font-size:16px;padding:9px 16px">' + (x === 'Garantie' ? '🛡 Sous garantie' : '🔁 Échange standard') + '</button>').join('') + '</div>' +
+    '<div class="dern">Dans les deux cas, l\'ancienne pièce doit être renvoyée au fournisseur (sinon il facture la pièce ou la consigne).</div>' +
+    '<label>Où en est-on ?</label><div class="chips" id="pSt">' + [['À commander', 'À commander'], ['Commandée', 'Déjà commandée'], ['Reçue', 'Déjà reçue'], ['Changée chez le client', 'Déjà changée']].map(s => '<button data-v="' + s[0] + '" class="' + (PF.statut === s[0] ? 'on' : '') + '">' + s[1] + '</button>').join('') + '</div>' +
+    '<label>N° de commande fournisseur (si déjà commandée)</label><input id="pCm" value="' + esc(PF.commande) + '">' +
+    '<button class="btn" id="pGo">Enregistrer la pièce</button><button class="ret" id="pRaz" style="align-self:center;border-color:var(--line);color:var(--muted)">Effacer le formulaire</button>';
+  const sauve = () => { PF.cabinet = $('pCab').value.trim(); PF.appareil = $('pApp').value.trim(); PF.serie = $('pSe').value.trim(); PF.reference = $('pRf').value.trim(); PF.designation = $('pDs').value.trim(); PF.panne = $('ppanne').value.trim(); PF.commande = $('pCm').value.trim(); ls.set('dict_pf', JSON.stringify(PF)); };
+  ['pCab', 'pApp', 'pSe', 'pRf', 'pDs', 'ppanne', 'pCm'].forEach(id => $(id).oninput = sauve);
+  const pick = (id, k) => $(id).onclick = e => { const b = e.target.closest('button'); if (!b) return; sauve(); PF[k] = k === 'statut' ? b.dataset.v : (PF[k] === b.dataset.v ? '' : b.dataset.v); ls.set('dict_pf', JSON.stringify(PF)); formPiece(); };
+  pick('pFr', 'fournisseur'); pick('pTy', 'type'); pick('pMd', 'mode'); pick('pSt', 'statut');
+  $('pRaz').onclick = () => { if (confirm('Effacer le formulaire ?')) { PF = nouveauPF(); ls.del('dict_pf'); formPiece(); } };
+  $('pGo').onclick = creerPiece;
+}
+async function creerPiece() {
+  PF.cabinet = $('pCab').value.trim(); PF.appareil = $('pApp').value.trim(); PF.serie = $('pSe').value.trim(); PF.reference = $('pRf').value.trim(); PF.designation = $('pDs').value.trim(); PF.panne = $('ppanne').value.trim(); PF.commande = $('pCm').value.trim();
+  $('err').textContent = '';
+  if (PF.cabinet.length < 2) { $('err').textContent = 'Indiquez le cabinet.'; return; }
+  if (!PF.type && !PF.reference) { $('err').textContent = 'Indiquez le type de pièce ou sa référence.'; return; }
+  if (PF.panne.length < 3) { $('err').textContent = 'Décrivez la nature de la panne.'; return; }
+  if (!PF.mode) { $('err').textContent = 'Choisissez : sous garantie ou échange standard.'; return; }
+  const c = D && D.cabinets ? D.cabinets.find(x => norm(x.nom) === norm(PF.cabinet)) : null;
+  arreter(); const b = $('pGo'); b.disabled = true; b.textContent = 'Enregistrement…';
+  try { const r = await api('piece_ajouter', Object.assign({}, PF, { cabId: c ? c.id : '', technicien: MOI })); if (!r.ok) throw new Error(r.message);
+    if (PIECES) majLocalePiece(r.fiche);
+    PF = nouveauPF(); ls.del('dict_pf');
+    document.querySelectorAll('#pVue button').forEach(x => x.classList.toggle('on', x.dataset.v === 'liste')); vuePiece('liste');
+    $('ok').innerHTML = '<div class="ok">✓ ' + esc(r.n) + ' enregistrée · ' + (r.fiche.statut === 'À commander' ? 'tâche « commander » créée pour le bureau' : esc(r.fiche.statut)) + '</div>';
+    chargerPieces();
+  } catch (e) { b.disabled = false; b.textContent = 'Enregistrer la pièce'; $('err').textContent = e.message === 'code' ? 'Session expirée.' : 'Non enregistré : ' + e.message; }
+}
+// Bon de retour à glisser dans le colis de l'ancienne pièce
+function bonPiece(x, w) {
+  if (!x) return;
+  w = w || window.open('', '_blank');
+  if (!w) { alert('Autorisez les fenêtres pour imprimer le bon.'); return; }
+  const logo = new URL('icone-192.png', location.href).href, auj = new Date().toLocaleDateString('fr-FR');
+  const ligne = (l, v) => v ? '<tr><th>' + esc(l) + '</th><td>' + esc(v) + '</td></tr>' : '';
+  w.document.write('<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bon de retour ' + esc(x.n) + '</title><style>' +
+    'body{font-family:Segoe UI,Arial,sans-serif;color:#1F2937;margin:24px;font-size:14px}header{display:flex;align-items:center;gap:14px;border-bottom:3px solid #E3A72F;padding-bottom:10px}header img{width:56px;height:56px}' +
+    'h1{color:#0F2347;font-size:22px;margin:0}h2{color:#0F2347;font-size:15px;margin:20px 0 6px;text-transform:uppercase;letter-spacing:.05em}.ad{font-size:12.5px;color:#5A6880;line-height:1.5}.num{margin-left:auto;text-align:right}.num b{font-size:20px;color:#0F2347}' +
+    'table{width:100%;border-collapse:collapse}th{width:34%;text-align:left;background:#EEF2F8;color:#0F2347;padding:7px 9px;font-size:13px;border:1px solid #DCE3EE}td{padding:7px 9px;border:1px solid #DCE3EE}' +
+    '.gar{margin-top:12px;padding:10px 12px;border-radius:8px;font-weight:700}.oui{background:#E7F5EC;color:#1E8449}.non{background:#FFF4DC;color:#8A5A00}.sig{display:flex;gap:20px;margin-top:28px}.sig div{flex:1;border-top:1px solid #9AA6B8;padding-top:6px;font-size:12px;color:#5A6880;height:60px}' +
+    '.no{margin-top:22px}@media print{.no{display:none}body{margin:12mm}}</style></head><body>' +
+    '<header><img src="' + logo + '" alt=""><div><h1>Retour de pièce ' + (x.mode === 'Garantie' ? 'sous garantie' : 'en échange standard') + '</h1><div class="ad"><b>Alternative Dentaire</b> · 10 rue de la Prade, 34880 Lavérune<br>04 69 96 03 60 · contact@alternativedentaire.fr</div></div><div class="num">N°<br><b>' + esc(x.n) + '</b><br><span class="ad">' + auj + '</span></div></header>' +
+    '<h2>Pièce retournée</h2><table>' + ligne('Fournisseur', x.fournisseur) + ligne('Type de pièce', x.type) + ligne('Référence', x.reference) + ligne('Désignation', x.designation) + '</table>' +
+    '<h2>Appareil</h2><table>' + ligne('Appareil', x.appareil) + ligne('N° de série', x.serie || 'non relevé') + ligne('Pièce changée le', x.etapes['Changée chez le client']) + '</table>' +
+    '<h2>Défaut constaté</h2><table>' + ligne('Description', x.panne) + '</table>' +
+    '<div class="gar ' + (x.mode === 'Garantie' ? 'oui' : 'non') + '">' + (x.mode === 'Garantie' ? '☑ Retour sous garantie : merci d\'établir l\'avoir correspondant' : '☑ Échange standard : merci d\'établir l\'avoir de la consigne') + '</div>' +
+    '<h2>Références</h2><table>' + ligne('Notre référence', x.n) + ligne('Votre n° de commande', x.commande) + ligne('N° de retour / RMA', x.rma) + ligne('Client final', x.cabinet) + '</table>' +
+    '<p class="ad" style="margin-top:14px">Merci d\'envoyer l\'avoir à <b>contact@alternativedentaire.fr</b> en rappelant la référence <b>' + esc(x.n) + '</b>' + (x.commande ? ' et la commande <b>' + esc(x.commande) + '</b>' : '') + '.</p>' +
+    '<div class="sig"><div>Expédié par Alternative Dentaire</div><div>Reçu par le fournisseur</div></div>' +
     '<div class="no"><button onclick="window.print()" style="font:inherit;font-size:16px;padding:12px 18px;border-radius:10px;border:2px solid #E3A72F;background:#0F2347;color:#fff;font-weight:700">🖨 Imprimer</button></div>' +
     '<script>setTimeout(function(){try{window.print()}catch(e){}},600)<\/script></body></html>');
   w.document.close();
