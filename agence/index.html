@@ -168,7 +168,7 @@
     document.getElementById('moi').innerHTML = esc(D.moi.prenom + ' ' + D.moi.nom) + '<small>' + esc(D.moi.poste || D.moi.role) + ' · ' + esc(D.moi.societe) +
       (D.partage ? ' · <a href="#" onclick="changerQui();return false" style="color:inherit">changer</a>' : '') + '</small>';
     const retard = mesTaches().filter(t => t.statut !== 'Fait' && jour(t.echeance) && jour(t.echeance) <= auj).length;
-    let tabs = [['taches', 'Mes tâches', retard]].concat(D.estAD ? [['clients', 'Clients'], ['installs', 'Installations']] : [], D.prets ? [['prets', 'Prêts'], ['atelier', 'Atelier']] : [], D.devis ? [['devis', 'Devis entretien']] : [], D.publier !== false ? [['publier', 'Publier']] : [], D.revisions ? [['revs', 'Révisions']] : [], D.conso ? [['conso', 'Consommables']] : [],
+    let tabs = [['taches', 'Mes tâches', retard]].concat(D.estAD ? [['clients', 'Clients'], ['installs', 'Installations']] : [], D.prets ? [['prets', 'Prêts'], ['atelier', 'Atelier']] : [], D.estAD ? [['instr', 'Réparations instruments']] : [], D.devis ? [['devis', 'Devis entretien']] : [], D.publier !== false ? [['publier', 'Publier']] : [], D.revisions ? [['revs', 'Révisions']] : [], D.conso ? [['conso', 'Consommables']] : [],
       D.estAD ? [['demandes', 'Demandes des cabinets'], ['doctech', 'Doc technique'], ['financement', 'Financement']] : [], D.prospects ? [['prospects', 'Prospects']] : [], [['docs', 'Documents'], ['aide', 'Mode d\'emploi']]);
     // Le gérant voit tout, dans les deux applis
     if (D.voitTout) { /* tous les onglets */ }
@@ -176,7 +176,7 @@
     else if (D.estAD) tabs = tabs.filter(t => t[0] !== 'conso');
     if (!tabs.some(t => t[0] === onglet)) onglet = 'taches';
     document.getElementById('nav').innerHTML = tabs.map(t => '<button class="' + (onglet === t[0] ? 'on' : '') + '" onclick="aller(\'' + t[0] + '\')">' + t[1] + (t[2] ? '<span class="nb">' + t[2] + '</span>' : '') + '</button>').join('');
-    ({ taches: vueTaches, clients: vueClients, installs: vueInstalls, conso: vueConso, demandes: vueDemandes, orga: vueOrga, docs: vueDocs, revs: vueRevs, chantiers: vueChantiers, devis: vueDevis, prets: vuePrets, atelier: vueAtelier, publier: vuePublier, aide: vueAide, doctech: vueDocTech, prospects: vueProspects, financement: vueFinancement })[onglet]();
+    ({ taches: vueTaches, clients: vueClients, installs: vueInstalls, conso: vueConso, demandes: vueDemandes, orga: vueOrga, docs: vueDocs, revs: vueRevs, chantiers: vueChantiers, devis: vueDevis, prets: vuePrets, atelier: vueAtelier, instr: vueInstr, publier: vuePublier, aide: vueAide, doctech: vueDocTech, prospects: vueProspects, financement: vueFinancement })[onglet]();
   }
   function aller(o) { onglet = o; PD = []; facVue = false; afficher(); }
 
@@ -1168,6 +1168,38 @@
   }
   async function atStatut(sel, n) { sel.disabled = true; const r = await api('atelier_maj', { n, statut: sel.value }); if (!r.ok) alert(r.message); AT = null; vueAtelier(); }
   async function atMaj(b, n) { const v = id => document.getElementById(id).value.trim(); b.disabled = true; const r = await api('atelier_maj', { n, reparation: v('aeR'), panne: v('aeP'), serie: v('aeS'), notes: v('aeN') }); if (!r.ok) { b.disabled = false; alert(r.message); return; } atEdit = ''; AT = null; vueAtelier(); }
+
+  // ---------------- Réparations d'instruments (fournisseur) ----------------
+  let IN = null, inEdit = '';
+  const IN_SUIV = { 'À récupérer chez le praticien': ['Récupéré'], 'Récupéré': ['Demande de devis faite'], 'Demande de devis faite': ['Devis fait'], 'Devis fait': ['Devis accepté', 'Devis refusé'], 'Devis accepté': ['Retour demandé'], 'Devis refusé': ['Retour demandé'], 'Retour demandé': ['Retourné au client'] };
+  async function vueInstr() {
+    const main = document.getElementById('main');
+    if (!IN) { main.innerHTML = '<h2>Réparations d\'instruments</h2><p class="sub">Chargement…</p>'; const d = await api('instr_liste'); if (!d.ok) { main.innerHTML = '<div class="vide">' + esc(d.message) + '</div>'; return; } IN = d; }
+    const gb = g => g === 'Sous garantie' ? '<span class="bdg v">Sous garantie</span>' : g === 'Hors garantie' ? '<span class="bdg r">Hors garantie</span>' : '<span class="bdg o">Garantie à vérifier</span>';
+    const carte = o => '<div class="card"><div class="row" style="align-items:flex-start"><div style="flex:1"><b style="color:var(--navy)">' + esc([o.type, o.marque, o.modele].filter(Boolean).join(' · ')) + '</b> ' + gb(o.garantie) + (o.origine === 'Appli praticien' ? ' <span class="bdg">📱 demandé par le praticien</span>' : '') +
+      '<div class="meta"><b style="color:var(--text)">' + esc(o.cabinet) + '</b>' + (o.contact ? ' · ' + esc(o.contact) : '') + (o.tel ? ' · ' + esc(o.tel) : '') + (o.serie ? ' · N° de série ' + esc(o.serie) : '') + ' · ' + esc(o.n) + '</div>' +
+      '<div class="meta">🔧 Panne du ' + esc(o.datePanne || o.cree) + ' : ' + esc(o.panne || '—') + '</div>' +
+      (o.garantieInfo || o.garantieDemandee ? '<div class="meta">' + esc(o.garantieInfo) + (o.garantieDemandee ? ' · <b>prise sous garantie demandée</b>' : '') + '</div>' : '') +
+      '<div class="meta">' + Object.keys(o.etapes).filter(k => o.etapes[k]).map(k => esc(k) + ' le ' + esc(o.etapes[k])).join(' · ') + (o.montant ? ' · devis ' + esc(o.montant) + ' €' : '') + (o.dossier ? ' · dossier ' + esc(o.dossier) : '') + '</div>' +
+      (o.notes ? '<div class="meta">' + esc(o.notes) + '</div>' : '') +
+      (inEdit === o.n ? '<div style="margin-top:8px"><div class="g3"><div><label>N° de dossier / RMA</label><input id="ieD" value="' + esc(o.dossier) + '"></div><div><label>Montant du devis (€ TTC)</label><input id="ieM" value="' + esc(o.montant) + '"></div><div><label>Garantie</label><select id="ieG">' + ['À vérifier', 'Sous garantie', 'Hors garantie'].map(x => '<option' + (x === o.garantie ? ' selected' : '') + '>' + x + '</option>').join('') + '</select></div></div>' +
+        '<div class="g2"><div><label>N° de série</label><input id="ieS" value="' + esc(o.serie) + '"></div><div><label>Notes</label><input id="ieN" value="' + esc(o.notes) + '"></div></div>' +
+        '<div class="toolbar" style="margin-top:6px"><button class="btn" onclick="inMaj(this,\'' + esc(o.n) + '\')">Enregistrer</button><button class="btn-light" onclick="inEdit=\'\';vueInstr()">Annuler</button></div></div>' : '') + '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">' + (IN_SUIV[o.statut] || []).map(s => '<button class="btn-light" onclick="inEtape(this,\'' + esc(o.n) + '\',\'' + esc(s).replace(/'/g, '\\\'') + '\')">› ' + esc(s) + '</button>').join('') +
+      (o.statut !== 'Retourné au client' ? '<button class="btn-light" onclick="inEdit=\'' + esc(o.n) + '\';vueInstr()">✎ Détails</button>' : '') + '</div></div></div>';
+    let h = '<h2>Réparations d\'instruments</h2><p class="sub">Turbines, contre-angles, détartreurs… envoyés chez le fournisseur. Les nouvelles fiches se créent dans Dicter (onglet 🔩 Instruments, avec le bon de réparation à imprimer) ou par le praticien depuis son appli. W&amp;H, KaVo et Sirona : on ne fait pas, orienter vers La Clinique de l\'Instrument.</p>' +
+      '<div class="toolbar"><a class="btn" style="text-decoration:none" href="https://clemsn34.github.io/ad-livraison/dicter/" target="_blank">+ Nouvel instrument (Dicter)</a><span class="bdg">' + IN.enCours.length + ' en cours</span><button class="btn-light" onclick="IN=null;vueInstr()">↻ Actualiser</button></div>';
+    IN.statuts.filter(st => st !== 'Retourné au client').forEach(st => { const l = IN.enCours.filter(o => o.statut === st); if (l.length) h += '<div class="sec">' + esc(st) + ' (' + l.length + ')</div>' + l.map(carte).join(''); });
+    if (!IN.enCours.length) h += '<div class="vide">Aucun instrument en réparation.</div>';
+    if (IN.finis.length) h += '<div class="sec">Derniers retournés au client</div>' + IN.finis.map(carte).join('');
+    main.innerHTML = h;
+  }
+  async function inEtape(b, n, st) {
+    const data = { n, statut: st };
+    if (st === 'Devis fait') { const mt = prompt('Montant du devis (€ TTC) ? Laissez vide si vous ne l\'avez pas encore.', ''); if (mt === null) return; if (mt.trim()) data.montant = mt.trim(); }
+    b.disabled = true; const r = await api('instr_maj', data); if (!r.ok) { b.disabled = false; alert(r.message); return; } IN = null; vueInstr();
+  }
+  async function inMaj(b, n) { const v = id => document.getElementById(id).value.trim(); b.disabled = true; const r = await api('instr_maj', { n, dossier: v('ieD'), montant: v('ieM'), garantie: v('ieG'), serie: v('ieS'), notes: v('ieN') }); if (!r.ok) { b.disabled = false; alert(r.message); return; } inEdit = ''; IN = null; vueInstr(); }
 
   // ---------------- Publier pour tous les cabinets ----------------
   let PB = null, pbType = 'actu', pbFic = null;
