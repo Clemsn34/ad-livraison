@@ -1094,12 +1094,12 @@ function bonInstr(x, w) {
 // ----- Retours de pièces détachées (garantie ou échange standard) -----
 const P_FRS = ['Airel Quetin', 'Belmont', 'Carestream', 'Dürr Dental', 'Cattani', 'Melag', 'NSK', 'Acteon', 'Bien-Air', 'EMS', 'Miglionico', 'XO Care', 'Owandy', 'Vatech', 'Euronda', 'Faro', 'Gamasonic', 'Meunier Carus', 'Autre'];
 const P_TYPES = ['Carte électronique', 'Alimentation', 'Moteur', 'Pompe', 'Électrovanne', 'Capteur / sonde', 'Résistance', 'Clavier / écran', 'Câble / cordon', 'Joint / filtre', 'Vérin', 'Compresseur', 'Tube RX / capteur RX', 'Autre'];
-const P_ETAPES = ['À commander', 'Commandée', 'Reçue', 'Changée chez le client', 'Ancienne pièce renvoyée', 'Clôturé – avoir reçu', 'Clôturé – refusé par le fournisseur'];
-const P_SUIV = { 'À commander': ['Commandée'], 'Commandée': ['Reçue'], 'Reçue': ['Changée chez le client'], 'Changée chez le client': ['Ancienne pièce renvoyée'], 'Ancienne pièce renvoyée': ['Clôturé – avoir reçu', 'Clôturé – refusé par le fournisseur'] };
+const P_ETAPES = ['À commander', 'Commandée', 'Reçue', 'En casier', 'Changée chez le client', 'Ancienne pièce renvoyée', 'Clôturé – avoir reçu', 'Clôturé – refusé par le fournisseur'];
+const P_SUIV = { 'À commander': ['Commandée'], 'Commandée': ['Reçue'], 'Reçue': ['En casier', 'Changée chez le client'], 'En casier': ['Changée chez le client'], 'Changée chez le client': ['Ancienne pièce renvoyée'], 'Ancienne pièce renvoyée': ['Clôturé – avoir reçu', 'Clôturé – refusé par le fournisseur'] };
 // Délais au-delà desquels la fiche passe en alerte (jours à l'étape en cours)
-const P_DELAI = { 'À commander': 2, 'Commandée': 10, 'Reçue': 7, 'Changée chez le client': 5, 'Ancienne pièce renvoyée': 30 };
-const P_QUI = { 'À commander': 'Bureau : commander', 'Commandée': 'Attente fournisseur', 'Reçue': 'Technicien : changer la pièce', 'Changée chez le client': 'Bureau : renvoyer l\'ancienne pièce', 'Ancienne pièce renvoyée': 'Bureau : suivre l\'avoir' };
-let PIECES = null, PF = null, POUV = '';
+const P_DELAI = { 'À commander': 2, 'Commandée': 10, 'Reçue': 2, 'En casier': 14, 'Changée chez le client': 5, 'Ancienne pièce renvoyée': 30 };
+const P_QUI = { 'À commander': 'Bureau : commander', 'Commandée': 'Attente fournisseur', 'Reçue': 'Bureau : mettre la pièce dans le casier', 'En casier': 'Technicien : prendre la pièce et intervenir', 'Changée chez le client': 'Bureau : renvoyer l\'ancienne pièce', 'Ancienne pièce renvoyée': 'Bureau : suivre l\'avoir' };
+let PIECES = null, PF = null, POUV = '', PQ = '';
 try { PIECES = JSON.parse(ls.get('dict_pieces') || 'null'); } catch (e) {}
 function nouveauPF() { return { cabinet: '', appareil: '', serie: '', fournisseur: '', type: '', reference: '', designation: '', panne: '', mode: '', statut: 'À commander', commande: '' }; }
 function zonePiece() {
@@ -1122,14 +1122,19 @@ function vuePiece(v) {
   const z = $('pZone'); if (!z) return;
   if (!PIECES) { z.innerHTML = '<div class="etat">Chargement des pièces…</div>'; return; }
   const l = v === 'finis' ? PIECES.finis : PIECES.enCours;
-  if (!l.length) { z.innerHTML = '<div class="etat">' + (v === 'finis' ? 'Aucune pièce clôturée récemment.' : 'Aucune pièce en cours. Touchez « + Nouvelle pièce ».') + '</div>'; return; }
+  const recherche = '<input id="pQ" placeholder="🔎 Cabinet, n° RP, référence, n° de série, casier…" value="' + esc(PQ) + '" style="margin-bottom:4px">';
+  if (PQ.trim()) { const q = norm(PQ), tout = PIECES.enCours.concat(PIECES.finis).filter(o => norm([o.n, o.cabinet, o.reference, o.type, o.designation, o.appareil, o.serie, o.fournisseur, o.casier, o.commande].join(' ')).includes(q)); z.innerHTML = recherche + '<div class="sec">' + tout.length + ' résultat' + (tout.length > 1 ? 's' : '') + '</div>' + (tout.length ? tout.map(cartePiece).join('') : '<div class="etat">Aucune pièce trouvée.</div>'); brancherPieces(z, v); return; }
+  if (!l.length) { z.innerHTML = recherche + '<div class="etat">' + (v === 'finis' ? 'Aucune pièce clôturée récemment.' : 'Aucune pièce en cours. Touchez « + Nouvelle pièce ».') + '</div>'; return; }
   let h = '';
   if (v === 'liste') {
     const ret = l.filter(pRetard).length;
     if (ret) h += '<div class="err" style="text-align:left;background:#FDECEA;border-radius:10px;padding:8px 12px">⚠ ' + ret + ' pièce' + (ret > 1 ? 's' : '') + ' en retard (voir en rouge)</div>';
-    P_ETAPES.slice(0, 5).forEach(et => { const g = l.filter(x => x.statut === et); if (g.length) h += '<div class="sec">' + esc(et) + ' (' + g.length + ') · ' + esc(P_QUI[et]) + '</div>' + g.map(cartePiece).join(''); });
+    P_ETAPES.slice(0, 6).forEach(et => { const g = l.filter(x => x.statut === et); if (g.length) h += '<div class="sec">' + esc(et) + ' (' + g.length + ') · ' + esc(P_QUI[et]) + '</div>' + g.map(cartePiece).join(''); });
   } else h = l.map(cartePiece).join('');
-  z.innerHTML = h;
+  z.innerHTML = recherche + h; brancherPieces(z, v);
+}
+function brancherPieces(z, v) {
+  const qi = $('pQ'); if (qi) qi.oninput = () => { PQ = qi.value; vuePiece(v); const n = $('pQ'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); };
   z.querySelectorAll('[data-pet]').forEach(b => b.onclick = () => etapePiece(b.dataset.n, b.dataset.pet, b));
   z.querySelectorAll('[data-pbon]').forEach(b => b.onclick = () => bonPiece(trouverPiece(b.dataset.pbon)));
   z.querySelectorAll('[data-pouv]').forEach(b => b.onclick = () => { POUV = POUV === b.dataset.pouv ? '' : b.dataset.pouv; vuePiece(v); });
@@ -1147,11 +1152,12 @@ const modeBadge = m => m === 'Garantie' ? '<span class="ibdg v">Garantie</span>'
 function cartePiece(x) {
   const nom = [x.type, x.reference ? 'réf. ' + x.reference : ''].filter(Boolean).join(' · ');
   const suiv = P_SUIV[x.statut] || [], ret = pRetard(x), ouv = POUV === x.n;
-  const frise = ['Commandée', 'Reçue', 'Changée chez le client', 'Ancienne pièce renvoyée', x.statut === 'Clôturé – refusé par le fournisseur' ? 'Clôturé – refusé par le fournisseur' : 'Clôturé – avoir reçu']
+  const frise = ['Commandée', 'Reçue', 'En casier', 'Changée chez le client', 'Ancienne pièce renvoyée', x.statut === 'Clôturé – refusé par le fournisseur' ? 'Clôturé – refusé par le fournisseur' : 'Clôturé – avoir reçu']
     .map(e => '<span class="ifr' + (x.etapes[e] ? ' f' : '') + (x.statut === e ? ' c' : '') + '" title="' + esc(e) + '">' + esc(e.replace('Changée chez le client', 'Changée').replace('Ancienne pièce renvoyée', 'Renvoyée').replace('Clôturé – avoir reçu', 'Avoir reçu').replace('Clôturé – refusé par le fournisseur', 'Refusé')) + (x.etapes[e] ? '<small>' + esc(x.etapes[e].slice(0, 5)) + '</small>' : '') + '</span>').join('');
   return '<div class="mat" style="flex-direction:column;align-items:stretch;gap:6px' + (ret ? ';border-color:var(--ko);background:#FFF7F6' : '') + '">' +
     '<div style="display:flex;gap:8px;align-items:flex-start"><div class="d"><b>' + esc(x.cabinet || '—') + '</b><span>' + esc(nom) + (x.designation ? ' · ' + esc(x.designation) : '') + '</span><span>' + esc([x.appareil, x.serie ? 'N° ' + x.serie : '', x.fournisseur].filter(Boolean).join(' · ')) + '</span><span>' + esc(x.n + ' · créée le ' + x.cree + ' par ' + x.par + (x.technicien && x.technicien !== x.par ? ' · technicien ' + x.technicien : '')) + '</span></div>' + modeBadge(x.mode) + '</div>' +
     (x.panne ? '<div style="font-size:14px">🔧 ' + esc(x.panne) + '</div>' : '') +
+    (x.statut === 'En casier' ? '<div style="font-size:14px;font-weight:700;color:var(--ok)">📦 Dans le casier' + (x.casier ? ' « ' + esc(x.casier) + ' »' : '') + '</div>' : '') +
     (x.commande || x.rma || x.suivi ? '<div class="dern">' + esc([x.commande ? 'Commande ' + x.commande : '', x.rma ? 'Retour n° ' + x.rma : '', x.suivi ? 'Colis ' + x.suivi : ''].filter(Boolean).join(' · ')) + '</div>' : '') +
     (ret ? '<div class="err" style="text-align:left;margin:0">⚠ ' + esc(x.statut) + ' depuis ' + x.depuis + ' jours · ' + esc(P_QUI[x.statut] || '') + '</div>' : (P_QUI[x.statut] ? '<div class="dern">À faire : <b>' + esc(P_QUI[x.statut]) + '</b></div>' : '')) +
     '<div class="ifrise">' + frise + '</div>' +
@@ -1160,6 +1166,7 @@ function cartePiece(x) {
     (ouv ? '<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:8px">' +
       '<label>Mode</label><select id="pMo_' + esc(x.n) + '" class="isel">' + ['Garantie', 'Échange standard'].map(g => '<option' + (x.mode === g ? ' selected' : '') + '>' + g + '</option>').join('') + '</select>' +
       '<label>Référence de la pièce</label><input id="pRf_' + esc(x.n) + '" value="' + esc(x.reference) + '" autocapitalize="characters">' +
+      '<label>Casier</label><input id="pCa_' + esc(x.n) + '" value="' + esc(x.casier) + '" placeholder="Nom du praticien">' +
       '<label>N° de commande fournisseur</label><input id="pCm_' + esc(x.n) + '" value="' + esc(x.commande) + '">' +
       '<label>N° de retour / RMA</label><input id="pRm_' + esc(x.n) + '" value="' + esc(x.rma) + '">' +
       '<label>N° de suivi du colis retour</label><input id="pSv_' + esc(x.n) + '" value="' + esc(x.suivi) + '">' +
@@ -1180,6 +1187,7 @@ async function etapePiece(n, et, b) {
   const x = trouverPiece(n); if (!x) return;
   const data = { n, statut: et };
   if (et === 'Commandée') { const c = prompt('N° de commande fournisseur ? (vide si vous ne l\'avez pas)', x.commande || ''); if (c === null) return; if (c.trim()) data.commande = c.trim(); }
+  if (et === 'En casier') { const ca = prompt('Dans quel casier ? (nom du praticien)', x.casier || x.cabinet || ''); if (ca === null) return; data.casier = ca.trim(); }
   if (et === 'Changée chez le client' && !confirm('Pièce changée chez ' + (x.cabinet || 'le client') + ' ? L\'ancienne pièce doit revenir à l\'agence pour être renvoyée.')) return;
   if (et === 'Ancienne pièce renvoyée') { const rm = prompt('N° de retour / RMA du fournisseur ? (vide si aucun)', x.rma || ''); if (rm === null) return; if (rm.trim()) data.rma = rm.trim(); const sv = prompt('N° de suivi du colis ? (vide si aucun)', x.suivi || ''); if (sv === null) return; if (sv.trim()) data.suivi = sv.trim(); }
   if (/^Clôturé/.test(et)) { const mt = prompt(/avoir/.test(et) ? 'Montant de l\'avoir (€ HT) ? (vide si inconnu)' : 'Montant facturé par le fournisseur (€ HT) ? (vide si inconnu)', x.montant || ''); if (mt === null) return; if (mt.trim()) data.montant = mt.trim(); }
@@ -1193,7 +1201,7 @@ async function etapePiece(n, et, b) {
 async function enregPiece(n, b) {
   const v = id => ($(id + '_' + n) || {}).value || '';
   b.disabled = true; b.textContent = 'Enregistrement…';
-  try { const r = await api('piece_maj', { n, mode: v('pMo'), reference: v('pRf').trim(), commande: v('pCm').trim(), rma: v('pRm').trim(), suivi: v('pSv').trim(), montant: v('pMt').trim(), serie: v('pSe').trim(), notes: v('pNo').trim() });
+  try { const r = await api('piece_maj', { n, mode: v('pMo'), reference: v('pRf').trim(), commande: v('pCm').trim(), rma: v('pRm').trim(), suivi: v('pSv').trim(), montant: v('pMt').trim(), serie: v('pSe').trim(), notes: v('pNo').trim(), casier: v('pCa').trim() });
     if (!r.ok) throw new Error(r.message); majLocalePiece(r.fiche); POUV = ''; $('ok').innerHTML = '<div class="ok">✓ ' + esc(n) + ' enregistré</div>'; }
   catch (e) { $('err').textContent = e.message === 'code' ? 'Session expirée.' : 'Non enregistré : ' + e.message; }
   vuePiece(pVueCourante());
