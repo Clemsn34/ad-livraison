@@ -933,6 +933,13 @@ function vueInstr(v) {
   z.querySelectorAll('[data-bon]').forEach(b => b.onclick = () => bonInstr(trouverInstr(b.dataset.bon)));
   z.querySelectorAll('[data-ouv]').forEach(b => b.onclick = () => { IOUV = IOUV === b.dataset.ouv ? '' : b.dataset.ouv; vueInstr(v); });
   z.querySelectorAll('[data-enr]').forEach(b => b.onclick = () => enregInstr(b.dataset.enr, b));
+  z.querySelectorAll('[data-sup]').forEach(b => b.onclick = async () => {
+    const n = b.dataset.sup; if (!confirm('Supprimer définitivement la fiche ' + n + ' ?')) return;
+    b.disabled = true;
+    try { const r = await api('instr_suppr', { n }); if (!r.ok) throw new Error(r.message); INSTR.enCours = INSTR.enCours.filter(x => x.n !== n); INSTR.finis = INSTR.finis.filter(x => x.n !== n); ls.set('dict_instr', JSON.stringify(INSTR)); IOUV = ''; $('ok').innerHTML = '<div class="ok">✓ Fiche ' + esc(n) + ' supprimée</div>'; }
+    catch (e) { $('err').textContent = e.message === 'code' ? 'Session expirée.' : 'Non supprimé : ' + e.message; }
+    vueInstr(vueCourante());
+  });
 }
 const trouverInstr = n => INSTR ? INSTR.enCours.concat(INSTR.finis).find(x => x.n === n) : null;
 const garBadge = g => g === 'Sous garantie' ? '<span class="ibdg v">Sous garantie</span>' : g === 'Hors garantie' ? '<span class="ibdg r">Hors garantie</span>' : '<span class="ibdg o">Garantie à vérifier</span>';
@@ -959,7 +966,7 @@ function carteInstr(x) {
       '<label>Notes</label><textarea id="iN_' + esc(x.n) + '" style="min-height:60px">' + esc(x.notes) + '</textarea>' +
       (x.contact || x.tel ? '<div class="dern">Contact : ' + esc([x.contact, x.tel, x.email].filter(Boolean).join(' · ')) + '</div>' : '') +
       (x.historique ? '<div class="dern" style="white-space:pre-line">' + esc(x.historique) + '</div>' : '') +
-      '<button class="btn" style="font-size:16px;padding:11px" data-enr="' + esc(x.n) + '">Enregistrer</button></div>' : '') +
+      '<button class="btn" style="font-size:16px;padding:11px" data-enr="' + esc(x.n) + '">Enregistrer</button><button class="ret" style="align-self:center;border-color:var(--ko);color:var(--ko)" data-sup="' + esc(x.n) + '">🗑 Supprimer la fiche</button></div>' : '') +
     '</div>';
 }
 async function etapeInstr(n, et, b) {

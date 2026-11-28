@@ -1186,7 +1186,7 @@
         '<div class="g2"><div><label>N° de série</label><input id="ieS" value="' + esc(o.serie) + '"></div><div><label>Notes</label><input id="ieN" value="' + esc(o.notes) + '"></div></div>' +
         '<div class="toolbar" style="margin-top:6px"><button class="btn" onclick="inMaj(this,\'' + esc(o.n) + '\')">Enregistrer</button><button class="btn-light" onclick="inEdit=\'\';vueInstr()">Annuler</button></div></div>' : '') + '</div>' +
       '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">' + (IN_SUIV[o.statut] || []).map(s => '<button class="btn-light" onclick="inEtape(this,\'' + esc(o.n) + '\',\'' + esc(s).replace(/'/g, '\\\'') + '\')">› ' + esc(s) + '</button>').join('') +
-      (o.statut !== 'Retourné au client' ? '<button class="btn-light" onclick="inEdit=\'' + esc(o.n) + '\';vueInstr()">✎ Détails</button>' : '') + '</div></div></div>';
+      (o.statut !== 'Retourné au client' ? '<button class="btn-light" onclick="inEdit=\'' + esc(o.n) + '\';vueInstr()">✎ Détails</button>' : '') + '<button class="btn-light" style="color:var(--ko)" onclick="inSuppr(this,\'' + esc(o.n) + '\')">🗑 Supprimer</button></div></div></div>';
     let h = '<h2>Réparations d\'instruments</h2><p class="sub">Turbines, contre-angles, détartreurs… envoyés chez le fournisseur. Les nouvelles fiches se créent dans Dicter (onglet 🔩 Instruments, avec le bon de réparation à imprimer) ou par le praticien depuis son appli. W&amp;H, KaVo et Sirona : on ne fait pas, orienter vers La Clinique de l\'Instrument.</p>' +
       '<div class="toolbar"><a class="btn" style="text-decoration:none" href="https://clemsn34.github.io/ad-livraison/dicter/" target="_blank">+ Nouvel instrument (Dicter)</a><span class="bdg">' + IN.enCours.length + ' en cours</span><button class="btn-light" onclick="IN=null;vueInstr()">↻ Actualiser</button></div>';
     IN.statuts.filter(st => st !== 'Retourné au client').forEach(st => { const l = IN.enCours.filter(o => o.statut === st); if (l.length) h += '<div class="sec">' + esc(st) + ' (' + l.length + ')</div>' + l.map(carte).join(''); });
@@ -1199,6 +1199,7 @@
     if (st === 'Devis fait') { const mt = prompt('Montant du devis (€ TTC) ? Laissez vide si vous ne l\'avez pas encore.', ''); if (mt === null) return; if (mt.trim()) data.montant = mt.trim(); }
     b.disabled = true; const r = await api('instr_maj', data); if (!r.ok) { b.disabled = false; alert(r.message); return; } IN = null; vueInstr();
   }
+  async function inSuppr(b, n) { if (!confirm('Supprimer définitivement la fiche ' + n + ' ?')) return; b.disabled = true; const r = await api('instr_suppr', { n }); if (!r.ok) { b.disabled = false; alert(r.message); return; } IN = null; vueInstr(); }
   async function inMaj(b, n) { const v = id => document.getElementById(id).value.trim(); b.disabled = true; const r = await api('instr_maj', { n, dossier: v('ieD'), montant: v('ieM'), garantie: v('ieG'), serie: v('ieS'), notes: v('ieN') }); if (!r.ok) { b.disabled = false; alert(r.message); return; } inEdit = ''; IN = null; vueInstr(); }
 
   // ---------------- Publier pour tous les cabinets ----------------
