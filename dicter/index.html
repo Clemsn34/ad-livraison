@@ -59,6 +59,13 @@
   .pj-qte button { width: 34px; height: 34px; border-radius: 8px; border: 1.5px solid var(--line); background: #fff; font-size: 18px; font-weight: 700; color: var(--navy); }
   .pj-opt { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; margin: 0; color: var(--text); }
   .pj-opt input { width: 20px; height: 20px; accent-color: var(--gold); }
+  .cf-t { font-size: 12px; font-weight: 800; color: var(--navy); text-transform: uppercase; letter-spacing: .05em; margin-top: 4px; }
+  .cf-cat { border: 1.5px solid var(--line); border-radius: 10px; padding: 6px 10px; background: #fff; }
+  .cf-cat summary { font-weight: 700; color: var(--navy); cursor: pointer; }
+  .cf-cat .pj-opt { padding: 5px 0; border-top: 1px solid #EEF2F7; }
+  .cf-tot { background: #0F2347; color: #fff; border-radius: 10px; padding: 10px 12px; font-size: 15px; text-align: right; }
+  .cf-tot b { color: #E3A72F; }
+  .chips button small { color: var(--muted); font-weight: 500; }
   .pj-add { display: flex; flex-wrap: wrap; gap: 6px; }
   .pj-add button { font: inherit; font-size: 14px; font-weight: 700; border: 1.5px dashed var(--navy); color: var(--navy); background: #fff; border-radius: 10px; padding: 8px 12px; }
   .pj-sw { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; margin: 0; color: var(--text); }
@@ -573,6 +580,39 @@ function ajouterSalle(piece) {
   P.equipements.forEach(e => { items[e.equip] = { on: !!e.defaut, marque: '', modele: '', options: [], qte: 1, note: '', offert: !!e.offert }; });
   PJ.salles.push({ piece, salle: n, items, ouvert: true }); sauverPJ(); afficherDevis();
 }
+
+// ----- Configurateur fauteuils : marque -> modèle -> pack de base -> options par catégorie -----
+// Modèles du catalogue au format « Modèle · Pack », options « Catégorie · Libellé [Modèle] »
+const CATS_FAUT = ['Instruments', 'Pédale', 'Sellerie et confort', 'Unit et tablette', 'Aspiration et hygiène', 'Éclairage', 'Multimédia et radio', 'Sièges', 'Divers'];
+function estConfig(M) { return M.modeles.some(x => / · /.test(x.modele)); }
+function optConfig(M, g) {
+  return (M.options || []).map(o => { const m = /^(.*?) · (.*) \[(.+)\]$/.exec(o.option); return m ? { o, cat: m[1], lib: m[2], gamme: m[3] } : null; })
+    .filter(x => x && (x.gamme === g || g.indexOf(x.gamme + ' – ') === 0));
+}
+function gammeDe(it) { return it.gamme || (it.modele ? it.modele.split(' · ')[0] : ''); }
+function totalConfig(M, it) {
+  const P = M.modeles.find(x => x.modele === it.modele); if (!P) return null;
+  return (P.prix || 0) + (M.options || []).filter(o => it.options.includes(o.option)).reduce((a, o) => a + (o.prix || 0), 0);
+}
+function blocConfig(M, it, k) {
+  const gammes = [...new Set(M.modeles.filter(x => / · /.test(x.modele)).map(x => x.modele.split(' · ')[0]))], g = gammeDe(it);
+  let h = '<div class="cf-t">1. Modèle</div><div class="chips">' + gammes.map(x => '<button data-gm="' + esc(k) + '" data-v="' + esc(x) + '" class="' + (g === x ? 'on' : '') + '">' + esc(x) + '</button>').join('') + '</div>';
+  if (!g) return h;
+  const packs = M.modeles.filter(x => x.modele.split(' · ')[0] === g);
+  h += '<div class="cf-t">2. Pack de base</div><div class="chips">' + packs.map(x => '<button data-mo="' + esc(k) + '" data-v="' + esc(x.modele) + '" class="' + (it.modele === x.modele ? 'on' : '') + '">' + esc(x.modele.split(' · ').slice(1).join(' · ')) + (x.prix ? ' <small>' + eur(x.prix) + '</small>' : '') + '</button>').join('') + '</div>';
+  if (!it.modele) return h;
+  const ops = optConfig(M, g);
+  h += '<div class="cf-t">3. Options (prix TTC, + ou − sur le pack)</div>';
+  CATS_FAUT.forEach(c => {
+    const L = ops.filter(x => x.cat === c); if (!L.length) return;
+    const nb = L.filter(x => it.options.includes(x.o.option)).length;
+    h += '<details class="cf-cat"' + (c === 'Instruments' || nb ? ' open' : '') + '><summary>' + esc(c) + (nb ? ' · ' + nb + ' choisie' + (nb > 1 ? 's' : '') : '') + '</summary>' +
+      L.map(x => '<label class="pj-opt"><input type="checkbox" data-op="' + esc(k) + '" data-v="' + esc(x.o.option) + '"' + (it.options.includes(x.o.option) ? ' checked' : '') + '><span style="flex:1">' + esc(x.lib) + '</span><b style="white-space:nowrap">' + (x.o.prix > 0 ? '+' : '') + eur(x.o.prix || 0) + '</b></label>').join('') + '</details>';
+  });
+  const t = totalConfig(M, it);
+  if (t != null) h += '<div class="cf-tot">Total fauteuil : <b>' + eur(t) + ' TTC</b></div>';
+  return h;
+}
 function afficherDevis() {
   const z = $('devis'); if (!z) return;
   if (!CAT) { z.innerHTML = '<div class="etat">Chargement du catalogue…</div>'; return; }
@@ -598,8 +638,9 @@ function afficherDevis() {
           const M = e.marques.find(x => x.marque === it.marque);
           h += '<div class="pj-det">' +
             (e.marques.length ? '<div class="chips">' + e.marques.map(x => '<button data-mq="' + esc(k) + '" data-v="' + esc(x.marque) + '" class="' + (it.marque === x.marque ? 'on' : '') + '">' + esc(x.marque) + '</button>').join('') + '</div>' : '') +
+            (M && estConfig(M) ? blocConfig(M, it, k) :
             (M && M.modeles.filter(x => x.modele).length ? '<div class="chips">' + M.modeles.filter(x => x.modele).map(x => '<button data-mo="' + esc(k) + '" data-v="' + esc(x.modele) + '" class="' + (it.modele === x.modele ? 'on' : '') + '">' + esc(x.modele) + '</button>').join('') + '</div>' : '') +
-            (M && M.options && M.options.length ? '<div style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Options ' + esc(M.marque) + '</div>' + M.options.map(o => '<label class="pj-opt"><input type="checkbox" data-op="' + esc(k) + '" data-v="' + esc(o.option) + '"' + (it.options.includes(o.option) ? ' checked' : '') + '>' + esc(o.option) + '</label>').join('') : '') +
+            (M && M.options && M.options.length ? '<div style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Options ' + esc(M.marque) + '</div>' + M.options.map(o => '<label class="pj-opt"><input type="checkbox" data-op="' + esc(k) + '" data-v="' + esc(o.option) + '"' + (it.options.includes(o.option) ? ' checked' : '') + '>' + esc(o.option) + '</label>').join('') : '')) +
             '<input data-mod="' + esc(k) + '" placeholder="' + (e.marques.length ? 'Autre marque / modèle, précision…' : 'Marque, modèle, précision…') + '" value="' + esc(it.note) + '">' +
             '<div class="pj-qte">Quantité <button data-q="' + esc(k) + '" data-d="-1">−</button><b>' + it.qte + '</b><button data-q="' + esc(k) + '" data-d="1">+</button>' +
             '<label class="pj-opt" style="margin-left:auto;color:' + (it.offert ? 'var(--ok)' : 'var(--muted)') + ';font-weight:700"><input type="checkbox" data-off="' + esc(k) + '"' + (it.offert ? ' checked' : '') + ' style="accent-color:var(--ok)">Offert</label></div></div>';
@@ -628,8 +669,9 @@ function afficherDevis() {
   z.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { if (!confirm('Retirer cette pièce du projet ?')) return; PJ.salles.splice(+b.dataset.del, 1); sauverPJ(); afficherDevis(); });
   z.querySelectorAll('[data-on]').forEach(b => b.onchange = () => { it(b.dataset.on).on = b.checked; sauverPJ(); afficherDevis(); });
   z.querySelectorAll('[data-mq]').forEach(b => b.onclick = () => { const i = it(b.dataset.mq); if (i.marque === b.dataset.v) { i.marque = ''; } else { i.marque = b.dataset.v; } i.modele = ''; i.options = []; sauverPJ(); afficherDevis(); });
+  z.querySelectorAll('[data-gm]').forEach(b => b.onclick = () => { const i = it(b.dataset.gm); if (gammeDe(i) === b.dataset.v) { i.gamme = ''; i.modele = ''; } else { i.gamme = b.dataset.v; i.modele = ''; } i.options = []; sauverPJ(); afficherDevis(); });
   z.querySelectorAll('[data-mo]').forEach(b => b.onclick = () => { const i = it(b.dataset.mo); i.modele = i.modele === b.dataset.v ? '' : b.dataset.v; sauverPJ(); afficherDevis(); });
-  z.querySelectorAll('[data-op]').forEach(b => b.onchange = () => { const i = it(b.dataset.op); i.options = i.options.filter(x => x !== b.dataset.v); if (b.checked) i.options.push(b.dataset.v); sauverPJ(); });
+  z.querySelectorAll('[data-op]').forEach(b => b.onchange = () => { const i = it(b.dataset.op); i.options = i.options.filter(x => x !== b.dataset.v); if (b.checked) i.options.push(b.dataset.v); sauverPJ(); if (/ \[.+\]$/.test(b.dataset.v)) { const y = window.scrollY; afficherDevis(); window.scrollTo(0, y); } });
   z.querySelectorAll('[data-off]').forEach(b => b.onchange = () => { it(b.dataset.off).offert = b.checked; sauverPJ(); afficherDevis(); });
   z.querySelectorAll('[data-mod]').forEach(b => b.oninput = () => { it(b.dataset.mod).note = b.value; sauverPJ(); });
   z.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { const i = it(b.dataset.q); i.qte = Math.max(1, Math.min(99, i.qte + +b.dataset.d)); sauverPJ(); afficherDevis(); });
